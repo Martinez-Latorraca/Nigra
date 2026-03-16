@@ -72,57 +72,47 @@ export const reportPet = async (req, res) => {
 
 export const searchPet = async (req, res) => {
     try {
-        // 1. Extraemos las coordenadas además de los filtros
         const { type, color, lat, lng } = req.body;
-        console.log(req.body);
 
         if (!req.file || !req.file.buffer) {
             return res.status(400).send('Falta la imagen');
         }
 
         const imageBuffer = req.file.buffer;
-
-        // Generamos el vector de la foto que subió el usuario
         const vector = await generateEmbedding(imageBuffer);
         const vectorString = JSON.stringify(vector);
 
         let query = '';
         let params = [];
 
-        // 2. LA MAGIA MATEMÁTICA: Si el usuario mandó coordenadas, filtramos por distancia
+        // 1. Solo le pedimos a la DB que ordene (sin el filtro estricto de IA en el WHERE)
         if (lat && lng) {
-            const radioKm = 10; // Buscar mascotas en un radio de 10 kilómetros
-
+            const radioKm = 10;
             query = `
-                SELECT id, description, photo_url, status, contact_info, type, color, lat, lng,
-                -- Esta es la fórmula de Haversine para calcular los KM exactos de distancia:
-                (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2)) + sin(radians($1)) * sin(radians(lat)))) AS distance_km
-                FROM pets
-                WHERE type = $3 
-                AND color = $4
-                AND lat IS NOT NULL 
-                AND lng IS NOT NULL
-                -- Filtramos para que solo traiga los que están a menos del radio establecido:
-                AND (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2)) + sin(radians($1)) * sin(radians(lat)))) <= $5
-                -- Finalmente, ordenamos primero por la IA (qué tan parecidos son)
-                ORDER BY embedding <-> $6
+                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng,
+                u.name AS reporter_name, u.id AS reporter_id, 
+                (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
+                (p.embedding <=> $6) AS visual_distance 
+                FROM pets p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.type = $3 
+                AND p.color = $4
+                AND p.lat IS NOT NULL 
+                AND p.lng IS NOT NULL
+                AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
+                ORDER BY p.embedding <=> $6 
                 LIMIT 10;
             `;
-            params = [
-                parseFloat(lat),
-                parseFloat(lng),
-                type,
-                color,
-                radioKm,
-                vectorString
-            ];
+            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, vectorString];
         } else {
-            // 3. Si NO mandó mapa, hacemos la búsqueda normal en toda la base de datos
             query = `
-                SELECT id, description, photo_url, status, contact_info, type, color
-                FROM pets
-                WHERE type = $1 AND color = $2
-                ORDER BY embedding <-> $3
+                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color,
+                u.name AS reporter_name, u.id AS reporter_id,
+                (p.embedding <=> $3) AS visual_distance 
+                FROM pets p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.type = $1 AND p.color = $2
+                ORDER BY p.embedding <=> $3
                 LIMIT 10;
             `;
             params = [type, color, vectorString];
@@ -130,8 +120,19 @@ export const searchPet = async (req, res) => {
 
         const result = await pool.query(query, params);
 
-        // Devolvemos las mascotas encontradas
-        res.json(result.rows);
+
+        const SIMILARITY_THRESHOLD = 0.7;
+
+        // Filtramos el array descartando los que superen la distancia permitida
+        const filteredResults = result.rows.filter(
+
+            (pet) =>
+                pet.visual_distance <= SIMILARITY_THRESHOLD
+        );
+
+        // 3. Devolvemos la lista limpia al Frontend
+        res.json(filteredResults);
+
 
     } catch (error) {
         console.error('Error buscando mascotas:', error);

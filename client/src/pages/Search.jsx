@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import PetCard from '../components/PetCard';
 import MapSelector from '../components/MapSelector';
+import SearchResultCard from '../components/SearchResultCard';
 
 function Search() {
     const [finalBlob, setFinalBlob] = useState(null);
@@ -33,8 +34,10 @@ function Search() {
     };
 
     const handleSearch = async () => {
-        if (!finalBlob) return;
-
+        if (!finalBlob || !position) {
+            setStatus('⚠️ Por favor, sube una foto y marca la ubicación en el mapa.');
+            return;
+        }
         // Limpiamos resultados previos y encendemos la pantalla de carga
         setStatus('');
         setResults([]);
@@ -50,7 +53,6 @@ function Search() {
             formData.append('lng', position.lng);
         }
 
-        console.log(position);
 
         // 2. EL TRUCO: Un temporizador de 4 segundos antes de ejecutar tu código real
         setTimeout(async () => {
@@ -64,6 +66,8 @@ function Search() {
                 if (!response.ok) throw new Error('Error en la búsqueda');
 
                 const data = await response.json();
+
+                console.log(data);
                 setResults(data);
 
                 if (data.length === 0) {
@@ -167,7 +171,7 @@ function Search() {
                     </div>
                     <div className="mb-6">
                         <label className="block text-sm font-bold text-pet-dark mb-2">
-                            📍 (Opcional) Marca en el mapa dónde se perdió
+                            📍 Marca en el mapa dónde se perdió
                         </label>
                         <MapSelector position={position} setPosition={setPosition} />
                         {position && (
@@ -178,12 +182,12 @@ function Search() {
                     </div>
 
                     <button
-                        // Deshabilitamos el botón si no hay foto O si está cargando
-                        disabled={!finalBlob || isAdLoading}
+                        disabled={!finalBlob || !position || isAdLoading}
                         onClick={handleSearch}
-                        className="w-full py-4 bg-pet-primary hover:bg-pet-primaryDark disabled:bg-gray-300 text-white font-bold rounded-xl transition-colors shadow-sm text-lg"
+                        className="w-full py-4 bg-pet-primary hover:bg-pet-primaryDark disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors shadow-sm text-lg"
                     >
-                        🔍 Buscar Coincidencias
+                        {/* Mensaje dinámico en el botón para ayudar al usuario */}
+                        {(!finalBlob || !position) ? '⚠️ Falta completar datos' : '🔍 Buscar Coincidencias'}
                     </button>
                 </div>
 
@@ -193,16 +197,12 @@ function Search() {
                     </div>
                 )}
 
-                {results.length > 0 && (
-                    <div className="mt-8">
-                        <h3 className="text-xl font-bold text-pet-dark mb-4 border-b pb-2">Resultados encontrados:</h3>
-                        <div className="flex flex-col gap-4">
-                            {results.map((pet) => (
-                                <PetCard key={pet.id} pet={pet} />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                <div className="w-full max-w-4xl flex flex-col gap-5 mt-4">
+                    {results.map(pet => (
+                        // Aquí llamamos a nuestra nueva y flamante tarjeta
+                        <SearchResultCard key={pet.id} pet={pet} />
+                    ))}
+                </div>
             </div>
         </div>
     );

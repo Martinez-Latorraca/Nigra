@@ -1,0 +1,12 @@
+# Dependencias
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Variables de entorno (¡SECRETO!)
+.env
+server/.env
+client/.env
+
+# Archivos del sistema
+.DS_Store

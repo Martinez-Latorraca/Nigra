@@ -12,7 +12,7 @@ function Navbar() {
 
             <div className="flex gap-4 items-center">
                 {token ? (
-                    <Link to="/perfil" className="text-sm font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
+                    <Link to="/profile" className="text-sm font-bold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
                         👤 Mi Perfil
                     </Link>
                 ) : (

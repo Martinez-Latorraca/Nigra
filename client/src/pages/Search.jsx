@@ -4,6 +4,7 @@ import ImageUploader from '../components/ImageUploader';
 import PetCard from '../components/PetCard';
 import MapSelector from '../components/MapSelector';
 import SearchResultCard from '../components/SearchResultCard';
+import AdBanner from '../components/AdBanner';
 
 function Search() {
     const [finalBlob, setFinalBlob] = useState(null);
@@ -13,6 +14,7 @@ function Search() {
     const [status, setStatus] = useState('');
     const [results, setResults] = useState([]);
     const [position, setPosition] = useState(null);
+    const [searchRatio, setSearchRatio] = useState(false);
 
     // 1. NUEVO ESTADO: Controla la pantalla de carga con publicidad
     const [isAdLoading, setIsAdLoading] = useState(false);
@@ -51,6 +53,10 @@ function Search() {
         if (position) {
             formData.append('lat', position.lat);
             formData.append('lng', position.lng);
+        }
+
+        if (searchRatio) {
+            formData.append('searchRatio', searchRatio);
         }
 
 
@@ -109,14 +115,7 @@ function Search() {
                         <p className="text-gray-500 text-sm mt-2 mb-8">Esto tomará unos segundos</p>
 
                         {/* ESPACIO PUBLICITARIO */}
-                        <div className="w-full max-w-sm bg-pet-light/30 border-2 border-dashed border-pet-primary p-6 rounded-2xl text-center shadow-inner">
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">Espacio Patrocinado</span>
-                            <p className="font-bold text-pet-dark mb-2">¿Tu mascota se escapa mucho?</p>
-                            <p className="text-sm text-gray-600 mb-4">Consigue un collar GPS con 20% de descuento usando el código PETFINDER.</p>
-                            <button className="bg-pet-accent text-white px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition-opacity">
-                                Ver Oferta
-                            </button>
-                        </div>
+                        <AdBanner />
                     </div>
                 )}
 
@@ -174,9 +173,29 @@ function Search() {
                             📍 Marca en el mapa dónde se perdió
                         </label>
                         <MapSelector position={position} setPosition={setPosition} />
-                        {position && (
+                        <div className="mt-4 flex items-center justify-between bg-pet-light/40 p-3 rounded-xl border border-pet-primary/20 animate-fade-in">
+                            <span className="text-sm font-bold text-pet-dark flex items-center gap-2">
+                                🎯 Radio de búsqueda:
+                            </span>
+                            <select
+                                value={searchRatio}
+                                onChange={(e) => setSearchRatio(e.target.value)}
+                                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-pet-dark focus:ring-2 focus:ring-pet-primary outline-none shadow-sm cursor-pointer text-sm font-bold"
+                            >
+                                <option value="5">5 km </option>
+                                <option value="10">10 km </option>
+                                <option value="20">20 km </option>
+                                <option value="50">50 km </option>
+                            </select>
+                        </div>
+                        {position ? (
                             <p className="text-xs text-green-600 mt-2 font-bold text-center">
-                                ✅ Zona de búsqueda limitada
+                                ✅ Ubicación capturada
+                            </p>
+
+                        ) : (
+                            <p className="text-xs text-pet-accent mt-2 font-bold text-center">
+                                ⚠️ Selecciona una ubicación para continuar
                             </p>
                         )}
                     </div>
@@ -204,7 +223,7 @@ function Search() {
                     ))}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

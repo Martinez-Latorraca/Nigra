@@ -72,7 +72,7 @@ export const reportPet = async (req, res) => {
 
 export const searchPet = async (req, res) => {
     try {
-        const { type, color, lat, lng } = req.body;
+        const { type, color, lat, lng, searchRatio } = req.body;
 
         if (!req.file || !req.file.buffer) {
             return res.status(400).send('Falta la imagen');
@@ -87,7 +87,7 @@ export const searchPet = async (req, res) => {
 
         // 1. Solo le pedimos a la DB que ordene (sin el filtro estricto de IA en el WHERE)
         if (lat && lng) {
-            const radioKm = 10;
+            const radioKm = parseFloat(searchRatio) || 10; // Radio de búsqueda en kilómetros, por defecto 10 km
             query = `
                 SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng,
                 u.name AS reporter_name, u.id AS reporter_id, 
@@ -121,17 +121,20 @@ export const searchPet = async (req, res) => {
         const result = await pool.query(query, params);
 
 
-        const SIMILARITY_THRESHOLD = 0.7;
+        const SIMILARITY_THRESHOLD = 0.2;
 
         // Filtramos el array descartando los que superen la distancia permitida
         const filteredResults = result.rows.filter(
-
-            (pet) =>
-                pet.visual_distance <= SIMILARITY_THRESHOLD
+            (pet) => {
+                console.log("ID:", pet.id, "Visual:", pet.visual_distance, "Km:", pet.distance_km);
+                // ¡CORRECCIÓN AQUÍ!
+                return pet.visual_distance <= SIMILARITY_THRESHOLD;
+            }
         );
 
         // 3. Devolvemos la lista limpia al Frontend
         res.json(filteredResults);
+        console.log('Resultados encontrados:', filteredResults);
 
 
     } catch (error) {

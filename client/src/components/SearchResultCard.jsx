@@ -79,11 +79,11 @@ function SearchResultCard({ pet }) {
                         <div className="flex flex-col items-end gap-2">
                             {matchPercentage && (
                                 <div className="bg-gray-50 border border-gray-100 px-3 py-1 rounded-full">
-                                    <span className="text-[11px] font-bold text-black tracking-tighter">Coincidencia {matchPercentage}%</span>
+                                    <span className="text-[11px] font-bold text-pet-primary tracking-tighter">Coincidencia {matchPercentage}%</span>
                                 </div>
                             )}
                             {pet.distance_km && (
-                                <div className="text-[11px] font-bold text-gray-400 tracking-tight">
+                                <div className="px-3 text-[11px] font-bold text-gray-400 tracking-tight">
                                     A {parseFloat(pet.distance_km).toFixed(1)} km
                                 </div>
                             )}
@@ -108,7 +108,7 @@ function SearchResultCard({ pet }) {
                     >
                         Notificar hallazgo
                     </button>
-                    
+
                     <a
                         href={`tel:${pet.contact_info}`}
                         onClick={handleCallClick}

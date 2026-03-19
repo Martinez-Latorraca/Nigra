@@ -93,7 +93,7 @@ function Report() {
 
             {/* Header sutil */}
             <div className="w-full max-w-2xl mb-8 flex justify-between items-center px-2">
-                <Link to="/" className="text-sm font-medium text-gray-400 hover:text-black transition-colors">
+                <Link to="/" className="text-sm font-medium text-pet-link hover:text-pet-accent transition-colors">
                     Volver al inicio
                 </Link>
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">Reportar hallazgo.</h2>
@@ -161,28 +161,50 @@ function Report() {
                             {/* Selectores */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Especie</label>
-                                    <select
-                                        value={type} onChange={(e) => setType(e.target.value)}
-                                        className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="dog">Perro</option>
-                                        <option value="cat">Gato</option>
-                                    </select>
+                                    <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
+                                        Especie
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            value={type}
+                                            onChange={(e) => setType(e.target.value)}
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
+                                        >
+                                            <option value="dog">Perro</option>
+                                            <option value="cat">Gato</option>
+                                        </select>
+                                        {/* Flecha personalizada estilo Apple */}
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Color predominante</label>
-                                    <select
-                                        value={color} onChange={(e) => setColor(e.target.value)}
-                                        className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="black">Negro</option>
-                                        <option value="white">Blanco</option>
-                                        <option value="brown">Marrón</option>
-                                        <option value="golden">Dorado / Rubio</option>
-                                        <option value="mixed">Mixto</option>
-                                    </select>
+                                    <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
+                                        Color predominante
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            value={color}
+                                            onChange={(e) => setColor(e.target.value)}
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
+                                        >
+                                            <option value="black">Negro</option>
+                                            <option value="white">Blanco</option>
+                                            <option value="brown">Marrón</option>
+                                            <option value="golden">Dorado / Rubio</option>
+                                            <option value="mixed">Mixto</option>
+                                        </select>
+                                        {/* Flecha personalizada estilo Apple */}
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

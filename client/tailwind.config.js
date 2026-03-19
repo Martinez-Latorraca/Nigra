@@ -12,7 +12,8 @@ export default {
           accent: '#4d7298',
           light: '#ece1d1',
           primary: '#0d945c',
-          primaryDark: '#127545'
+          primaryDark: '#127545',
+          link: '#0076DF'
         }
       }
     },

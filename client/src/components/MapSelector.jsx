@@ -75,10 +75,10 @@ function MapSelector({ position, setPosition }) {
 
             {/* Indicador de coordenadas minimalista */}
             {position && (
-                <div className="flex justify-center animate-fade-in">
+                <div className="flex justify-center animate-fade-in pb-2">
                     <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full border border-gray-200">
                         <div className="w-1.5 h-1.5 bg-black rounded-full animate-pulse"></div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                        <span className="text-[12px] font-bold text-gray-400  tracking-tighter">
                             Lat: {position.lat.toFixed(4)} / Lng: {position.lng.toFixed(4)}
                         </span>
                     </div>

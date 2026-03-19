@@ -1,76 +1,72 @@
 import React from 'react';
 
 function PetCard({ pet }) {
-    // Verificamos si la mascota se reportó como perdida o encontrada
     const isLost = pet.status === 'lost';
 
-    // Asignamos colores semánticos según el estado
-    const statusColor = isLost ? 'bg-pet-accent' : 'bg-pet-primary';
-    const statusText = isLost ? 'Perdido' : 'Encontrado';
+    // Usamos una paleta minimalista: negro para perdidos, gris suave para encontrados
+    const statusClasses = isLost
+        ? 'bg-black text-white'
+        : 'bg-gray-100 text-gray-600';
 
-    // Truco matemático: Convertimos la "distancia" del vector en un porcentaje de coincidencia
     const matchPercentage = pet.visual_distance !== undefined
-        ? ((1 - pet.visual_distance) * 100).toFixed(1)
+        ? ((1 - pet.visual_distance) * 100).toFixed(0)
         : null;
 
     return (
-        <div className="flex bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-300">
+        <div className="group bg-white rounded-[32px] shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)] transition-all duration-500 flex p-3 gap-5">
 
-            {/* 1. Columna de la Imagen */}
-            <div className="w-1/3 min-w-[120px] h-36 sm:h-auto">
+            {/* 1. Miniatura de Imagen */}
+            <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 overflow-hidden rounded-2xl">
                 <img
                     src={pet.photo_url}
-                    alt={pet.description || 'Mascota'}
-                    className="w-full h-full object-cover"
+                    alt="Registro"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
             </div>
 
-            {/* 2. Columna de la Información */}
-            <div className="w-2/3 p-4 flex flex-col justify-between">
-
+            {/* 2. Información Editorial */}
+            <div className="flex-1 py-1 pr-2 flex flex-col justify-between">
                 <div>
-                    <div className="flex justify-between items-start mb-1 gap-2">
-                        <h3 className="font-bold text-lg text-pet-primaryDark truncate">
-                            {pet.description !== 'Desconocido' ? pet.description : 'Sin descripción'}
-                        </h3>
-                        <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-lg text-white ${statusColor}`}>
-                            {statusText}
+                    <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-3 py-1 rounded-full ${statusClasses}`}>
+                            {isLost ? 'Perdido' : 'Encontrado'}
                         </span>
-                    </div>
 
-                    <p className="text-sm text-gray-500 capitalize flex items-center gap-1">
-                        {pet.type === 'dog' ? '🐶 Perro' : '🐱 Gato'} •
-                        <span className="truncate">{pet.color}</span>
-                    </p>
-
-                    {/* Contenedor de Insignias (IA y Mapa) */}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                        {/* Insignia: Porcentaje de similitud de la IA */}
                         {matchPercentage && (
-                            <div className="text-xs font-semibold text-pet-primaryDark bg-pet-light/50 px-2 py-1 rounded-md border border-pet-light">
-                                ✨ {matchPercentage}% de similitud
-                            </div>
-                        )}
-
-                        {/* Insignia: Distancia geográfica */}
-                        {pet.distance_km && (
-                            <div className="text-xs font-semibold text-pet-accent bg-red-50 px-2 py-1 rounded-md border border-red-100">
-                                📍 A {parseFloat(pet.distance_km).toFixed(1)} km
-                            </div>
+                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                                Match {matchPercentage}%
+                            </span>
                         )}
                     </div>
+
+                    <h3 className="text-lg font-semibold tracking-tight text-gray-900 leading-tight mb-1 truncate max-w-[180px] sm:max-w-none">
+                        {pet.description !== 'Desconocido' ? pet.description : 'Sin descripción'}
+                    </h3>
+
+                    <p className="text-xs font-medium text-gray-400 capitalize">
+                        {pet.type === 'dog' ? 'Canino' : 'Felino'} • {pet.color}
+                    </p>
                 </div>
 
-                {/* 3. Acción (Contacto) */}
-                <div className="mt-3">
+                {/* 3. Datos Técnicos y Contacto */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                    {pet.distance_km ? (
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                            📍 {parseFloat(pet.distance_km).toFixed(1)} km
+                        </span>
+                    ) : (
+                        <span className="text-[10px] font-bold text-gray-200 uppercase tracking-tight">
+                            Posición remota
+                        </span>
+                    )}
+
                     <a
                         href={`tel:${pet.contact_info}`}
-                        className="text-sm font-bold text-pet-primary hover:text-pet-primaryDark flex items-center gap-1 transition-colors"
+                        className="text-xs font-semibold text-black hover:opacity-60 transition-opacity underline underline-offset-4 decoration-gray-200"
                     >
-                        📞 Contactar: <span className="underline decoration-pet-light underline-offset-2">{pet.contact_info}</span>
+                        Contactar
                     </a>
                 </div>
-
             </div>
         </div>
     );

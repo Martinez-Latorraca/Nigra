@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
-import PetCard from '../components/PetCard';
 import MapSelector from '../components/MapSelector';
 import SearchResultCard from '../components/SearchResultCard';
 import AdBanner from '../components/AdBanner';
@@ -14,21 +13,17 @@ function Search() {
     const [status, setStatus] = useState('');
     const [results, setResults] = useState([]);
     const [position, setPosition] = useState(null);
-    const [searchRatio, setSearchRatio] = useState(false);
-
-    // 1. NUEVO ESTADO: Controla la pantalla de carga con publicidad
+    const [searchRatio, setSearchRatio] = useState(10);
     const [isAdLoading, setIsAdLoading] = useState(false);
 
     const handleCropComplete = (blob, url) => {
         setFinalBlob(blob);
-        // Si el uploader nos pasa una URL la usamos, si no, LA CREAMOS nosotros mismos a partir del blob.
         const imagePreviewUrl = url || URL.createObjectURL(blob);
         setPreviewUrl(imagePreviewUrl);
     };
 
     const handleReset = () => {
         setFinalBlob(null);
-        // Buena práctica: liberar la memoria del navegador borrando la URL temporal
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
         setResults([]);
@@ -37,10 +32,10 @@ function Search() {
 
     const handleSearch = async () => {
         if (!finalBlob || !position) {
-            setStatus('⚠️ Por favor, sube una foto y marca la ubicación en el mapa.');
+            setStatus('Se requiere una fotografía y una ubicación en el mapa.');
             return;
         }
-        // Limpiamos resultados previos y encendemos la pantalla de carga
+
         setStatus('');
         setResults([]);
         setIsAdLoading(true);
@@ -49,181 +44,162 @@ function Search() {
         formData.append('image', finalBlob);
         formData.append('type', type);
         formData.append('color', color);
+        formData.append('lat', position.lat);
+        formData.append('lng', position.lng);
+        formData.append('searchRatio', searchRatio);
 
-        if (position) {
-            formData.append('lat', position.lat);
-            formData.append('lng', position.lng);
-        }
-
-        if (searchRatio) {
-            formData.append('searchRatio', searchRatio);
-        }
-
-
-        // 2. EL TRUCO: Un temporizador de 4 segundos antes de ejecutar tu código real
         setTimeout(async () => {
             try {
-                // Le pegamos a la ruta de tu backend
                 const response = await fetch('http://localhost:3000/api/pets/search-pet', {
                     method: 'POST',
                     body: formData,
                 });
 
-                if (!response.ok) throw new Error('Error en la búsqueda');
+                if (!response.ok) throw new Error('Error en la comunicación con el servidor');
 
                 const data = await response.json();
-
-                console.log(data);
                 setResults(data);
 
                 if (data.length === 0) {
-                    setStatus('⚠️ No encontramos coincidencias. Intenta recortar más cerca o cambiar filtros.');
+                    setStatus('Sin coincidencias. Intenta ampliar el radio o ajustar el encuadre.');
                 } else {
-                    setStatus(`✅ ¡Encontramos ${data.length} posible(s) coincidencia(s)!`);
+                    setStatus(`Se encontraron ${data.length} posibles coincidencias.`);
                 }
             } catch (error) {
                 console.error(error);
-                setStatus('❌ Error al conectar con el servidor.');
+                setStatus('Error de conexión con el sistema.');
             } finally {
-                // 3. APAGAMOS LA PANTALLA DE CARGA al terminar todo
                 setIsAdLoading(false);
             }
         }, 4000);
     };
 
     return (
-        <div className="min-h-screen bg-pet-light p-4 font-sans text-pet-dark flex flex-col items-center">
+        <div className="min-h-screen bg-[#F5F5F7] p-6 font-sans text-gray-900 flex flex-col items-center">
 
-            {/* Navegación simple */}
-            <div className="w-full max-w-xl mb-4 flex justify-between items-center">
-                <Link to="/" className="text-pet-primary hover:text-pet-primaryDark font-bold flex items-center gap-2 transition-colors">
-                    <span>←</span> Volver al inicio
+            {/* Navegación sutil */}
+            <div className="w-full max-w-2xl mb-8 flex justify-between items-center px-2">
+                <Link to="/" className="text-sm font-medium text-gray-400 hover:text-black transition-colors">
+                    Volver al inicio
                 </Link>
-                <h2 className="text-xl font-extrabold text-pet-primaryDark">🔍 Buscar Mascota</h2>
+                <h2 className="text-xl font-semibold tracking-tight text-gray-900">Búsqueda visual.</h2>
             </div>
 
-            {/* Agregamos 'relative' aquí para que la capa superpuesta no se escape de la tarjeta */}
-            <div className="w-full max-w-xl bg-white rounded-3xl shadow-xl overflow-hidden p-6 sm:p-8 border-t-8 border-pet-primary relative">
+            <div className="w-full max-w-2xl bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] overflow-hidden p-8 md:p-12 border border-gray-100 relative">
 
-                {/* --- CAPA SUPERPUESTA DE CARGA Y PUBLICIDAD --- */}
+                {/* --- CAPA SUPERPUESTA DE CARGA --- */}
                 {isAdLoading && (
-                    <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-6 backdrop-blur-sm">
-                        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pet-primary mb-4"></div>
-                        <h3 className="text-xl font-bold text-pet-primaryDark animate-pulse text-center">
-                            La IA está escaneando los vectores faciales...
+                    <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-md">
+                        <div className="w-12 h-12 border-2 border-black border-t-transparent rounded-full animate-spin mb-6"></div>
+                        <h3 className="text-xl font-semibold tracking-tight text-black text-center mb-10">
+                            Escaneando vectores faciales...
                         </h3>
-                        <p className="text-gray-500 text-sm mt-2 mb-8">Esto tomará unos segundos</p>
-
-                        {/* ESPACIO PUBLICITARIO */}
                         <AdBanner />
                     </div>
                 )}
 
-                <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl text-center bg-gray-50 mb-6 transition-all duration-300">
+                {/* Sección de Imagen */}
+                <div className="mb-10 flex flex-col items-center">
                     {previewUrl ? (
-                        // 1. SI HAY FOTO: Mostramos el preview y el botón para cambiarla
-                        <div className="flex flex-col items-center">
+                        <div className="relative group flex flex-col items-center">
                             <img
                                 src={previewUrl}
-                                alt="Preview de la mascota"
-                                className="max-h-60 w-auto rounded-lg shadow-md object-cover border-4 border-white"
+                                alt="Mascota"
+                                className="max-h-72 w-auto rounded-3xl shadow-sm border border-gray-100 object-cover"
                             />
                             <button
                                 onClick={handleReset}
-                                className="mt-4 px-5 py-2 bg-gray-200 hover:bg-gray-300 text-pet-dark font-bold rounded-xl transition-colors text-sm flex items-center gap-2 shadow-sm"
+                                className="mt-6 px-6 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500 font-semibold rounded-full transition-all text-[10px] uppercase tracking-widest"
                             >
-                                🔄 Cambiar foto
+                                Reemplazar imagen
                             </button>
                         </div>
                     ) : (
-                        // 2. SI NO HAY FOTO: Mostramos el Uploader
-                        <>
-                            <p className="text-gray-500 mb-2 font-medium">Haz clic o arrastra la foto aquí</p>
+                        <div className="w-full p-12 border-2 border-dashed border-gray-100 rounded-[32px] bg-gray-50/50 text-center">
                             <ImageUploader onCropComplete={handleCropComplete} />
-                        </>
+                        </div>
                     )}
                 </div>
 
-                <div className={`transition-opacity duration-300 ${finalBlob ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+                <div className={`space-y-8 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
 
-                    <div className="flex gap-4 mb-6">
-                        <select
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
-                            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 bg-white text-pet-dark focus:ring-2 focus:ring-pet-primary outline-none shadow-sm cursor-pointer"
-                        >
-                            <option value="dog">🐶 Perro</option>
-                            <option value="cat">🐱 Gato</option>
-                        </select>
-
-                        <select
-                            value={color}
-                            onChange={(e) => setColor(e.target.value)}
-                            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 bg-white text-pet-dark focus:ring-2 focus:ring-pet-primary outline-none shadow-sm cursor-pointer"
-                        >
-                            <option value="black">⚫ Negro</option>
-                            <option value="white">⚪ Blanco</option>
-                            <option value="brown">🟤 Marrón / Canela</option>
-                            <option value="golden">🟡 Dorado / Rubio</option>
-                            <option value="mixed">🎨 Mixto / Manchado</option>
-                        </select>
-                    </div>
-                    <div className="mb-6">
-                        <label className="block text-sm font-bold text-pet-dark mb-2">
-                            📍 Marca en el mapa dónde se perdió
-                        </label>
-                        <MapSelector position={position} setPosition={setPosition} />
-                        <div className="mt-4 flex items-center justify-between bg-pet-light/40 p-3 rounded-xl border border-pet-primary/20 animate-fade-in">
-                            <span className="text-sm font-bold text-pet-dark flex items-center gap-2">
-                                🎯 Radio de búsqueda:
-                            </span>
+                    {/* Filtros de clasificación */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Especie</label>
                             <select
-                                value={searchRatio}
-                                onChange={(e) => setSearchRatio(e.target.value)}
-                                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-pet-dark focus:ring-2 focus:ring-pet-primary outline-none shadow-sm cursor-pointer text-sm font-bold"
+                                value={type}
+                                onChange={(e) => setType(e.target.value)}
+                                className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer"
                             >
-                                <option value="5">5 km </option>
-                                <option value="10">10 km </option>
-                                <option value="20">20 km </option>
-                                <option value="50">50 km </option>
+                                <option value="dog">Perro</option>
+                                <option value="cat">Gato</option>
                             </select>
                         </div>
-                        {position ? (
-                            <p className="text-xs text-green-600 mt-2 font-bold text-center">
-                                ✅ Ubicación capturada
-                            </p>
 
-                        ) : (
-                            <p className="text-xs text-pet-accent mt-2 font-bold text-center">
-                                ⚠️ Selecciona una ubicación para continuar
-                            </p>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Color</label>
+                            <select
+                                value={color}
+                                onChange={(e) => setColor(e.target.value)}
+                                className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="black">Negro</option>
+                                <option value="white">Blanco</option>
+                                <option value="brown">Marrón</option>
+                                <option value="golden">Dorado</option>
+                                <option value="mixed">Mixto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Mapa y Radio */}
+                    <div className="space-y-4">
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Punto de referencia</label>
+                        <div className="rounded-[32px] overflow-hidden border border-gray-100 shadow-inner">
+                            <MapSelector position={position} setPosition={setPosition} />
+                        </div>
+
+                        {position && (
+                            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-100 animate-fade-in">
+                                <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">Radio</span>
+                                <select
+                                    value={searchRatio}
+                                    onChange={(e) => setSearchRatio(e.target.value)}
+                                    className="bg-transparent font-bold text-gray-900 outline-none cursor-pointer"
+                                >
+                                    <option value="5">5 kilómetros</option>
+                                    <option value="10">10 kilómetros</option>
+                                    <option value="20">20 kilómetros</option>
+                                    <option value="50">50 kilómetros</option>
+                                </select>
+                            </div>
                         )}
                     </div>
 
                     <button
                         disabled={!finalBlob || !position || isAdLoading}
                         onClick={handleSearch}
-                        className="w-full py-4 bg-pet-primary hover:bg-pet-primaryDark disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors shadow-sm text-lg"
+                        className="w-full py-5 bg-black hover:bg-gray-800 disabled:bg-gray-100 disabled:text-gray-300 text-white font-semibold rounded-full transition-all duration-300 shadow-sm text-lg mt-8"
                     >
-                        {/* Mensaje dinámico en el botón para ayudar al usuario */}
-                        {(!finalBlob || !position) ? '⚠️ Falta completar datos' : '🔍 Buscar Coincidencias'}
+                        Ejecutar búsqueda visual
                     </button>
                 </div>
 
                 {status && (
-                    <div className="mt-6 text-center font-medium text-pet-dark bg-pet-light/50 p-4 rounded-xl border border-pet-light">
+                    <div className="mt-8 text-center text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] animate-fade-in">
                         {status}
                     </div>
                 )}
-
-                <div className="w-full max-w-4xl flex flex-col gap-5 mt-4">
-                    {results.map(pet => (
-                        // Aquí llamamos a nuestra nueva y flamante tarjeta
-                        <SearchResultCard key={pet.id} pet={pet} />
-                    ))}
-                </div>
             </div>
-        </div >
+
+            {/* Resultados */}
+            <div className="w-full max-w-4xl flex flex-col gap-6 mt-12 mb-20">
+                {results.map(pet => (
+                    <SearchResultCard key={pet.id} pet={pet} />
+                ))}
+            </div>
+        </div>
     );
 }
 

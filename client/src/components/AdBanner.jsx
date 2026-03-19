@@ -1,26 +1,34 @@
 import React from 'react';
 
-// Le pasamos props con valores por defecto por si olvidamos enviárselos
 function AdBanner({
-    title = "¿Tu mascota se escapa mucho?",
-    description = "Consigue un collar GPS con 20% de descuento usando el código PETFINDER.",
-    buttonText = "Ver Oferta",
-    link = "#"
+    title = "Protección inteligente.",
+    description = "Consigue un collar con tecnología de rastreo y un 20% de descuento usando el código NIGRA20.",
+    buttonText = "Explorar",
+    link = "https://www.mercadolibre.com.uy/"
 }) {
     return (
-        <div className="w-full max-w-sm bg-pet-light/30 border-2 border-dashed border-pet-primary p-6 rounded-2xl text-center shadow-inner">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">
-                Espacio Patrocinado
+        <div className="w-full max-w-sm bg-gray-50/50 border border-gray-100 p-8 rounded-[32px] text-center shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)]">
+            {/* Metadata sutil superior */}
+            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-[0.25em] mb-4 block">
+                Contenido Patrocinado
             </span>
-            <p className="font-bold text-pet-dark mb-2">{title}</p>
-            <p className="text-sm text-gray-600 mb-4">{description}</p>
 
-            {/* Cambié el <button> por un <a> para que funcione como un link real */}
+            {/* Título con el punto característico de Nigra. */}
+            <h4 className="font-semibold text-gray-900 mb-2 tracking-tight">
+                {title}
+            </h4>
+
+            {/* Descripción con interlineado Apple-style */}
+            <p className="text-sm text-gray-400 font-medium leading-relaxed mb-6 px-2">
+                {description}
+            </p>
+
+            {/* CTA tipo píldora minimalista */}
             <a
                 href={link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block bg-pet-accent text-white px-6 py-2 rounded-xl text-sm font-bold shadow-sm hover:opacity-90 transition-opacity"
+                className="inline-block bg-black text-white px-8 py-3 rounded-full text-xs font-semibold tracking-wide hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
             >
                 {buttonText}
             </a>

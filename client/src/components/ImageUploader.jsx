@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import getCroppedImg from '../cropUtils.js'; 
+import getCroppedImg from '../cropUtils.js';
 
 function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
     return centerCrop(
@@ -43,60 +43,90 @@ export default function ImageUploader({ onCropComplete, previewUrl, onReset }) {
 
         try {
             const blob = await getCroppedImg(imgRef.current, cropToUse, 'recorte.jpg');
-            onCropComplete(blob); // Enviamos el blob al App.jsx
+            onCropComplete(blob);
             setImgSrc('');
         } catch (e) {
             console.error(e);
-            alert("Error al recortar la imagen.");
+            alert("Error al procesar el recorte.");
         }
     }, [completedCrop, onCropComplete]);
 
-    // VISTA 1: Mostrar preview de la imagen ya recortada
+    // VISTA 1: Preview de imagen ya recortada
     if (previewUrl) {
         return (
-            <div className="flex flex-col items-center">
-                <img src={previewUrl} alt="Preview" className="w-40 h-40  border-2 border-green-500 object-cover shadow-lg" />
+            <div className="flex flex-col items-center animate-fade-in">
+                <div className="relative group">
+                    <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-48 h-48 rounded-[32px] object-cover shadow-sm border border-gray-100"
+                    />
+                </div>
                 <button
                     onClick={onReset}
-                    className="mt-4 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-medium hover:bg-red-100 transition-colors"
+                    className="mt-6 text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] hover:text-black transition-colors"
                 >
-                    Cambiar foto
+                    Reemplazar archivo
                 </button>
             </div>
         );
     }
 
-    // VISTA 2: El editor de recorte
+    // VISTA 2: Editor de recorte
     if (imgSrc) {
         return (
-            <div className="flex flex-col items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <p className="text-gray-600 mb-4 text-sm font-medium">Arrastra las esquinas para seleccionar SOLO la cara</p>
-                <ReactCrop
-                    crop={crop}
-                    onChange={(_, percentCrop) => setCrop(percentCrop)}
-                    onComplete={(c) => setCompletedCrop(c)}
-                    aspect={1}
-                    className="max-w-full max-h-[50vh] rounded-lg overflow-hidden shadow-inner"
-                >
-                    <img ref={imgRef} alt="Crop me" src={imgSrc} onLoad={onImageLoad} className="max-w-full max-h-[50vh]" />
-                </ReactCrop>
-                <button
-                    onClick={handleConfirmCrop}
-                    className="mt-6 px-6 py-3 bg-green-500 text-white rounded-full font-bold hover:bg-green-600 transition-colors shadow-md"
-                >
-                    ✂️ Confirmar Recorte
-                </button>
+            <div className="flex flex-col items-center bg-white p-6 rounded-[40px] border border-gray-100 shadow-[0_2px_15px_rgba(0,0,0,0.02)] animate-fade-in">
+                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-6">
+                    Ajuste de encuadre facial
+                </span>
+
+                <div className="rounded-3xl overflow-hidden bg-gray-50 border border-gray-100 shadow-inner">
+                    <ReactCrop
+                        crop={crop}
+                        onChange={(_, percentCrop) => setCrop(percentCrop)}
+                        onComplete={(c) => setCompletedCrop(c)}
+                        aspect={1}
+                        className="max-w-full max-h-[45vh]"
+                    >
+                        <img
+                            ref={imgRef}
+                            alt="Crop tool"
+                            src={imgSrc}
+                            onLoad={onImageLoad}
+                            className="max-w-full max-h-[45vh] transition-opacity duration-500"
+                        />
+                    </ReactCrop>
+                </div>
+
+                <div className="mt-8 w-full flex flex-col items-center gap-4">
+                    <button
+                        onClick={handleConfirmCrop}
+                        className="w-full py-4 bg-black text-white rounded-full font-semibold text-sm hover:bg-gray-800 transition-all active:scale-95 shadow-sm"
+                    >
+                        Confirmar selección
+                    </button>
+                    <button
+                        onClick={() => setImgSrc('')}
+                        className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-red-500 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                </div>
             </div>
         );
     }
 
     // VISTA 3: Botón inicial de subida
     return (
-        <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-gray-50 hover:bg-gray-100 hover:border-blue-400 transition-all">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                <span className="text-4xl mb-2">📁</span>
-                <p className="text-lg text-gray-500 font-medium">Toca para subir foto</p>
-                <p className="text-sm text-gray-400 mt-1">PNG, JPG hasta 10MB</p>
+        <label className="group flex flex-col items-center justify-center w-full h-56 border border-dashed border-gray-200 rounded-[32px] cursor-pointer bg-gray-50/50 hover:bg-white hover:border-gray-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-500">
+            <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-all duration-500">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </div>
+                <p className="text-sm font-semibold tracking-tight text-gray-900 mb-1">Subir fotografía</p>
+                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Formatos JPG o PNG</p>
             </div>
             <input type="file" accept="image/*" onChange={onSelectFile} className="hidden" />
         </label>

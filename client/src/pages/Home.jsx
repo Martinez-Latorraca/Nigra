@@ -3,50 +3,72 @@ import { Link, useNavigate } from 'react-router-dom';
 function Home() {
     const navigate = useNavigate();
 
-    // Función que intercepta el clic en "Reportar"
     const handleReportClick = () => {
         const token = localStorage.getItem('petFinderToken');
         if (token) {
-            navigate('/reportar'); // Si está logueado, pasa directo
+            navigate('/reportar');
         } else {
-            navigate('/login');    // Si no, al login primero
+            navigate('/login');
         }
     };
 
     return (
-        <div className="min-h-screen bg-pet-light flex flex-col items-center justify-center p-4 font-sans text-pet-dark">
-
-            <div className="text-center max-w-2xl mb-12">
-                <h1 className="text-5xl md:text-6xl font-extrabold text-pet-primaryDark tracking-tight mb-4">
-                    Pet Finder
+        <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
+            
+            {/* Header: El "Nigra." en grande con tracking-tight */}
+            <div className="text-center max-w-3xl mb-16 animate-fade-in">
+                <h1 className="text-6xl md:text-8xl font-semibold tracking-tighter text-black mb-6">
+                    Nigra
                 </h1>
-                <p className="text-xl md:text-2xl text-pet-primary opacity-90">
-                    Reuniendo familias con inteligencia artificial
-                </p>
-                <p className="mt-4 text-gray-600">
-                    Usa nuestra tecnología de reconocimiento facial para encontrar a tu mascota o ayudar a una que está perdida a volver a casa.
+                <p className="text-xl md:text-2xl font-medium text-gray-500 max-w-xl mx-auto leading-tight">
+                    Reencuentros impulsados por inteligencia artificial y visión computacional.
                 </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
+            {/* Grid de Acciones: Minimalismo puro */}
+            <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
 
-                {/* Card Buscar (Pública) */}
-                <Link to="/buscar" className="group bg-white p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-all border-2 border-transparent hover:border-pet-primary text-center cursor-pointer flex flex-col items-center justify-center">
-                    <span className="text-6xl mb-4 group-hover:scale-110 transition-transform">🔍</span>
-                    <h2 className="text-2xl font-bold text-pet-primaryDark mb-2">Perdí a mi mascota</h2>
-                    <p className="text-gray-600">Busca en nuestra base de datos usando fotos e inteligencia artificial.</p>
+                {/* Card Buscar */}
+                <Link 
+                    to="/buscar" 
+                    className="group bg-white p-10 rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 flex flex-col items-start justify-between min-h-[320px] border border-gray-100/50"
+                >
+                    <div>
+                        <h2 className="text-3xl font-semibold tracking-tight text-black mb-4 group-hover:text-gray-600 transition-colors">
+                            Buscar mascota
+                        </h2>
+                        <p className="text-gray-500 text-lg leading-relaxed max-w-[280px]">
+                            Utiliza nuestro motor de búsqueda visual para identificar coincidencias en tiempo real.
+                        </p>
+                    </div>
+                    <span className="text-sm font-semibold py-3 px-6 bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300">
+                        Iniciar búsqueda
+                    </span>
                 </Link>
 
-                {/* Card Reportar (Protegida por nuestra nueva función) */}
+                {/* Card Reportar */}
                 <div
                     onClick={handleReportClick}
-                    className="group bg-white p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-all border-2 border-transparent hover:border-pet-accent text-center cursor-pointer flex flex-col items-center justify-center"
+                    className="group bg-white p-10 rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 flex flex-col items-start justify-between min-h-[320px] border border-gray-100/50 cursor-pointer"
                 >
-                    <span className="text-6xl mb-4 group-hover:scale-110 transition-transform">🤝</span>
-                    <h2 className="text-2xl font-bold text-pet-accent mb-2">Encontré una mascota</h2>
-                    <p className="text-gray-600">Sube una foto y datos de contacto para ayudar a encontrar a su familia.</p>
+                    <div>
+                        <h2 className="text-3xl font-semibold tracking-tight text-black mb-4 group-hover:text-gray-600 transition-colors">
+                            Reportar hallazgo
+                        </h2>
+                        <p className="text-gray-500 text-lg leading-relaxed max-w-[280px]">
+                            Publica una mascota encontrada para que nuestra tecnología notifique a su familia.
+                        </p>
+                    </div>
+                    <span className="text-sm font-semibold py-3 px-6 bg-gray-100 rounded-full group-hover:bg-black group-hover:text-white transition-all duration-300">
+                        Crear reporte
+                    </span>
                 </div>
 
+            </div>
+
+            {/* Footer sutil */}
+            <div className="mt-20 text-gray-400 text-sm font-medium tracking-widest uppercase">
+                Tecnología de Visión • 2026
             </div>
         </div>
     );

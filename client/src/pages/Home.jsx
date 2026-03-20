@@ -18,7 +18,7 @@ function Home() {
             {/* Header: El "Nigra." en grande con tracking-tight */}
             <div className="text-center max-w-3xl mb-16 animate-fade-in">
                 <h1 className="text-6xl md:text-8xl font-semibold tracking-tighter text-black mb-6">
-                    Nigra
+                    Nigra.
                 </h1>
                 <p className="text-xl md:text-2xl font-medium text-gray-500 max-w-xl mx-auto leading-tight">
                     Reencuentros impulsados por inteligencia artificial y visión computacional.

@@ -18,37 +18,26 @@ function SearchResultCard({ pet }) {
         }
     };
 
-    const handleSendMessage = async () => {
+
+    const handleOpenChat = () => {
         if (!token) {
-            alert('Inicia sesión en Nigra para enviar mensajes directos.');
             navigate('/login');
             return;
         }
+        console.log("Abasdqwertqwera", pet);
+        // Disparamos un evento personalizado o usamos un estado global (Context/Redux)
+        // para decirle al ChatWidget: "Ábrete con los datos de esta mascota"
+        const event = new CustomEvent('openPetChat', {
 
-        const messageText = window.prompt(`Mensaje para ${pet.reporter_name || 'el informante'}:`);
-        if (!messageText || messageText.trim() === '') return;
+            detail: {
+                petId: pet.id,
+                petPhoto: pet.photo_url,
+                reporterName: pet.reporter_name || 'Usuario',
+                reporterId: pet.reporter_id
+            }
 
-        try {
-            const response = await fetch('http://localhost:3000/api/pets/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    receiver_id: pet.reporter_id,
-                    pet_id: pet.id,
-                    content: messageText
-                })
-            });
-
-            if (!response.ok) throw new Error('Error al procesar el envío');
-            alert('Confirmado: Mensaje enviado al perfil del usuario.');
-
-        } catch (error) {
-            console.error(error);
-            alert(`Error: ${error.message}`);
-        }
+        });
+        window.dispatchEvent(event);
     };
 
     return (
@@ -103,7 +92,7 @@ function SearchResultCard({ pet }) {
                 {/* Acciones Finales */}
                 <div className="flex gap-3 mt-4">
                     <button
-                        onClick={handleSendMessage}
+                        onClick={handleOpenChat}
                         className="flex-1 bg-black text-white text-xs font-semibold py-4 rounded-full hover:bg-gray-800 transition-all shadow-sm active:scale-95"
                     >
                         Notificar hallazgo

@@ -9,7 +9,7 @@ function Navbar() {
 
             {/* ¡Nuevo nombre de la app con el punto minimalista! */}
             <Link to="/" className="text-xl font-semibold tracking-tight text-gray-900 hover:opacity-70 transition-opacity">
-                Nigra
+                Nigra.
             </Link>
 
             <div className="flex gap-4 items-center">

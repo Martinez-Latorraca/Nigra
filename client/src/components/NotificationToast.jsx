@@ -23,7 +23,9 @@ function NotificationToast({ socket }) {
                 petId: notification.petId,
                 petPhoto: notification.petPhoto,
                 reporterName: notification.senderName || 'Usuario', // Datos que vengan en la notificación
-                reporterId: notification.senderId
+                otherUserId: notification.senderId
+
+
             }
         });
         window.dispatchEvent(event);
@@ -42,7 +44,7 @@ function NotificationToast({ socket }) {
                 </div>
 
                 <div className="flex-1">
-                    <p className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.2em] mb-0.5 text-left">{notification.senderName}</p>
+                    <p className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.2em] mb-0.5 text-left">{notification.senderName} te ha enviado un mensaje</p>
                     <p className="text-sm font-semibold text-gray-900 leading-tight text-left">
                         {notification.content}
                     </p>

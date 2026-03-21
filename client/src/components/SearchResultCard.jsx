@@ -1,9 +1,10 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 function SearchResultCard({ pet }) {
     const navigate = useNavigate();
-    const token = localStorage.getItem('petFinderToken');
+    const token = useSelector(state => state.user?.token);
 
     const matchPercentage = pet.visual_distance !== undefined
         ? ((1 - pet.visual_distance) * 100).toFixed(0)
@@ -24,16 +25,14 @@ function SearchResultCard({ pet }) {
             navigate('/login');
             return;
         }
-        console.log("Abasdqwertqwera", pet);
-        // Disparamos un evento personalizado o usamos un estado global (Context/Redux)
-        // para decirle al ChatWidget: "Ábrete con los datos de esta mascota"
+
         const event = new CustomEvent('openPetChat', {
 
             detail: {
                 petId: pet.id,
                 petPhoto: pet.photo_url,
                 reporterName: pet.reporter_name || 'Usuario',
-                reporterId: pet.reporter_id
+                otherUserId: pet.reporter_id
             }
 
         });

@@ -1,10 +1,12 @@
+import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
 
 function Home() {
     const navigate = useNavigate();
+    const token = useSelector(state => state.user?.token);
 
     const handleReportClick = () => {
-        const token = localStorage.getItem('petFinderToken');
+
         if (token) {
             navigate('/reportar');
         } else {
@@ -14,7 +16,7 @@ function Home() {
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-            
+
             {/* Header: El "Nigra." en grande con tracking-tight */}
             <div className="text-center max-w-3xl mb-16 animate-fade-in">
                 <h1 className="text-6xl md:text-8xl font-semibold tracking-tighter text-black mb-6">
@@ -29,8 +31,8 @@ function Home() {
             <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
 
                 {/* Card Buscar */}
-                <Link 
-                    to="/buscar" 
+                <Link
+                    to="/buscar"
                     className="group bg-white p-10 rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500 flex flex-col items-start justify-between min-h-[320px] border border-gray-100/50"
                 >
                     <div>

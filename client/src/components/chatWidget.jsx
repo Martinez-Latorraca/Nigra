@@ -1,12 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
+import { setActiveChat, markAsReadLocal } from '../store/inboxSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 function ChatWidget({ socket }) {
     const [activePet, setActivePet] = useState(null);
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
-    const user = JSON.parse(localStorage.getItem('petFinderUser') || '{}');
+    const user = useSelector((state) => state.user?.data);
+    const token = useSelector((state) => state.user?.token);
     const scrollRef = useRef(null);
+
+    const dispatch = useDispatch();
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -18,16 +23,18 @@ function ChatWidget({ socket }) {
     useEffect(() => {
         const handleOpen = async (e) => {
             const { petId } = e.detail;
+            dispatch(setActiveChat(petId)); // Le decimos a Redux qué chat está activo
             setActivePet(e.detail);
             setIsOpen(true);
+            console.log("Abriendo chat para mascota ID:", e.detail);
 
-            const token = localStorage.getItem('petFinderToken'); // 👈 Sacamos el token
+
 
             try {
                 const response = await fetch(`http://localhost:3000/api/pets/${petId}/messages`, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${token}`, // 👈 Lo mandamos aquí
+                        'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
@@ -38,17 +45,28 @@ function ChatWidget({ socket }) {
                 }
 
                 const history = await response.json();
+                console.log("Historial de mensajes cargado:", history);
 
                 // Mapeamos para que coincidan los nombres (sender_id -> senderId)
                 const formattedHistory = history.map(m => ({
                     ...m,
-                    senderId: m.sender_id,
+                    senderId: Number(m.sender_id),
                     content: m.content
                 }));
 
                 setMessages(formattedHistory);
             } catch (err) {
                 console.error("Error cargando historial:", err);
+            }
+
+            try {
+                // Disparo silencioso para marcar como leído en la DB
+                await fetch(`http://localhost:3000/api/pets/${petId}/messages/read`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (e) {
+                console.error("No se pudo marcar como leído", e);
             }
 
             socket.emit('join_pet_chat', { petId });
@@ -58,15 +76,41 @@ function ChatWidget({ socket }) {
         return () => window.removeEventListener('openPetChat', handleOpen);
     }, [socket]);
 
-    // 2. Escuchar mensajes del servidor
-    useEffect(() => {
-        socket.on('receive_pet_message', (newMsg) => {
-            // console.log("📩 Mensaje recibido desde el server:", newMsg);
-            setMessages(prev => [...prev, newMsg]);
-        });
+    const handleClose = () => {
+        setIsOpen(false);
+        setActivePet(null);
+        dispatch(setActiveChat(null)); // 👈 Le decimos a Redux que ya no estamos mirando ningún chat
+    };
 
-        return () => socket.off('receive_pet_message');
-    }, [socket]);
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleReceiveMessage = async (data) => {
+            // Agregamos el mensaje a la burbuja de chat
+            setMessages((prev) => [...prev, data]);
+
+            // 💡 SI EL CHAT ESTÁ ABIERTO Y EL MENSAJE ES DE LA OTRA PERSONA:
+            if (isOpen && activePet?.petId === data.petId && data.senderId !== user.id) {
+                try {
+                    // Le avisamos al servidor que lo leímos inmediatamente
+
+                    await fetch(`http://localhost:3000/api/pets/${data.petId}/messages/read`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    // Forzamos a Redux a apagar cualquier punto verde que App.jsx haya intentado prender
+                    dispatch(markAsReadLocal(data.petId));
+                } catch (err) {
+                    console.error("Error marcando como leído en vivo:", err);
+                }
+            }
+        };
+
+        socket.on('receive_pet_message', handleReceiveMessage);
+        return () => socket.off('receive_pet_message', handleReceiveMessage);
+    }, [socket, isOpen, activePet, dispatch]);
+
 
     const send = (e) => {
         e.preventDefault();
@@ -78,9 +122,11 @@ function ChatWidget({ socket }) {
             senderName: user.name,
             content: text,
             petPhoto: activePet.petPhoto,
-            receiverId: activePet.reporterId
+            receiverId: activePet.otherUserId, // Este es el ID del otro usuario (reportero o informante) con quien estamos chateando
+            receiverName: activePet.otherUserName
         };
 
+        console.log("🚀 Enviando por socket:", payload);
         socket.emit('send_pet_message', payload);
         setText('');
     };
@@ -91,12 +137,12 @@ function ChatWidget({ socket }) {
         <div className="fixed bottom-6 right-6 w-[380px] h-[550px] bg-white rounded-[40px] shadow-2xl flex flex-col border border-gray-100 z-[999] animate-slide-up overflow-hidden">
             {/* Header */}
             <div className="p-8 pb-6 border-b border-gray-50 flex flex-col items-center text-center relative bg-white">
-                <button onClick={() => setIsOpen(false)} className="absolute top-6 right-8 text-gray-300 hover:text-black transition-colors text-lg">✕</button>
+                <button onClick={handleClose} className="absolute top-6 right-8 text-gray-300 hover:text-black transition-colors text-lg">✕</button>
                 <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-sm bg-gray-50 mb-4">
                     <img src={activePet.petPhoto} className="w-full h-full object-cover" alt="Pet" />
                 </div>
                 <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1 font-sans">Canal de Rescate</p>
-                <p className="text-sm font-semibold text-gray-900 font-sans">Informante: {activePet.reporterName}</p>
+                <p className="text-sm font-semibold text-gray-900 font-sans">Informante: {activePet.otherUserName}</p>
             </div>
 
             {/* Mensajes */}

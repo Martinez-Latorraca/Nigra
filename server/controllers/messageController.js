@@ -30,25 +30,33 @@ export const sendMessage = async (req, res) => {
 };
 
 export const getMyMessages = async (req, res) => {
+
     try {
         const userId = req.user.id; // El ID viene del token (middleware)
 
         const query = `
-            SELECT 
-                m.id, 
-                m.content, 
-                m.created_at, 
-                p.photo_url, 
-                p.description as pet_name,
-                u.name as sender_name
+            SELECT DISTINCT ON (m.pet_id)
+                m.pet_id,
+                m.content,
+                m.sender_id,
+                m.receiver_id,
+                m.is_read,
+                m.created_at,
+                p.photo_url,
+                p.description,
+                p.user_id as reporter_id,
+                u_sender.name AS sender_name,
+                u_receiver.name AS receiver_name
             FROM messages m
             JOIN pets p ON m.pet_id = p.id
-            LEFT JOIN users u ON m.sender_id = u.id
-            WHERE m.receiver_id = $1
-            ORDER BY m.created_at DESC;
+            JOIN users u_sender ON m.sender_id = u_sender.id
+            JOIN users u_receiver ON m.receiver_id = u_receiver.id
+            WHERE m.sender_id = $1 OR m.receiver_id = $1
+            ORDER BY m.pet_id, m.created_at DESC;
         `;
 
         const result = await pool.query(query, [userId]);
+        console.log(result.rows)
         res.json(result.rows);
 
     } catch (error) {
@@ -58,8 +66,8 @@ export const getMyMessages = async (req, res) => {
 };
 
 export const getPetMessages = async (req, res) => {
+    const petId = req.params.petID;
     try {
-        const { petId } = req.params;
         const result = await pool.query(
             'SELECT * FROM messages WHERE pet_id = $1 ORDER BY created_at ASC',
             [petId]
@@ -67,5 +75,24 @@ export const getPetMessages = async (req, res) => {
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: "Error al traer mensajes" });
+    }
+};
+
+
+export const readPetMessages = async (req, res) => {
+    const petId = req.params.petID;
+    const userId = req.user.id; // El que está leyendo
+
+
+    try {
+        // Actualizamos a TRUE solo los mensajes donde el usuario logueado es el RECEPTOR
+        await pool.query(
+            'UPDATE messages SET is_read = TRUE WHERE pet_id = $1 AND receiver_id = $2 AND is_read = FALSE',
+            [petId, userId]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Error al marcar como leído:", err);
+        res.status(500).json({ error: 'Error interno' });
     }
 };

@@ -10,19 +10,41 @@ import ChatWidget from './components/chatWidget';
 import io from 'socket.io-client';
 import NotificationToast from './components/NotificationToast';
 import { useEffect } from 'react';
+import { fetchInbox } from './store/inboxSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 const socket = io("http://localhost:3000");
 function App() {
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.user?.data);
+  const token = useSelector((state) => state.user?.token);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('petFinderUser'));
-    if (user?.id) {
-      // Le avisamos al servidor que este socket pertenece a este usuario
-      socket.emit('register_user', user.id);
-    }
-  }, [socket]);
 
-  
+    if (token && user) {
+      dispatch(fetchInbox());
+    }
+
+  }, [socket, dispatch, token, user]);
+
+  useEffect(() => {
+    if (socket && user?.id) {
+      socket.emit('register_user', user.id);
+
+      const handleNewNotification = (data) => {
+        console.log("🔔 Notificación global recibida:", data);
+        dispatch(fetchInbox());
+      };
+
+      socket.on('new_notification', handleNewNotification);
+
+      return () => {
+        socket.off('new_notification', handleNewNotification);
+      };
+    }
+  }, [socket, dispatch, user?.id]);
+
+
   return (
 
     <div className="min-h-screen bg-pet-light font-sans flex flex-col">
@@ -31,7 +53,7 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile" element={<Profile socket={socket} />} />
           <Route path="/buscar" element={<Search />} />
           <Route path="/reportar" element={<Report />} />
           <Route path="/login" element={<Login />} />

@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
+import { setCredentials } from '../store/userSlice';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const dispatch = useDispatch();
 
     const navigate = useNavigate();
 
@@ -23,12 +26,14 @@ function Login() {
 
             const data = await response.json();
 
-            if (!response.ok) {
+            if (response.ok) {
+                dispatch(setCredentials({
+                    user: data.user,
+                    token: data.token
+                }));
+            } else {
                 throw new Error(data.error || 'Credenciales incorrectas');
             }
-
-            localStorage.setItem('petFinderToken', data.token);
-            localStorage.setItem('petFinderUser', JSON.stringify(data.user));
 
             navigate('/reportar');
 

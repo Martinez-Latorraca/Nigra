@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import MapSelector from '../components/MapSelector';
 import AdBanner from '../components/AdBanner';
+import { useSelector } from 'react-redux';
 
 function Report() {
     const [finalBlob, setFinalBlob] = useState(null);
@@ -15,11 +16,12 @@ function Report() {
     const [position, setPosition] = useState(null);
     const [isAdLoading, setIsAdLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const token = useSelector(state => state.user?.token);
 
     const navigate = useNavigate();
 
     useEffect(() => {
-        const token = localStorage.getItem('petFinderToken');
+
         if (!token) navigate('/login');
     }, [navigate]);
 
@@ -57,7 +59,6 @@ function Report() {
 
         setTimeout(async () => {
             try {
-                const token = localStorage.getItem('petFinderToken');
                 const response = await fetch('http://localhost:3000/api/pets/report-pet', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -68,7 +69,7 @@ function Report() {
 
                 if (!response.ok) {
                     if (response.status === 401 || response.status === 403) {
-                        localStorage.removeItem('petFinderToken');
+
                         navigate('/login');
                         throw new Error('Sesión expirada.');
                     }

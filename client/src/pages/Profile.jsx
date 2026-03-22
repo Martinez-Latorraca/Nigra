@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 // 👇 1. Importamos los hooks de Redux y nuestra acción
 import { useSelector, useDispatch } from 'react-redux';
-import { markAsReadLocal } from '../store/inboxSlice'; // Ajustá la ruta según dónde creaste la carpeta store
 import { clearCredentials } from '../store/userSlice';
+import { openChat } from '../store/chatSlice';
 
 function Profile() {
     const navigate = useNavigate();
@@ -57,24 +57,15 @@ function Profile() {
     };
 
     const handleOpenChat = (msg) => {
-        const theOtherGuyId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-        const theOtherGuyName = msg.sender_id === user.id ? msg.receiver_name : msg.sender_name;
+
+        dispatch(openChat({
+            pet_id: msg.pet_id,
+            petPhoto: msg.photo_url,
+            otherUserId: msg.sender_id === user.id ? msg.receiver_id : msg.sender_id,
+            otherUserName: msg.sender_name === user.name ? msg.receiver_name : msg.sender_name
+        }));
 
 
-        const event = new CustomEvent('openPetChat', {
-            detail: {
-                petId: msg.pet_id,
-                petPhoto: msg.photo_url,
-                reporterName: msg.reporter_name,
-                reporterId: msg.reporter_id,
-                otherUserId: theOtherGuyId,
-                otherUserName: theOtherGuyName
-            }
-        });
-
-        window.dispatchEvent(event);
-
-        dispatch(markAsReadLocal(msg.pet_id));
     };
 
     const handleDeleteReport = async (id) => {
@@ -164,7 +155,7 @@ function Profile() {
                                                         {hasUnread ? 'Nuevo mensaje' : (displayUserName || 'Consulta')}
                                                     </span>
                                                     <p className={`text-sm leading-relaxed truncate pr-8 ${hasUnread ? 'text-black font-semibold' : 'text-gray-500 font-medium'}`}>
-                                                        {msg.sender_id === user.id && <span className="text-gray-400 font-normal">Tú: </span>}
+                                                        {msg.sender_id === user.id ? <span className="text-gray-400 font-normal">Tú: </span> : <span className="text-gray-400 font-normal">El/Ella: </span>}
                                                         {msg.content}
                                                     </p>
                                                 </div>

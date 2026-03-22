@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { openChat } from '../store/chatSlice';
 
 function NotificationToast({ socket }) {
     const [notification, setNotification] = useState(null);
+    const dispatch = useDispatch();
 
     useEffect(() => {
         socket.on('new_notification', (data) => {
             // new Audio('/ios_notification.mp3').play();
 
-            console.log(data)
             setNotification(data);
 
             // Desaparece automáticamente tras 5 segundos
@@ -18,17 +20,12 @@ function NotificationToast({ socket }) {
     }, [socket]);
 
     const handleToastClick = () => {
-        const event = new CustomEvent('openPetChat', {
-            detail: {
-                petId: notification.petId,
-                petPhoto: notification.petPhoto,
-                reporterName: notification.senderName || 'Usuario', // Datos que vengan en la notificación
-                otherUserId: notification.senderId
-
-
-            }
-        });
-        window.dispatchEvent(event);
+        dispatch(openChat({
+            pet_id: notification.pet_id,
+            petPhoto: notification.petPhoto,
+            otherUserId: notification.sender_id,
+            otherUserName: notification.senderName
+        }));
         setNotification(null); // Cerramos el toast al hacer clic
     };
 
@@ -46,7 +43,7 @@ function NotificationToast({ socket }) {
                 <div className="flex-1">
                     <p className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.2em] mb-0.5 text-left">{notification.senderName} te ha enviado un mensaje</p>
                     <p className="text-sm font-semibold text-gray-900 leading-tight text-left">
-                        {notification.content}
+                        Mensaje: {notification.content}
                     </p>
                 </div>
 

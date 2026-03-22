@@ -17,6 +17,8 @@ function Report() {
     const [isAdLoading, setIsAdLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const token = useSelector(state => state.user?.token);
+    const [extraFiles, setExtraFiles] = useState([]); // Archivos reales
+    const [extraPreviews, setExtraPreviews] = useState([]); // URLs para miniaturas
 
     const navigate = useNavigate();
 
@@ -29,6 +31,24 @@ function Report() {
         setFinalBlob(blob);
         const imagePreviewUrl = url || URL.createObjectURL(blob);
         setPreviewUrl(imagePreviewUrl);
+    };
+
+    const handleExtraImages = (e) => {
+        const files = Array.from(e.target.files);
+
+        // Generamos las previas para la UI
+        const newPreviews = files.map(file => URL.createObjectURL(file));
+
+        setExtraFiles(prev => [...prev, ...files]);
+        setExtraPreviews(prev => [...prev, ...newPreviews]);
+    };
+
+    const removeExtraImage = (index) => {
+        setExtraFiles(prev => prev.filter((_, i) => i !== index));
+        setExtraPreviews(prev => {
+            URL.revokeObjectURL(prev[index]); // Limpieza de memoria
+            return prev.filter((_, i) => i !== index);
+        });
     };
 
     const handleReset = () => {
@@ -49,6 +69,11 @@ function Report() {
 
         const formData = new FormData();
         formData.append('image', finalBlob);
+
+        extraFiles.forEach((file) => {
+            formData.append('extra_images', file);
+        });
+
         formData.append('type', type);
         formData.append('color', color);
         formData.append('status', 'found');
@@ -56,6 +81,9 @@ function Report() {
         formData.append('description', description || 'Desconocido');
         formData.append('lat', position.lat);
         formData.append('lng', position.lng);
+
+
+
 
         setTimeout(async () => {
             try {
@@ -129,8 +157,9 @@ function Report() {
                         )}
 
                         <div className="mb-10 text-center">
-                            <p className="text-gray-400 font-medium leading-relaxed max-w-sm mx-auto">
+                            <p className="text-gray-400 font-medium text-sm text-justify leading-relaxed max-w-sm mx-auto">
                                 Sube una fotografía clara para que nuestro motor de IA pueda realizar el emparejamiento.
+                                Recortala para que la cara de la mascota esté centrada y visible. Cuanta más información proporciones, mejores serán las posibilidades de reencuentro.
                             </p>
                         </div>
 
@@ -155,6 +184,49 @@ function Report() {
                                     <ImageUploader onCropComplete={handleCropComplete} />
                                 </div>
                             )}
+                        </div>
+
+                        <div className={`mt-10 mb-3 space-y-4 transition-all ${finalBlob ? 'opacity-100' : 'opacity-20'}`}>
+                            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
+                                Galería de confirmación (Opcional)
+                            </label>
+
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                                {extraPreviews.map((url, index) => (
+                                    <div key={index} className="relative aspect-square group">
+                                        <img
+                                            src={url}
+                                            className="w-full h-full object-cover rounded-2xl border border-gray-100 shadow-sm"
+                                            alt="Extra"
+                                        />
+                                        <button
+                                            onClick={() => removeExtraImage(index)}
+                                            className="absolute -top-2 -right-2 bg-white text-black w-6 h-6 rounded-full shadow-md flex items-center justify-center text-xs hover:bg-black hover:text-white transition-all"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {/* Botón para agregar más */}
+                                <label className="aspect-square border-2 border-dashed border-gray-100 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-all text-gray-300 hover:text-gray-500">
+                                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span className="text-[10px] font-bold uppercase">Añadir</span>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleExtraImages}
+                                        disabled={!finalBlob}
+                                    />
+                                </label>
+                            </div>
+                            <p className="text-[10px] text-gray-300 font-medium italic">
+                                Sube fotos de otros ángulos para ayudar al dueño a identificar a su mascota.
+                            </p>
                         </div>
 
                         <div className={`space-y-8 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
@@ -226,7 +298,7 @@ function Report() {
                                     <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Contacto obligatorio</label>
                                     <input
                                         type="text"
-                                        placeholder="Teléfono o email"
+                                        placeholder="Teléfono"
                                         value={contactInfo}
                                         onChange={e => setContactInfo(e.target.value)}
                                         className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-gray-100 focus:bg-white focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium"

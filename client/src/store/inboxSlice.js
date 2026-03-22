@@ -7,7 +7,7 @@ export const fetchInbox = createAsyncThunk('inbox/fetchInbox', async (_, { getSt
     const rootState = getState();
     const token = rootState.user?.token;
 
-    const response = await fetch('http://localhost:3000/api/pets/messages/inbox', {
+    const response = await fetch('http://localhost:3000/api/messages/inbox', {
         headers: { 'Authorization': `Bearer ${token}` }
     });
 
@@ -27,13 +27,13 @@ const inboxSlice = createSlice({
         activeChatId: null
     },
     reducers: {
-        setActiveChat: (state, action) => {
+        setActiveChatInbox: (state, action) => {
             state.activeChatId = action.payload;
         },
         // ✨ Acción Síncrona: Apaga el punto verde al instante al hacer clic
         markAsReadLocal: (state, action) => {
-            const petId = action.payload;
-            const msg = state.messages.find(m => m.pet_id === petId);
+            const pet_id = action.payload;
+            const msg = state.messages.find(m => m.pet_id === pet_id);
             if (msg && !msg.is_read) {
                 msg.is_read = true;
             }
@@ -61,5 +61,5 @@ const inboxSlice = createSlice({
     }
 });
 
-export const { markAsReadLocal, setActiveChat } = inboxSlice.actions;
+export const { markAsReadLocal, setActiveChatInbox } = inboxSlice.actions;
 export default inboxSlice.reducer;

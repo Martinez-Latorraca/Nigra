@@ -57,13 +57,13 @@ export const login = async (req, res) => {
 
 export const deleteAccount = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const user_id = req.user.id;
 
         // 1. Borramos sus mascotas
-        await pool.query('DELETE FROM pets WHERE user_id = $1', [userId]);
+        await pool.query('DELETE FROM pets WHERE user_id = $1', [user_id]);
 
         // 2. Borramos el usuario
-        const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [userId]);
+        const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [user_id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Usuario no encontrado' });

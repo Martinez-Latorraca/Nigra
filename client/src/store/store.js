@@ -12,11 +12,12 @@ import {
 import storage from "redux-persist/lib/storage";
 import inboxReducer from "./inboxSlice";
 import userReducer from "./userSlice";
-
+import chatReducer from "./chatSlice";
 
 const rootReducer = combineReducers({
     inbox: inboxReducer,
     user: userReducer,
+    chats: chatReducer,
 });
 
 const persistConfig = {

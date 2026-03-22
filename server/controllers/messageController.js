@@ -32,7 +32,7 @@ export const sendMessage = async (req, res) => {
 export const getMyMessages = async (req, res) => {
 
     try {
-        const userId = req.user.id; // El ID viene del token (middleware)
+        const user_id = req.user.id; // El ID viene del token (middleware)
 
         const query = `
             SELECT DISTINCT ON (m.pet_id)
@@ -55,8 +55,7 @@ export const getMyMessages = async (req, res) => {
             ORDER BY m.pet_id, m.created_at DESC;
         `;
 
-        const result = await pool.query(query, [userId]);
-        console.log(result.rows)
+        const result = await pool.query(query, [user_id]);
         res.json(result.rows);
 
     } catch (error) {
@@ -65,30 +64,49 @@ export const getMyMessages = async (req, res) => {
     }
 };
 
-export const getPetMessages = async (req, res) => {
-    const petId = req.params.petID;
+export const getChatHistory = async (req, res) => {
+    const pet_id = req.params.pet_id;
+    const otherUserId = req.params.otherUserId;
+    const myId = req.user.id;
+
+
     try {
-        const result = await pool.query(
-            'SELECT * FROM messages WHERE pet_id = $1 ORDER BY created_at ASC',
-            [petId]
-        );
+        const query = `
+            SELECT 
+                id, 
+                content, 
+                sender_id AS "sender_id", -- Alias para que coincida con el frontend
+                receiver_id AS "receiver_id", 
+                pet_id AS "pet_id", 
+                created_at 
+            FROM messages 
+            WHERE pet_id = $1 
+            AND (
+                (sender_id = $2 AND receiver_id = $3) 
+                OR 
+                (sender_id = $3 AND receiver_id = $2)
+            )
+            ORDER BY created_at ASC;
+        `;
+        const result = await pool.query(query, [pet_id, myId, otherUserId]);
+
         res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: "Error al traer mensajes" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener el historial' });
     }
 };
 
 
 export const readPetMessages = async (req, res) => {
-    const petId = req.params.petID;
-    const userId = req.user.id; // El que está leyendo
-
+    const pet_id = req.params.pet_id;
+    const user_id = req.user.id; // El que está leyendo
 
     try {
         // Actualizamos a TRUE solo los mensajes donde el usuario logueado es el RECEPTOR
         await pool.query(
             'UPDATE messages SET is_read = TRUE WHERE pet_id = $1 AND receiver_id = $2 AND is_read = FALSE',
-            [petId, userId]
+            [pet_id, user_id]
         );
         res.json({ success: true });
     } catch (err) {

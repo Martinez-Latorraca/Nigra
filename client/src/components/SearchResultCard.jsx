@@ -29,7 +29,7 @@ function SearchResultCard({ pet }) {
         const event = new CustomEvent('openPetChat', {
 
             detail: {
-                petId: pet.id,
+                pet_id: pet.id,
                 petPhoto: pet.photo_url,
                 reporterName: pet.reporter_name || 'Usuario',
                 otherUserId: pet.reporter_id

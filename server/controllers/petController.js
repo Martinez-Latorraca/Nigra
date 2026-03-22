@@ -22,18 +22,45 @@ const uploadToCloudinary = (buffer) => {
     });
 };
 
+export const getPetById = async (req, res) => {
+    const id = req.params.pet_id;
+
+    try {
+        const query = `
+            SELECT 
+                p.*, 
+                u.name AS reporter_name -- 👈 Traemos el nombre del que la reportó
+            FROM pets p
+            JOIN users u ON p.user_id = u.id -- 👈 Unimos con la tabla de usuarios
+            WHERE p.id = $1;
+        `;
+        const result = await pool.query(query, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Mascota no encontrada' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Error al obtener la mascota' });
+    }
+};
+
 export const reportPet = async (req, res) => {
     try {
         // 1. Agregamos lat y lng a la extracción de datos
         const { description, status, contact_info, type, color, lat, lng } = req.body;
 
+        console.log(req.files)
+
         // Verificamos que venga el archivo antes de intentar leer su buffer
-        if (!req.file || !req.file.buffer) {
+        if (!req.files || !req.files['image']) {
             return res.status(400).send('Falta la imagen');
         }
 
-        const imageBuffer = req.file.buffer;
-        const userId = req.user.id;
+        const imageBuffer = req.files['image'][0].buffer;
+        const user_id = req.user.id;
 
         const vector = await generateEmbedding(imageBuffer);
         const vectorString = JSON.stringify(vector);
@@ -41,11 +68,26 @@ export const reportPet = async (req, res) => {
         const cloudinaryResult = await uploadToCloudinary(imageBuffer);
         const photoUrl = cloudinaryResult.secure_url;
 
+        let extraPhotosUrls = [];
+
+        if (req.files['extra_images'] && req.files['extra_images'].length > 0) {
+            // Subimos todas las fotos extras en paralelo para ganar velocidad
+            const uploadPromises = req.files['extra_images'].map(file =>
+                uploadToCloudinary(file.buffer)
+            );
+
+            const cloudinaryResults = await Promise.all(uploadPromises);
+            extraPhotosUrls = cloudinaryResults.map(result => result.secure_url);
+        }
+
         // 2. Agregamos lat y lng al INSERT y a los VALUES ($9, $10)
         const query = `
-          INSERT INTO pets (description, status, contact_info, photo_url, embedding, type, color, user_id, lat, lng)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING id, description, photo_url;
+          INSERT INTO pets (
+            description, status, contact_info, photo_url, 
+            embedding, type, color, user_id, lat, lng, extra_photos
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING id, description, photo_url, extra_photos;
         `;
 
         // 3. Pasamos las coordenadas convertidas a números decimales
@@ -57,9 +99,11 @@ export const reportPet = async (req, res) => {
             vectorString,
             type,
             color,
-            userId,
+            user_id,
             lat ? parseFloat(lat) : null,
-            lng ? parseFloat(lng) : null
+            lng ? parseFloat(lng) : null,
+            extraPhotosUrls
+
         ]);
 
         res.json({ success: true, pet: result.rows[0] });
@@ -145,11 +189,11 @@ export const searchPet = async (req, res) => {
 
 export const getMyReports = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const user_id = req.user.id;
         const result = await pool.query(
             // Cambiamos created_at por id
             'SELECT * FROM pets WHERE user_id = $1 ORDER BY id DESC',
-            [userId]
+            [user_id]
         );
         res.json(result.rows);
     } catch (error) {
@@ -161,12 +205,12 @@ export const getMyReports = async (req, res) => {
 // Función para eliminar un reporte
 export const deleteReport = async (req, res) => {
     try {
-        const petId = req.params.id;
-        const userId = req.user.id;
+        const pet_id = req.params.id;
+        const user_id = req.user.id;
 
         const result = await pool.query(
             'DELETE FROM pets WHERE id = $1 AND user_id = $2 RETURNING *',
-            [petId, userId]
+            [pet_id, user_id]
         );
 
         if (result.rows.length === 0) {

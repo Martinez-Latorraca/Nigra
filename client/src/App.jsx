@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
 import ChatWidget from './components/chatWidget';
+import Pet from './pages/Pet';
 import io from 'socket.io-client';
 import NotificationToast from './components/NotificationToast';
 import { useEffect } from 'react';
@@ -31,8 +32,8 @@ function App() {
     if (socket && user?.id) {
       socket.emit('register_user', user.id);
 
-      const handleNewNotification = (data) => {
-        console.log("🔔 Notificación global recibida:", data);
+      const handleNewNotification = () => {
+
         dispatch(fetchInbox());
       };
 
@@ -56,6 +57,7 @@ function App() {
           <Route path="/profile" element={<Profile socket={socket} />} />
           <Route path="/buscar" element={<Search />} />
           <Route path="/reportar" element={<Report />} />
+          <Route path="/pet/:id" element={<Pet />} socket={socket} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

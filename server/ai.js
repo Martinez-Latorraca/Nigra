@@ -69,9 +69,10 @@ export async function generateEmbedding(imageBuffer) {
 
     // 3. Limpiar y retornar
     const vector = await embedding.array();
+    const cleanVector = Array.from(vector).slice(0, 1280);
 
     imageTensor.dispose();
     embedding.dispose();
 
-    return vector[0];
+    return cleanVector[0];
 }

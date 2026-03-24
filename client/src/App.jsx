@@ -13,6 +13,7 @@ import NotificationToast from './components/NotificationToast';
 import { useEffect } from 'react';
 import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
+import PetList from './pages/PetList';
 
 const socket = io("http://localhost:3000");
 function App() {
@@ -54,6 +55,7 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path='/pets' element={<PetList />} />
           <Route path="/profile" element={<Profile socket={socket} />} />
           <Route path="/buscar" element={<Search />} />
           <Route path="/reportar" element={<Report />} />

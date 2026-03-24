@@ -87,7 +87,7 @@ export const reportPet = async (req, res) => {
             embedding, type, color, user_id, lat, lng, extra_photos
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          RETURNING id, description, photo_url, extra_photos;
+          RETURNING id, description, photo_url, extra_photos, created_at;
         `;
 
         // 3. Pasamos las coordenadas convertidas a números decimales
@@ -187,22 +187,6 @@ export const searchPet = async (req, res) => {
     }
 };
 
-export const getMyReports = async (req, res) => {
-    try {
-        const user_id = req.user.id;
-        const result = await pool.query(
-            // Cambiamos created_at por id
-            'SELECT * FROM pets WHERE user_id = $1 ORDER BY id DESC',
-            [user_id]
-        );
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error al obtener mis reportes:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
-    }
-};
-
-// Función para eliminar un reporte
 export const deleteReport = async (req, res) => {
     try {
         const pet_id = req.params.id;
@@ -220,6 +204,51 @@ export const deleteReport = async (req, res) => {
         res.json({ message: 'Reporte eliminado con éxito' });
     } catch (error) {
         console.error('Error al eliminar reporte:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+};
+
+export const getAllPets = async (req, res) => {
+    try {
+        // 1. Pedimos todo, asegurándonos de traer created_at
+        // 2. Ordenamos por fecha (DESC = de más nuevo a más viejo)
+        const query = `
+            SELECT 
+                id, 
+                description, 
+                status, 
+                photo_url, 
+                type, 
+                color, 
+                lat, 
+                lng, 
+                extra_photos, 
+                created_at 
+            FROM pets 
+            ORDER BY created_at DESC;
+        `;
+
+        const result = await pool.query(query);
+
+        // Enviamos los resultados al frontend
+        res.json(result.rows);
+    } catch (error) {
+        console.error("Error al obtener el feed de mascotas:", error);
+        res.status(500).json({ error: 'Error al cargar las mascotas.' });
+    }
+};
+
+export const getMyReports = async (req, res) => {
+    try {
+        const user_id = req.user.id;
+        const result = await pool.query(
+            // Cambiamos created_at por id
+            'SELECT * FROM pets WHERE user_id = $1 ORDER BY id DESC',
+            [user_id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error al obtener mis reportes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };

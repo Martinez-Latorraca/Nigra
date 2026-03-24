@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: nigra-backend
+    env: node
+    region: ohio
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production

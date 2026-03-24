@@ -7,7 +7,7 @@ export const fetchInbox = createAsyncThunk('inbox/fetchInbox', async (_, { getSt
     const rootState = getState();
     const token = rootState.user?.token;
 
-    const response = await fetch('http://localhost:3000/api/messages/inbox', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/inbox`, {
         headers: { 'Authorization': `Bearer ${token}` }
     });
 

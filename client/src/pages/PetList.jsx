@@ -15,7 +15,7 @@ function PetList() {
     useEffect(() => {
         const fetchAllPets = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/pets');
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets`);
                 const data = await response.json();
                 setPets(data);
             } catch (error) {

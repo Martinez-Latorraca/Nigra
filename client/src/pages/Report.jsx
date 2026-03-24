@@ -87,7 +87,7 @@ function Report() {
 
         setTimeout(async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/pets/report-pet', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/report-pet`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData,
@@ -186,7 +186,7 @@ function Report() {
                             )}
                         </div>
 
-                        <div className={`mt-10 mb-3 space-y-4 transition-all ${finalBlob ? 'opacity-100' : 'opacity-20'}`}>
+                        <div className={`mt - 10 mb - 3 space - y - 4 transition - all ${finalBlob ? 'opacity-100' : 'opacity-20'}`}>
                             <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
                                 Galería de confirmación (Opcional)
                             </label>
@@ -229,7 +229,7 @@ function Report() {
                             </p>
                         </div>
 
-                        <div className={`space-y-8 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
+                        <div className={`space - y - 8 transition - all duration - 500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
 
                             {/* Selectores */}
                             <div className="grid grid-cols-2 gap-4">

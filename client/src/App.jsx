@@ -15,7 +15,10 @@ import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
 
-const socket = io("http://localhost:3000");
+const socket = io(import.meta.env.VITE_API_URL, {
+  transports: ['websocket']
+});
+
 function App() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user?.data);

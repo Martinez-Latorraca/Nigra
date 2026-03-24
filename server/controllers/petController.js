@@ -80,6 +80,8 @@ export const reportPet = async (req, res) => {
             extraPhotosUrls = cloudinaryResults.map(result => result.secure_url);
         }
 
+        const extraPhotosJson = JSON.stringify(extraPhotosUrls || []);
+
         // 2. Agregamos lat y lng al INSERT y a los VALUES ($9, $10)
         const query = `
           INSERT INTO pets (
@@ -102,7 +104,7 @@ export const reportPet = async (req, res) => {
             user_id,
             lat ? parseFloat(lat) : null,
             lng ? parseFloat(lng) : null,
-            extraPhotosUrls
+            extraPhotosJson
 
         ]);
 

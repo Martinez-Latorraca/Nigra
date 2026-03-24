@@ -32,7 +32,7 @@ function Profile() {
 
             try {
 
-                const resReports = await fetch('http://localhost:3000/api/pets/my-reports', {
+                const resReports = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/my-reports`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -71,7 +71,7 @@ function Profile() {
     const handleDeleteReport = async (id) => {
         if (!window.confirm('¿Eliminar este registro permanentemente?')) return;
         try {
-            const response = await fetch(`http://localhost:3000/api/pets/${id}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}//api/pets/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

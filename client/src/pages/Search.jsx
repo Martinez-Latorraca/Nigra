@@ -50,7 +50,7 @@ function Search() {
 
         setTimeout(async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/pets/search-pet', {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/search-pet`, {
                     method: 'POST',
                     body: formData,
                 });
@@ -121,7 +121,7 @@ function Search() {
                     )}
                 </div>
 
-                <div className={`space-y-8 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
+                <div className={`space - y - 8 transition - all duration - 500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
 
                     {/* Filtros de clasificación */}
                     <div className="grid grid-cols-2 gap-4">

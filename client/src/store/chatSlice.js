@@ -7,7 +7,7 @@ export const fetchChatHistory = createAsyncThunk(
     async ({ pet_id, otherUserId }, { getState, rejectWithValue }) => {
         try {
             const token = getState().user.token;
-            const response = await fetch(`http://localhost:3000/api/messages/${pet_id}/${otherUserId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${pet_id}/${otherUserId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -41,7 +41,7 @@ export const openChat = createAsyncThunk(
         // C. Sincronizamos en segundo plano con PostgreSQL
         const token = getState().user.token;
         try {
-            await fetch(`http://localhost:3000/api/messages/${petData.pet_id}/messages/read`, {
+            await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${petData.pet_id}/messages/read`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

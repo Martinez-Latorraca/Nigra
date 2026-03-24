@@ -2,34 +2,29 @@
 FROM node:22-alpine AS dependencies
 WORKDIR /app
 COPY package*.json ./
+# Instalamos solo lo necesario para que el contenedor pese menos
 RUN npm ci --only=production
 
-# Stage 2: Build
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-# Stage 3: Production
+# Stage 2: Production Image
 FROM node:22-alpine
 WORKDIR /app
 
-# Copy built dependencies from dependencies stage
+# Traemos las dependencias del Stage 1
 COPY --from=dependencies /app/node_modules ./node_modules
 
-# Copy source code
-COPY package*.json ./
-COPY index.js .
+# COPIAMOS TODO EL CÓDIGO (Aquí estaba el error)
+# Usamos "." para copiar todos los archivos del directorio actual (server)
+COPY . .
 
-# Create non-root user for security
+# Seguridad: Creamos un usuario que no sea root
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
+# Le damos permiso al usuario sobre la carpeta /app
+RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000), (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+# El puerto 10000 es el estándar de Render, pero Express usará process.env.PORT
+EXPOSE 10000
 
-EXPOSE 3000
-
+# Arrancamos
 CMD ["node", "index.js"]

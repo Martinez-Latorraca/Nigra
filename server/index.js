@@ -133,7 +133,13 @@ io.on('connection', (socket) => {
             socket.emit('receive_pet_message', newMessage);
 
             // D. (Extra) Notificación global para actualizar el Inbox
-            io.to(`user_${receiver_id}`).emit('new_notification', { pet_id });
+            io.to(`user_${receiver_id}`).emit('new_notification', {
+                pet_id: pet_id,
+                petPhoto: petPhoto,
+                otherUserId: sender_id,
+                otherUserName: senderName,
+                content: content
+            });
 
             console.log(`✉️ Mensaje guardado y enviado de ${sender_id} a ${receiver_id}`);
 

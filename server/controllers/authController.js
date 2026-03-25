@@ -17,7 +17,7 @@ export const register = async (req, res) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         const newUser = await pool.query(
-            'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id, name, email',
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
             [name, email, passwordHash]
         );
 
@@ -37,7 +37,7 @@ export const login = async (req, res) => {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        const validPassword = await bcrypt.compare(password, user.rows[0].password_hash);
+        const validPassword = await bcrypt.compare(password, user.rows[0].password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }

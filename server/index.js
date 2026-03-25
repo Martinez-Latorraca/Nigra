@@ -7,6 +7,7 @@ import pool from './db.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
@@ -73,7 +74,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173", "https://tu-app.onrender.com"],
+        origin: ["http://localhost:5173", "https://nigra-server.onrender.com/"],
         methods: ["GET", "POST"]
     }
 });

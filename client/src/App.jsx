@@ -17,6 +17,8 @@ import PetList from './pages/PetList';
 
 const socket = io(import.meta.env.VITE_API_URL, {
   transports: ['websocket']
+  ,
+  autoConnect: false
 });
 
 function App() {
@@ -25,6 +27,12 @@ function App() {
   const token = useSelector((state) => state.user?.token);
 
   useEffect(() => {
+    socket.auth = { token };
+    socket.connect();
+
+    // Debug: para que veas qué pasa en la consola
+    socket.on('connect', () => console.log('✅ Socket conectado:', socket.id));
+    socket.on('connect_error', (err) => console.error('❌ Error de conexión:', err.message));
 
     if (token && user) {
       dispatch(fetchInbox());
@@ -34,7 +42,6 @@ function App() {
 
   useEffect(() => {
     if (socket && user?.id) {
-      socket.emit('register_user', user.id);
 
       const handleNewNotification = () => {
 

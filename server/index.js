@@ -97,14 +97,54 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-    console.log(`Usuario conectado: ${socket.userId}`);
-
-    // Unimos al usuario a una "sala" privada con su propio ID
-    // Esto es clave para enviarle mensajes directos fácilmente
+    // El usuario se une a su propia sala para notificaciones generales
     socket.join(`user_${socket.userId}`);
+    console.log(`👤 Usuario ${socket.userId} conectado y unido a su sala.`);
+
+    // --- CHAT DE MASCOTAS ---
+
+    // 1. Unirse a la sala específica del chat (opcional pero recomendado para escalabilidad)
+    socket.on('join_pet_chat', ({ pet_id }) => {
+        socket.join(`pet_chat_${pet_id}`);
+        console.log(`🐾 Usuario ${socket.userId} se unió al chat de la mascota: ${pet_id}`);
+    });
+
+    // 2. Escuchar el envío de mensajes
+    socket.on('send_pet_message', async (data) => {
+        const { pet_id, receiver_id, content } = data;
+        const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
+
+        try {
+            // A. Guardar en Supabase
+            // IMPORTANTE: Verifica que los nombres de columnas coincidan con tu tabla
+            const query = `
+                INSERT INTO messages (pet_id, sender_id, receiver_id, content, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+                RETURNING *
+            `;
+            const result = await pool.query(query, [pet_id, sender_id, receiver_id, content]);
+            const newMessage = result.rows[0];
+
+            // B. Enviar al destinatario en tiempo real
+            // Enviamos a la sala privada del receptor
+            io.to(`user_${receiver_id}`).emit('receive_pet_message', newMessage);
+
+            // C. Enviar también al emisor (para que se vea en sus otras pestañas si tiene varias)
+            socket.emit('receive_pet_message', newMessage);
+
+            // D. (Extra) Notificación global para actualizar el Inbox
+            io.to(`user_${receiver_id}`).emit('new_notification', { pet_id });
+
+            console.log(`✉️ Mensaje guardado y enviado de ${sender_id} a ${receiver_id}`);
+
+        } catch (error) {
+            console.error('❌ Error en send_pet_message:', error);
+            socket.emit('error_notification', 'No se pudo enviar el mensaje');
+        }
+    });
 
     socket.on('disconnect', () => {
-        console.log('Usuario desconectado');
+        console.log('User disconnected');
     });
 });
 

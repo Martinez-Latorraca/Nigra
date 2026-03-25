@@ -30,12 +30,14 @@ export const sendMessage = async (req, res) => {
 };
 
 export const getMyMessages = async (req, res) => {
-
     try {
         const user_id = req.user.id; // El ID viene del token (middleware)
 
         const query = `
-            SELECT DISTINCT ON (m.pet_id)
+            SELECT DISTINCT ON (
+                m.pet_id, 
+                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
+            )
                 m.pet_id,
                 m.content,
                 m.sender_id,
@@ -46,23 +48,36 @@ export const getMyMessages = async (req, res) => {
                 p.description,
                 p.user_id as reporter_id,
                 u_sender.name AS sender_name,
-                u_receiver.name AS receiver_name
+                u_receiver.name AS receiver_name,
+                -- 🔥 Helpers para el frontend: identifican al "otro" automáticamente
+                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END AS other_user_id,
+                CASE WHEN m.sender_id = $1 THEN u_receiver.name ELSE u_sender.name END AS other_user_name
             FROM messages m
             JOIN pets p ON m.pet_id = p.id
             JOIN users u_sender ON m.sender_id = u_sender.id
             JOIN users u_receiver ON m.receiver_id = u_receiver.id
             WHERE m.sender_id = $1 OR m.receiver_id = $1
-            ORDER BY m.pet_id, m.created_at DESC;
+            ORDER BY 
+                m.pet_id, 
+                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END, 
+                m.created_at DESC;
         `;
 
         const result = await pool.query(query, [user_id]);
-        res.json(result.rows);
+
+        // 💡 Detalle importante: Como Postgres nos obliga a ordenar primero por pet_id 
+        // para usar DISTINCT ON, la lista final nos queda agrupada por mascotas.
+        // Lo reordenamos en JavaScript para que el chat más reciente de todos quede arriba del inbox.
+        const sortedChats = result.rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        res.json(sortedChats);
 
     } catch (error) {
         console.error('Error al obtener mensajes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 };
+
 
 export const getChatHistory = async (req, res) => {
     const pet_id = req.params.pet_id;
@@ -75,7 +90,7 @@ export const getChatHistory = async (req, res) => {
             SELECT 
                 id, 
                 content, 
-                sender_id AS "sender_id", -- Alias para que coincida con el frontend
+                sender_id AS "sender_id", 
                 receiver_id AS "receiver_id", 
                 pet_id AS "pet_id", 
                 created_at 

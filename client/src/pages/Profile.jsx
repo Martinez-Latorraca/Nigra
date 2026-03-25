@@ -56,16 +56,14 @@ function Profile() {
         navigate('/');
     };
 
-    const handleOpenChat = (msg) => {
 
+    const handleOpenChat = (msg) => {
         dispatch(openChat({
             pet_id: msg.pet_id,
             petPhoto: msg.photo_url,
-            otherUserId: msg.sender_id === user.id ? msg.receiver_id : msg.sender_id,
-            otherUserName: msg.sender_name === user.name ? msg.receiver_name : msg.sender_name
+            otherUserId: msg.other_user_id,
+            otherUserName: msg.other_user_name
         }));
-
-
     };
 
     const handleDeleteReport = async (id) => {
@@ -130,7 +128,7 @@ function Profile() {
                             </div>
                         ) : (
                             messages.map(msg => {
-                                const displayUserName = msg.sender_id === user.id ? msg.receiver_name : msg.sender_name;
+                                const displayUserName = msg.other_user_name;
 
                                 const isUnread = msg.is_read === false || msg.is_read === 'false' || msg.is_read === 0;
                                 const isForMe = Number(msg.receiver_id) === Number(user?.id);
@@ -139,7 +137,7 @@ function Profile() {
 
                                 return (
                                     <div
-                                        key={msg.pet_id}
+                                        key={`${msg.pet_id}-${msg.other_user_id}`}
                                         onClick={() => handleOpenChat(msg)}
                                         className="group flex gap-6 items-start p-6 hover:bg-gray-50 rounded-[32px] transition-all border border-transparent hover:border-gray-100 cursor-pointer relative"
                                     >

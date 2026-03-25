@@ -35,13 +35,15 @@ app.use('/api/messages', messageRoutes);
 
 // 4. RUTA DE SEO INJECTION (Para compartir en RRSS)
 // Ojo: Si en React usás /pet/:id, acá debe ser igual
-app.get('/pets/:id', async (req, res) => {
+app.get('/pet/:id', async (req, res) => {
     const id = req.params;
     const indexPath = path.join(buildPath, 'index.html');
+
 
     try {
         const result = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
         const pet = result.rows[0];
+        console.log(`🔍 Buscando mascota con ID ${id}:`, pet);
 
         if (!pet) return res.sendFile(indexPath);
 

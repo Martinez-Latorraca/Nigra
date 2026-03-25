@@ -136,8 +136,8 @@ io.on('connection', (socket) => {
             io.to(`user_${receiver_id}`).emit('new_notification', {
                 pet_id: pet_id,
                 petPhoto: petPhoto,
-                otherUserId: sender_id,
-                otherUserName: senderName,
+                sender_id: sender_id,
+                senderName: senderName,
                 content: content
             });
 

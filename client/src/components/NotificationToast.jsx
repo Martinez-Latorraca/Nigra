@@ -9,7 +9,7 @@ function NotificationToast({ socket }) {
     useEffect(() => {
         socket.on('new_notification', (data) => {
             // new Audio('/ios_notification.mp3').play();
-
+            console.log("que llega a la notificacion:", data)
             setNotification(data);
 
             // Desaparece automáticamente tras 5 segundos

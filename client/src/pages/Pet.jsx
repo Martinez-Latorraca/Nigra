@@ -65,14 +65,10 @@ function Pet() {
     };
 
     const handleShare = async () => {
-        // 💡 ARMAMOS LA URL APUNTANDO AL BACKEND
-        // Asegurate de que VITE_API_URL apunte a tu backend en Render
-        const backendSeoUrl = `${import.meta.env.VITE_API_URL}/pet/${pet.id}`;
-
         const shareData = {
             title: `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`,
             text: `Ayudanos a difundir este reporte en la Red Nigra.`,
-            url: backendSeoUrl, // <-- Mandamos el link del Backend
+            url: window.location.href, // La URL actual de la mascota
         };
 
         if (navigator.share) {
@@ -83,12 +79,11 @@ function Pet() {
             }
         } else {
             // Fallback: Copiar al portapapeles
-            navigator.clipboard.writeText(backendSeoUrl); // <-- Acá también
+            navigator.clipboard.writeText(window.location.href);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
     };
-
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans text-gray-400">

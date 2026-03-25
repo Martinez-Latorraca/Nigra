@@ -11,24 +11,32 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         if (user && token) {
-            // 1. Si hay usuario, conectamos con el token en el handshake
+            // 1. Creamos la instancia (esto es síncrono, no dispara render)
             const newSocket = io(import.meta.env.VITE_API_URL, {
                 auth: { token },
-                transports: ['websocket'] // Forzamos websocket para Render
+                transports: ['websocket']
             });
 
-            setSocket(newSocket);
+            // 2. ESCUCHAMOS el evento de conexión (Asíncrono)
+            newSocket.on('connect', () => {
+                console.log('Socket conectado con ID:', newSocket.id);
+                setSocket(newSocket); // Ahora sí, el linter está feliz porque es un callback
+            });
 
-            // Limpieza al desmontar o desloguear
-            return () => newSocket.close();
-        } else {
-            // 2. Si no hay usuario (logout), cerramos el socket si existía
-            if (socket) {
-                socket.disconnect();
+            // Manejo de errores (Opcional pero recomendado)
+            newSocket.on('connect_error', (err) => {
+                console.error('Error de conexión socket:', err.message);
+            });
+
+            // 3. Limpieza
+            return () => {
+                newSocket.off('connect');
+                newSocket.off('connect_error');
+                newSocket.disconnect();
                 setSocket(null);
-            }
+            };
         }
-    }, [user, token]); // <--- Se dispara cada vez que el login cambia
+    }, [user, token]);
 
     return (
         <SocketContext.Provider value={socket}>

@@ -10,6 +10,7 @@ function ChatWidget({ socket }) {
     // 👇 Traemos todo desde Redux
     const { isOpen, activePet, activeChat: messages, loading } = useSelector(state => state.chats);
     const user = useSelector((state) => state.user?.data);
+    const token = useSelector((state) => state.auth?.token);
 
 
     const scrollRef = useRef(null);
@@ -30,9 +31,9 @@ function ChatWidget({ socket }) {
                 otherUserId: activePet.otherUserId
             }));
             socket.emit('join_pet_chat', { pet_id: activePet.pet_id });
-            
+
         }
-    }, [isOpen, activePet, dispatch, socket]);
+    }, [isOpen, activePet, dispatch, socket, token]);
 
 
 

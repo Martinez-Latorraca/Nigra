@@ -71,7 +71,12 @@ app.get(/.*/, (req, res) => {
 
 // --- CONFIGURACIÓN DE SOCKET.IO (Se mantiene igual) ---
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: 'http://localhost:5173' } });
+const io = new Server(server, {
+    cors: {
+        origin: ["http://localhost:5173", "https://tu-app.onrender.com"],
+        methods: ["GET", "POST"]
+    }
+});
 
 // Middleware de autenticación para Sockets
 io.use((socket, next) => {

@@ -114,18 +114,25 @@ export const getChatHistory = async (req, res) => {
 
 
 export const readPetMessages = async (req, res) => {
-    const pet_id = req.params.pet_id;
-    const user_id = req.user.id; // El que está leyendo
-
     try {
-        // Actualizamos a TRUE solo los mensajes donde el usuario logueado es el RECEPTOR
-        await pool.query(
-            'UPDATE messages SET is_read = TRUE WHERE pet_id = $1 AND receiver_id = $2 AND is_read = FALSE',
-            [pet_id, user_id]
-        );
+        const my_id = req.user.id; // Del token
+        const { pet_id, other_user_id } = req.body;
+
+        const query = `
+            UPDATE messages 
+            SET is_read = true 
+            WHERE pet_id = $1 
+              AND sender_id = $2 
+              AND receiver_id = $3 
+              AND is_read = false
+        `;
+
+        // El sender_id es el "otro" (porque él lo envió) y receiver_id sos vos.
+        await pool.query(query, [pet_id, other_user_id, my_id]);
+
         res.json({ success: true });
-    } catch (err) {
-        console.error("Error al marcar como leído:", err);
-        res.status(500).json({ error: 'Error interno' });
+    } catch (error) {
+        console.error('Error al marcar leído:', error);
+        res.status(500).json({ error: 'Error del servidor' });
     }
 };

@@ -36,34 +36,52 @@ app.use('/api/messages', messageRoutes);
 // 4. RUTA DE SEO INJECTION (Para compartir en RRSS)
 // Ojo: Si en React usás /pet/:id, acá debe ser igual
 app.get('/pet/:id', async (req, res) => {
-    const id = req.params;
-    const indexPath = path.join(buildPath, 'index.html');
+    const { id } = req.params; // ¡Acordate de las llaves acá!
 
+    // 1. Detectamos quién nos visita
+    const userAgent = req.headers['user-agent'] || '';
+    // Expresión regular para detectar bots de redes sociales
+    const isBot = /WhatsApp|facebookexternalhit|Twitterbot|googlebot|bingbot|slackbot/i.test(userAgent);
 
+    // ⚠️ REEMPLAZÁ ESTO POR LA URL DE TU FRONTEND EN RENDER
+    const frontendUrl = `https://nigra-frontend.onrender.com/pet/${id}`;
+
+    // 2. Si es un HUMANO, lo pateamos directo a tu Frontend de React
+    if (!isBot) {
+        return res.redirect(frontendUrl);
+    }
+
+    // 3. Si es WhatsApp/Facebook (BOT), le armamos un HTML "fantasma" solo con la data
     try {
         const result = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
         const pet = result.rows[0];
-        console.log(`🔍 Buscando mascota con ID ${id}:`, pet);
 
-        if (!pet) return res.sendFile(indexPath);
+        if (!pet) return res.redirect(frontendUrl);
 
-        fs.readFile(indexPath, 'utf8', (err, data) => {
-            if (err) return res.sendFile(indexPath);
+        const title = `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`;
+        const desc = `Especie: ${pet.type} | Color: ${pet.color}. Ayudanos a difundir en la Red Nigra.`;
+        const image = pet.photo_url;
 
-            const title = `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`;
-            const desc = `Especie: ${pet.type} | Color: ${pet.color}. Ayudanos a difundir en la Red Nigra.`;
-            const image = pet.photo_url;
+        // Le mandamos este mini HTML invisible solo para que el bot chupe la imagen y el título
+        const botHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta property="og:title" content="${title}" />
+                <meta property="og:description" content="${desc}" />
+                <meta property="og:image" content="${image}" />
+                <meta property="og:url" content="${frontendUrl}" />
+                <meta name="twitter:card" content="summary_large_image" />
+            </head>
+            <body></body>
+            </html>
+        `;
 
-            // Reemplazo de meta tags
-            let resultHTML = data
-                .replace(/__OG_TITLE__/g, title)
-                .replace(/__OG_DESCRIPTION__/g, desc)
-                .replace(/__OG_IMAGE__/g, image);
+        res.send(botHTML);
 
-            res.send(resultHTML);
-        });
     } catch (error) {
-        res.sendFile(indexPath);
+        console.error("Error SEO:", error);
+        res.redirect(frontendUrl);
     }
 });
 

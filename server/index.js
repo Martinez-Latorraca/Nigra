@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
 
     // 2. Escuchar el envío de mensajes
     socket.on('send_pet_message', async (data) => {
-        const { pet_id, receiver_id, content } = data;
+        const { pet_id, receiver_id, content, petPhoto, senderName } = data;
         const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
 
         try {

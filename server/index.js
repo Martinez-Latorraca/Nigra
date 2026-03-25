@@ -73,9 +73,33 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: 'http://localhost:5173' } });
 
+// Middleware de autenticación para Sockets
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+        return next(new Error("Error de autenticación: No hay token"));
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return next(new Error("Token inválido"));
+
+        // Guardamos el ID del usuario en el objeto socket
+        socket.userId = decoded.id;
+        next();
+    });
+});
+
 io.on('connection', (socket) => {
-    // ... tu lógica de sockets ...
-    console.log('✅ Usuario conectado:', socket.id);
+    console.log(`Usuario conectado: ${socket.userId}`);
+
+    // Unimos al usuario a una "sala" privada con su propio ID
+    // Esto es clave para enviarle mensajes directos fácilmente
+    socket.join(`user_${socket.userId}`);
+
+    socket.on('disconnect', () => {
+        console.log('Usuario desconectado');
+    });
 });
 
 // 6. INICIALIZACIÓN

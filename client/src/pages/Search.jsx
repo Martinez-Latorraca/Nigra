@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import MapSelector from '../components/MapSelector';
@@ -15,6 +15,7 @@ function Search() {
     const [position, setPosition] = useState(null);
     const [searchRatio, setSearchRatio] = useState(10);
     const [isAdLoading, setIsAdLoading] = useState(false);
+    const resultsAnchorRef = useRef(null);
 
     const handleCropComplete = (blob, url) => {
         setFinalBlob(blob);
@@ -65,6 +66,13 @@ function Search() {
                 } else {
                     setStatus(`Se encontraron ${data.length} posibles coincidencias.`);
                 }
+
+                setTimeout(() => {
+                    resultsAnchorRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }, 100);
             } catch (error) {
                 console.error(error);
                 setStatus('Error de conexión con el sistema.');
@@ -209,8 +217,10 @@ function Search() {
                     </button>
                 </div>
 
+                <div ref={resultsAnchorRef} className="h-1" />
+
                 {status && (
-                    <div className="mt-8 text-center text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em] animate-fade-in">
+                    <div className="mt-8 text-center text-[10px] font-bold text-red-500 uppercase tracking-[0.2em] animate-fade-in">
                         {status}
                     </div>
                 )}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { closeChat, fetchChatHistory, receiveMessage } from '../store/chatSlice';
+import { closeChat, fetchChatHistory, markChatAsRead, receiveMessage } from '../store/chatSlice';
 import { markAsReadLocal } from '../store/inboxSlice';
 
 function ChatWidget({ socket }) {
@@ -58,6 +58,11 @@ function ChatWidget({ socket }) {
         return () => socket.off('receive_pet_message', handleReceiveMessage);
     }, [socket]);
 
+    const handleFocus = () => {
+        dispatch(markAsReadLocal(activePet.pet_id))
+        dispatch(markChatAsRead());
+    }
+
     const send = (e) => {
         e.preventDefault();
         if (!text.trim() || !activePet) return;
@@ -111,6 +116,7 @@ function ChatWidget({ socket }) {
                 <input
                     value={text}
                     onChange={e => setText(e.target.value)}
+                    onFocus={handleFocus}
                     placeholder="Escribe un mensaje..."
                     className="flex-1 bg-gray-100 border-none rounded-full px-6 py-3 text-sm focus:ring-1 focus:ring-black outline-none font-sans"
                 />

@@ -15,7 +15,6 @@ export const fetchChatHistory = createAsyncThunk(
 
             const data = await response.json();
 
-            // 🔥 NORMALIZACIÓN: Aseguramos que los IDs sean números y camelloCase
             return data.map(m => ({
                 ...m,
                 sender_id: Number(m.sender_id),
@@ -28,26 +27,47 @@ export const fetchChatHistory = createAsyncThunk(
     }
 );
 
-export const openChat = createAsyncThunk(
-    'chat/openChatSession',
-    async (petData, { dispatch, getState }) => {
+export const markChatAsRead = createAsyncThunk(
+    'chat/markChatAsRead',
+    async (_, { dispatch, getState }) => {
+        const state = getState();
+        const token = state.user.token;
+        // Sacamos los datos de la mascota directamente del estado global de Redux
+        const activePet = state.chats.activePet; // Ojo: asegúrate de usar el nombre correcto del reducer de store.js (chats o chat)
 
-        // A. Abrimos la UI al instante (Optimistic Update)
-        dispatch(setChatActive(petData));
+        if (!activePet) return;
 
-        // B. Apagamos la luz verde de notificaciones globalmente
-        dispatch(markAsReadLocal(petData.pet_id));
+        // 1. Apagamos la luz verde de notificaciones localmente en el inbox
+        dispatch(markAsReadLocal({
+            pet_id: activePet.pet_id,
+            other_user_id: activePet.otherUserId
+        }));
 
-        // C. Sincronizamos en segundo plano con PostgreSQL
-        const token = getState().user.token;
+        // 2. Avisamos a PostgreSQL usando el nuevo endpoint
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${petData.pet_id}/messages/read`, {
+            await fetch(`${import.meta.env.VITE_API_URL}/api/messages/read`, {
                 method: 'PUT',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    pet_id: activePet.pet_id,
+                    other_user_id: activePet.otherUserId
+                })
             });
         } catch (error) {
-            console.error("No se pudo avisar a la DB:", error);
+            console.error("No se pudo avisar a la DB sobre la lectura:", error);
         }
+    }
+);
+
+export const openChat = createAsyncThunk(
+    'chat/openChatSession',
+    async (petData, { dispatch }) => {
+        dispatch(setChatActive(petData));
+       
+        dispatch(markChatAsRead());
     }
 );
 

@@ -64,6 +64,17 @@ function Pet() {
         }
     };
 
+
+    const handleCallClick = (e) => {
+        if (!token) {
+            e.preventDefault();
+            alert('Inicia sesión en Nigra para acceder a los datos de contacto.');
+            navigate('/login');
+            return;
+        }
+    };
+
+
     const handleShare = async () => {
         const shareData = {
             title: `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`,
@@ -192,10 +203,20 @@ function Pet() {
                         </div>
 
                         {currentUser?.id !== pet.user_id && (
-                            <button onClick={handleOpenChat} className="w-full py-5 bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                                {pet.status === 'lost' ? 'Enviar información' : 'Contactar al rescatista'}
-                            </button>
+                            <div>
+
+                                <button onClick={handleOpenChat} className="w-full py-5 bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                                    {pet.status === 'lost' ? 'Enviar información' : 'Contactar al rescatista'}
+                                </button>
+                                <a
+                                    href={`tel:${pet.contact_info}`}
+                                    onClick={handleCallClick}
+                                    className="px-6 flex items-center justify-center bg-gray-100 text-gray-900 text-xs font-semibold rounded-full hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                    Llamar
+                                </a>
+                            </div>
 
                         )}
                         <button

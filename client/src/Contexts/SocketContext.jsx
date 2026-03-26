@@ -19,7 +19,6 @@ export const SocketProvider = ({ children }) => {
 
             // 2. ESCUCHAMOS el evento de conexión (Asíncrono)
             newSocket.on('connect', () => {
-                console.log('Socket conectado con ID:', newSocket.id);
                 setSocket(newSocket); // Ahora sí, el linter está feliz porque es un callback
             });
 
@@ -30,8 +29,6 @@ export const SocketProvider = ({ children }) => {
 
             // 3. Limpieza
             return () => {
-                newSocket.off('connect');
-                newSocket.off('connect_error');
                 newSocket.disconnect();
                 setSocket(null);
             };

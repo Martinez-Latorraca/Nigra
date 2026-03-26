@@ -5,7 +5,6 @@ import { Server } from 'socket.io';
 import http from 'http';
 import pool from './db.js';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 
@@ -94,7 +93,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://nigra.onrender.com/", "https://nigra-server.onrender.com/"],
+        origin: ["https://nigra.onrender.com", "https://nigra-server.onrender.com"],
         methods: ["GET", "POST"]
     }
 });

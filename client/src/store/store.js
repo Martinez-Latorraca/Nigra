@@ -24,6 +24,7 @@ const persistConfig = {
     key: "root",
     version: 1,
     storage,
+    blacklist: ["chats", "inbox"] // No persistimos chats ni inbox para evitar datos obsoletos,
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

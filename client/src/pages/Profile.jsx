@@ -69,7 +69,7 @@ function Profile() {
     const handleDeleteReport = async (id) => {
         if (!window.confirm('¿Eliminar este registro permanentemente?')) return;
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}//api/pets/${id}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

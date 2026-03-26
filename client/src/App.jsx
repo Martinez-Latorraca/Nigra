@@ -10,59 +10,87 @@ import ChatWidget from './components/chatWidget';
 import Pet from './pages/Pet';
 import io from 'socket.io-client';
 import NotificationToast from './components/NotificationToast';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
-
-const socket = io(import.meta.env.VITE_API_URL, {
-  transports: ['websocket']
-  ,
-  autoConnect: false
-});
 
 function App() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user?.data);
   const token = useSelector((state) => state.user?.token);
 
+  // useRef para que el socket persista entre renders sin ser una variable de módulo
+  const socketRef = useRef(null);
+  // Estado para forzar re-render de los hijos cuando el socket esté listo
+  const [socket, setSocket] = useState(null);
+
   useEffect(() => {
-    socket.auth = { token };
-    socket.connect();
+    // Sin token no hacemos nada — el cleanup de la ejecución anterior
+    // ya se encargó de llamar setSocket(null) y desconectar
+    if (!token) return;
 
-    // Debug: para que veas qué pasa en la consola
-    socket.on('connect', () => console.log('✅ Socket conectado:', socket.id));
-    socket.on('connect_error', (err) => console.error('❌ Error de conexión:', err.message));
+    // Si ya hay un socket conectado con este token, no hacemos nada
+    if (socketRef.current?.connected) return;
 
+    // Si había un socket viejo (sesión anterior), lo limpiamos
+    if (socketRef.current) socketRef.current.disconnect();
+
+    const newSocket = io(import.meta.env.VITE_API_URL, {
+      auth: { token },
+      transports: ['websocket'],
+    });
+
+    // setSocket solo se llama desde callbacks, no del cuerpo del effect
+    newSocket.on('connect', () => {
+      console.log('✅ Socket conectado:', newSocket.id);
+      setSocket(newSocket);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('❌ Error de conexión:', err.message);
+    });
+
+    socketRef.current = newSocket;
+
+    // Cuando token cambia o el componente se desmonta:
+    // 1. Se desconecta el socket
+    // 2. setSocket(null) avisa a los hijos que no hay socket
+    return () => {
+      newSocket.off('connect');
+      newSocket.off('connect_error');
+      newSocket.disconnect();
+      socketRef.current = null;
+      setSocket(null); // en cleanup está permitido
+    };
+  }, [token]);
+
+  // Inbox: se carga cuando tenemos usuario Y socket conectado
+  useEffect(() => {
     if (token && user) {
       dispatch(fetchInbox());
     }
+  }, [token, user, dispatch]);
 
-  }, [socket, dispatch, token, user]);
-
+  // Notificaciones en tiempo real
   useEffect(() => {
-    if (socket && user?.id) {
+    if (!socket || !user?.id) return;
 
-      const handleNewNotification = () => {
+    const handleNewNotification = () => {
+      dispatch(fetchInbox());
+    };
 
-        dispatch(fetchInbox());
-      };
+    socket.on('new_notification', handleNewNotification);
 
-      socket.on('new_notification', handleNewNotification);
-
-      return () => {
-        socket.off('new_notification', handleNewNotification);
-      };
-    }
-  }, [socket, dispatch, user?.id]);
-
+    return () => {
+      socket.off('new_notification', handleNewNotification);
+    };
+  }, [socket, user?.id, dispatch]);
 
   return (
-
     <div className="min-h-screen bg-pet-light font-sans flex flex-col">
       <Navbar />
       <main className="flex-1 flex flex-col">
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path='/pets' element={<PetList />} />

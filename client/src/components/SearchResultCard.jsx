@@ -1,42 +1,15 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
 function SearchResultCard({ pet }) {
     const navigate = useNavigate();
-    const token = useSelector(state => state.user?.token);
 
     const matchPercentage = pet.visual_distance !== undefined
         ? ((1 - pet.visual_distance) * 100).toFixed(0)
         : null;
 
-    const handleCallClick = (e) => {
-        if (!token) {
-            e.preventDefault();
-            alert('Inicia sesión en Nigra para acceder a los datos de contacto.');
-            navigate('/login');
-            return;
-        }
-    };
 
-
-    const handleOpenChat = () => {
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-
-        const event = new CustomEvent('openPetChat', {
-
-            detail: {
-                pet_id: pet.id,
-                petPhoto: pet.photo_url,
-                reporterName: pet.reporter_name || 'Usuario',
-                otherUserId: pet.reporter_id
-            }
-
-        });
-        window.dispatchEvent(event);
+    const handleButtonClick = () => {
+        navigate(`/pet/${pet.id}`);
     };
 
     return (
@@ -91,19 +64,13 @@ function SearchResultCard({ pet }) {
                 {/* Acciones Finales */}
                 <div className="flex gap-3 mt-4">
                     <button
-                        onClick={handleOpenChat}
+                        onClick={handleButtonClick}
                         className="flex-1 bg-black text-white text-xs font-semibold py-4 rounded-full hover:bg-gray-800 transition-all shadow-sm active:scale-95"
                     >
-                        Notificar hallazgo
+                        Mas información
                     </button>
 
-                    <a
-                        href={`tel:${pet.contact_info}`}
-                        onClick={handleCallClick}
-                        className="px-6 flex items-center justify-center bg-gray-100 text-gray-900 text-xs font-semibold rounded-full hover:bg-gray-200 transition-all active:scale-95"
-                    >
-                        Llamar
-                    </a>
+
                 </div>
             </div>
         </div>

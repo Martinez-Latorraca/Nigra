@@ -16,7 +16,6 @@ function Pet() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
-    const [copied, setCopied] = useState(false);
 
     const currentUser = useSelector(state => state.user?.data);
 
@@ -88,11 +87,6 @@ function Pet() {
             } catch (err) {
                 console.log("Error al compartir:", err);
             }
-        } else {
-            // Fallback: Copiar al portapapeles
-            navigator.clipboard.writeText(window.location.href);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
         }
     };
 
@@ -202,50 +196,55 @@ function Pet() {
                             )}
                         </div>
 
-                        {currentUser?.id !== pet.user_id && (
-                            <div>
+                        <div className="flex flex-col gap-4">
 
-                                <button onClick={handleOpenChat} className="w-full py-5 bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                            {currentUser?.id !== pet.user_id && (
+
+
+                                <button
+                                    onClick={handleOpenChat}
+                                    className="w-full py-5 border-2 border-transparent bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                                    </svg>
                                     {pet.status === 'lost' ? 'Enviar información' : 'Contactar al rescatista'}
                                 </button>
+
+                            )}
+                            {currentUser?.id !== pet.user_id && (
                                 <a
                                     href={`tel:${pet.contact_info}`}
                                     onClick={handleCallClick}
-                                    className="px-6 flex items-center justify-center bg-gray-100 text-gray-900 text-xs font-semibold rounded-full hover:bg-gray-200 transition-all active:scale-95"
+                                    className="w-full py-5 border-2 border-transparent bg-gray-300 hover:bg-gray-400 text-gray-800 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
                                 >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                    </svg>
                                     Llamar
                                 </a>
-                            </div>
 
-                        )}
-                        <button
-                            onClick={handleShare}
-                            className={`p-4 w-full py-5 border-2 transition-all duration-300 rounded-full flex items-center justify-center gap-2 active:scale-95 ${copied
-                                ? 'border-green-500 text-green-500 bg-green-50/50'
-                                : 'border-gray-100 text-gray-400 hover:border-black hover:text-black bg-white shadow-sm'
-                                }`}
-                        >
-                            {copied ? (
-                                <>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">¡Copiado!</span>
-                                </>
-                            ) : (
-                                <>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-                                    <span className="m-1 text-[10px] font-bold uppercase tracking-widest">Compartir</span>
-                                </>
                             )}
-                        </button>
+                            <button
+                                onClick={handleShare}
+                                className="w-full py-5 border-2 border-gray-100 bg-white hover:border-black text-gray-400 hover:text-black text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-sm active:scale-95 flex items-center justify-center gap-3"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                                    <polyline points="16 6 12 2 8 6" />
+                                    <line x1="12" y1="2" x2="12" y2="15" />
+                                </svg>
+                                Compartir
+                            </button>
 
-                        <p className="text-[10px] text-gray-300 font-bold uppercase tracking-widest text-center">
-                            Sistema de Mensajería Encriptado Red Nigra
-                        </p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                                Sistema de Mensajería Encriptado Red Nigra
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import MapSelector from '../components/MapSelector';
-import AdBanner from '../components/AdBanner';
+import LoadingCard from '../components/LoadingCard';
 import { useSelector } from 'react-redux';
+import PetSpinner from '../components/PetSpinner';
 
 function Report() {
     const [finalBlob, setFinalBlob] = useState(null);
@@ -23,7 +24,6 @@ function Report() {
     const navigate = useNavigate();
 
     useEffect(() => {
-
         if (!token) navigate('/login');
     }, [navigate]);
 
@@ -107,7 +107,7 @@ function Report() {
                 setIsAdLoading(false);
                 setIsSuccess(true);
 
-                setTimeout(() => navigate('/profile'), 3500);
+                setTimeout(() => navigate(`/pet/${data.pet.id}`), 3500);
 
             } catch (error) {
                 console.error(error);
@@ -133,14 +133,14 @@ function Report() {
                 {isSuccess ? (
                     <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center p-10 text-center animate-fade-in">
                         <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-8">
-                            <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
+                            <PetSpinner />
                         </div>
                         <h2 className="text-4xl font-semibold tracking-tighter text-black mb-4">Reporte enviado.</h2>
                         <p className="text-gray-400 font-medium mb-12 max-w-xs leading-relaxed">
                             Has aportado a que una mascota regrese con su familia. El reporte ya está activo en Nigra.
                         </p>
                         <span className="text-xs font-bold text-gray-300 uppercase tracking-widest animate-pulse">
-                            Redirigiendo a tu perfil
+                            Redirigiendo a la mascota...
                         </span>
                     </div>
 
@@ -148,11 +148,7 @@ function Report() {
                     <>
                         {isAdLoading && (
                             <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-md">
-                                <div className="w-12 h-12 border-2 border-black border-t-transparent rounded-full animate-spin mb-6"></div>
-                                <h3 className="text-xl font-semibold tracking-tight text-black text-center mb-10">
-                                    Procesando vectores faciales...
-                                </h3>
-                                <AdBanner />
+                                <LoadingCard />
                             </div>
                         )}
 
@@ -282,7 +278,7 @@ function Report() {
                             </div>
 
                             {/* Inputs de texto */}
-                            <div className="space-y-6">
+                            <div className="space-y-6 ">
                                 <div className="space-y-2">
                                     <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Descripción</label>
                                     <input
@@ -307,7 +303,7 @@ function Report() {
                             </div>
 
                             {/* Mapa */}
-                            <div className="space-y-3">
+                            <div className="space-y-3 mt-6">
                                 <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Ubicación del hallazgo</label>
                                 <div className="rounded-[32px] overflow-hidden border border-gray-100 shadow-inner">
                                     <MapSelector position={position} setPosition={setPosition} />

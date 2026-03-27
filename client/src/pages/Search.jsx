@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import MapSelector from '../components/MapSelector';
 import SearchResultCard from '../components/SearchResultCard';
-import AdBanner from '../components/AdBanner';
+import LoadingCard from '../components/LoadingCard';
 
 function Search() {
     const [finalBlob, setFinalBlob] = useState(null);
@@ -98,11 +98,7 @@ function Search() {
                 {/* --- CAPA SUPERPUESTA DE CARGA --- */}
                 {isAdLoading && (
                     <div className="absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center p-8 backdrop-blur-md">
-                        <div className="w-12 h-12 border-2 border-black border-t-transparent rounded-full animate-spin mb-6"></div>
-                        <h3 className="text-xl font-semibold tracking-tight text-black text-center mb-10">
-                            Escaneando vectores faciales...
-                        </h3>
-                        <AdBanner />
+                        <LoadingCard />
                     </div>
                 )}
 
@@ -220,7 +216,7 @@ function Search() {
                 <div ref={resultsAnchorRef} className="h-1" />
 
                 {status && (
-                    <div className="mt-8 text-center text-[10px] font-bold text-red-500 uppercase tracking-[0.2em] animate-fade-in">
+                    <div className="mt-8 text-center text-[10px] font-bold text-green-500 uppercase tracking-[0.2em] animate-fade-in">
                         {status}
                     </div>
                 )}

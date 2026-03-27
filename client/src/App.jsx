@@ -6,7 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
-import ChatWidget from './components/chatWidget';
+import ChatWidget from './components/ChatWidget';
 import Pet from './pages/Pet';
 import io from 'socket.io-client';
 import NotificationToast from './components/NotificationToast';

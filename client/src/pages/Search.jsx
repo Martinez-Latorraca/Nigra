@@ -42,7 +42,7 @@ function Search() {
         setResults([]);
         setIsAdLoading(true);
 
-        const searchStatus = 'lost' === status ? 'found' : 'lost';
+        const searchStatus = status === 'lost' ? 'found' : 'lost';
 
         const formData = new FormData();
         formData.append('image', finalBlob);

@@ -1,78 +1,89 @@
-// server/ai.js
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-backend-cpu'; // Necesario para que funcione sin tarjeta gráfica
-import mobilenet from '@tensorflow-models/mobilenet';
-import jpeg from 'jpeg-js';
-import { PNG } from 'pngjs';
+import { Worker } from 'worker_threads';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-let model = null;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Cargar modelo
-export async function loadModel() {
-    if (model) return;
-    console.log('⏳ Cargando modelo de IA (Versión JS Pura)...');
-    // Usamos backend CPU explícitamente para evitar errores
-    await tf.setBackend('cpu');
-    model = await mobilenet.load({ version: 2, alpha: 1.0 });
-    console.log('✅ Modelo cargado.');
+let worker = null;
+let workerReady = false;
+
+// Cola de trabajos pendientes: id → { resolve, reject }
+const pending = new Map();
+let nextId = 0;
+
+function createWorker() {
+    worker = new Worker(path.join(__dirname, 'ai.worker.js'));
+
+    worker.on('message', ({ type, id, vector, error }) => {
+        if (type === 'ready') {
+            workerReady = true;
+            console.log('✅ [AI] Worker listo para recibir trabajo.');
+            return;
+        }
+
+        const job = pending.get(id);
+        if (!job) return;
+        pending.delete(id);
+
+        if (type === 'result') {
+            job.resolve(vector);
+        } else {
+            job.reject(new Error(error));
+        }
+    });
+
+    worker.on('error', (err) => {
+        console.error('❌ [AI Worker] Error crítico:', err);
+        // Rechazamos todos los trabajos pendientes
+        for (const [id, job] of pending.entries()) {
+            job.reject(err);
+            pending.delete(id);
+        }
+        // Recreamos el worker
+        workerReady = false;
+        createWorker();
+    });
+
+    worker.on('exit', (code) => {
+        if (code !== 0) {
+            console.error(`❌ [AI Worker] Salió con código ${code}, recreando...`);
+            workerReady = false;
+            createWorker();
+        }
+    });
 }
 
-// Función auxiliar para convertir Buffer de imagen a Tensor
-function imageToTensor(buffer) {
-    let values;
-    let width;
-    let height;
+export async function loadModel() {
+    if (worker) return;
+    console.log('⏳ [AI] Iniciando worker thread...');
+    createWorker();
 
-    try {
-        // Intentar decodificar como JPEG
-        const jpegData = jpeg.decode(buffer, { useTArray: true });
-        values = jpegData.data;
-        width = jpegData.width;
-        height = jpegData.height;
-    } catch (e) {
-        try {
-            // Si falla, intentar como PNG
-            const pngData = PNG.sync.read(buffer);
-            values = pngData.data;
-            width = pngData.width;
-            height = pngData.height;
-        } catch (err) {
-            throw new Error('Formato de imagen no soportado (solo JPG o PNG)');
-        }
-    }
-
-    // Las imágenes decodificadas tienen 4 canales (RGBA), MobileNet necesita 3 (RGB)
-    const numChannels = 3;
-    const valuesRGB = new Float32Array(width * height * numChannels);
-
-    for (let i = 0; i < width * height; i++) {
-        const rgbaIndex = i * 4;
-        const rgbIndex = i * 3;
-        valuesRGB[rgbIndex] = values[rgbaIndex];     // Red
-        valuesRGB[rgbIndex + 1] = values[rgbaIndex + 1]; // Green
-        valuesRGB[rgbIndex + 2] = values[rgbaIndex + 2]; // Blue
-        // Ignoramos el canal Alpha (transparencia)
-    }
-
-    // Crear el tensor 3D [alto, ancho, canales]
-    return tf.tensor3d(valuesRGB, [height, width, numChannels], 'int32');
+    // Esperamos a que el worker cargue el modelo
+    await new Promise((resolve) => {
+        const interval = setInterval(() => {
+            if (workerReady) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100);
+    });
 }
 
 export async function generateEmbedding(imageBuffer) {
-    if (!model) await loadModel();
+    if (!worker || !workerReady) await loadModel();
 
-    // 1. Convertir buffer a tensor manualmente
-    const imageTensor = imageToTensor(imageBuffer);
+    const id = nextId++;
 
-    // 2. Obtener vector
-    const embedding = model.infer(imageTensor, true);
+    return new Promise((resolve, reject) => {
+        pending.set(id, { resolve, reject });
 
-    // 3. Limpiar y retornar
-    const vector = await embedding.array();
-    const cleanVector = Array.from(vector).slice(0, 1280);
+        // Transferimos el buffer al worker sin copiarlo en memoria
+        const arrayBuffer = imageBuffer.buffer.slice(
+            imageBuffer.byteOffset,
+            imageBuffer.byteOffset + imageBuffer.byteLength
+        );
 
-    imageTensor.dispose();
-    embedding.dispose();
-
-    return cleanVector[0];
+        worker.postMessage({ id, imageBuffer: arrayBuffer }, [arrayBuffer]);
+    });
 }

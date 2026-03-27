@@ -140,7 +140,7 @@ function Search() {
                             </label>
                             <div className="relative group">
                                 <select
-                                    value={type}
+                                    value={status}
                                     onChange={(e) => setStatus(e.target.value)}
                                     className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
                                 >

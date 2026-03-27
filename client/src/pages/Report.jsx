@@ -83,6 +83,7 @@ function Report() {
         formData.append('description', description || 'Desconocido');
         formData.append('lat', position.lat);
         formData.append('lng', position.lng);
+        if (status === 'lost') formData.append('name', name);
 
 
 

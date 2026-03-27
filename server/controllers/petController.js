@@ -50,7 +50,7 @@ export const getPetById = async (req, res) => {
 export const reportPet = async (req, res) => {
     try {
         // 1. Agregamos lat y lng a la extracción de datos
-        const { description, status, contact_info, type, color, lat, lng } = req.body;
+        const { description, status, contact_info, type, color, lat, lng, name } = req.body;
 
         console.log(req.files)
 
@@ -82,14 +82,16 @@ export const reportPet = async (req, res) => {
 
         const extraPhotosJson = JSON.stringify(extraPhotosUrls || []);
 
-        // 2. Agregamos lat y lng al INSERT y a los VALUES ($9, $10)
+
+
+
         const query = `
           INSERT INTO pets (
             description, status, contact_info, photo_url, 
-            embedding, type, color, user_id, lat, lng, extra_photos
+            embedding, type, color, user_id, lat, lng, name, extra_photos
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          RETURNING id, description, photo_url, extra_photos, created_at;
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          RETURNING id, description, status, photo_url, name, extra_photos, created_at;
         `;
 
         // 3. Pasamos las coordenadas convertidas a números decimales
@@ -104,6 +106,7 @@ export const reportPet = async (req, res) => {
             user_id,
             lat ? parseFloat(lat) : null,
             lng ? parseFloat(lng) : null,
+            name,
             extraPhotosJson
 
         ]);
@@ -143,6 +146,7 @@ export const searchPet = async (req, res) => {
                 JOIN users u ON p.user_id = u.id
                 WHERE p.type = $3 
                 AND p.color = $4
+                AND p.status = $6
                 AND p.lat IS NOT NULL 
                 AND p.lng IS NOT NULL
                 AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
@@ -154,11 +158,13 @@ export const searchPet = async (req, res) => {
             query = `
                 SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color,
                 u.name AS reporter_name, u.id AS reporter_id,
-                (p.embedding <=> $3) AS visual_distance 
+                (p.embedding <=> $4) AS visual_distance 
                 FROM pets p
                 JOIN users u ON p.user_id = u.id
-                WHERE p.type = $1 AND p.color = $2
-                ORDER BY p.embedding <=> $3
+                WHERE p.type = $1 
+                AND p.color = $2 
+                AND p.status = $3
+                ORDER BY p.embedding <=> $4
                 LIMIT 10;
             `;
             params = [type, color, vectorString];

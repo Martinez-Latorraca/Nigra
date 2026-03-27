@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
-import { ScrollToTop } from './helpers/scrollToTop';
+import { ScrollToTop } from './helpers/ScrollToTop';
 
 function App() {
   const dispatch = useDispatch();

@@ -121,7 +121,7 @@ export const reportPet = async (req, res) => {
 
 export const searchPet = async (req, res) => {
     try {
-        const { type, color, lat, lng, searchRatio } = req.body;
+        const { type, color, lat, lng, searchRatio, status } = req.body;
 
         if (!req.file || !req.file.buffer) {
             return res.status(400).send('Falta la imagen');
@@ -138,10 +138,10 @@ export const searchPet = async (req, res) => {
         if (lat && lng) {
             const radioKm = parseFloat(searchRatio) || 10; // Radio de búsqueda en kilómetros, por defecto 10 km
             query = `
-                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng,
+                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name, 
                 u.name AS reporter_name, u.id AS reporter_id, 
                 (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
-                (p.embedding <=> $6) AS visual_distance 
+                (p.embedding <=> $7) AS visual_distance 
                 FROM pets p
                 JOIN users u ON p.user_id = u.id
                 WHERE p.type = $3 
@@ -150,13 +150,13 @@ export const searchPet = async (req, res) => {
                 AND p.lat IS NOT NULL 
                 AND p.lng IS NOT NULL
                 AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
-                ORDER BY p.embedding <=> $6 
+                ORDER BY p.embedding <=> $7
                 LIMIT 10;
             `;
-            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, vectorString];
+            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, status, vectorString];
         } else {
             query = `
-                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color,
+                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.name,
                 u.name AS reporter_name, u.id AS reporter_id,
                 (p.embedding <=> $4) AS visual_distance 
                 FROM pets p
@@ -167,7 +167,7 @@ export const searchPet = async (req, res) => {
                 ORDER BY p.embedding <=> $4
                 LIMIT 10;
             `;
-            params = [type, color, vectorString];
+            params = [type, color, status, vectorString];
         }
 
         const result = await pool.query(query, params);

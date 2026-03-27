@@ -14,12 +14,14 @@ function Report() {
     const [description, setDescription] = useState('');
     const [contactInfo, setContactInfo] = useState('');
     const [status, setStatus] = useState('');
+    const [name, setName] = useState('');
     const [position, setPosition] = useState(null);
     const [isAdLoading, setIsAdLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const token = useSelector(state => state.user?.token);
     const [extraFiles, setExtraFiles] = useState([]); // Archivos reales
     const [extraPreviews, setExtraPreviews] = useState([]); // URLs para miniaturas
+    const [statusError, setStatusError] = useState('');
 
     const navigate = useNavigate();
 
@@ -76,7 +78,7 @@ function Report() {
 
         formData.append('type', type);
         formData.append('color', color);
-        formData.append('status', 'found');
+        formData.append('status', status);
         formData.append('contact_info', contactInfo);
         formData.append('description', description || 'Desconocido');
         formData.append('lat', position.lat);
@@ -111,7 +113,7 @@ function Report() {
 
             } catch (error) {
                 console.error(error);
-                setStatus(error.message);
+                setStatusError(error.message);
                 setIsAdLoading(false);
             }
         }, 4000);
@@ -128,7 +130,7 @@ function Report() {
                 <h2 className="text-xl font-semibold tracking-tight text-gray-900">Reportar hallazgo.</h2>
             </div>
 
-            <div className="w-full max-w-2xl bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] overflow-hidden p-8 md:p-12 relative min-h-[500px] border border-gray-100">
+            <div className="w-full max-w-2xl  bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] overflow-hidden p-8 md:p-12 relative min-h-[500px] border border-gray-100">
 
                 {isSuccess ? (
                     <div className="absolute inset-0 bg-white z-50 flex flex-col items-center justify-center p-10 text-center animate-fade-in">
@@ -155,7 +157,7 @@ function Report() {
                         <div className="mb-10 text-center">
                             <p className="text-gray-400 font-medium text-sm text-justify leading-relaxed max-w-sm mx-auto">
                                 Sube una fotografía clara para que nuestro motor de IA pueda realizar el emparejamiento.
-                                Recortala para que la cara de la mascota esté centrada y visible. Cuanta más información proporciones, mejores serán las posibilidades de reencuentro.
+                                Recortala para que las orejas y el hocico estén centrados. Luego, completa los detalles para ayudar a los dueños a identificar a su mascota.
                             </p>
                         </div>
 
@@ -182,7 +184,7 @@ function Report() {
                             )}
                         </div>
 
-                        <div className={`mt - 10 mb - 3 space - y - 4 transition - all ${finalBlob ? 'opacity-100' : 'opacity-20'}`}>
+                        <div className={`mt-10 mb- space-y-4 transition-all ${finalBlob ? 'opacity-100' : 'opacity-20'}`}>
                             <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
                                 Galería de confirmación (Opcional)
                             </label>
@@ -225,10 +227,31 @@ function Report() {
                             </p>
                         </div>
 
-                        <div className={`space - y - 8 transition - all duration - 500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
+                        <div className={`space-y-8 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
 
                             {/* Selectores */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4 mt-6">
+                                <div className="space-y-2">
+                                    <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
+                                        Estado
+                                    </label>
+                                    <div className="relative group">
+                                        <select
+                                            value={type}
+                                            onChange={(e) => setStatus(e.target.value)}
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
+                                        >
+                                            <option value="found">Encontrado</option>
+                                            <option value="lost">Perdido</option>
+                                        </select>
+                                        {/* Flecha personalizada estilo Apple */}
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="space-y-2">
                                     <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
                                         Especie
@@ -279,6 +302,19 @@ function Report() {
 
                             {/* Inputs de texto */}
                             <div className="space-y-6 ">
+                                {(status === 'lost') && (
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Descripción</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre"
+                                            value={name}
+                                            onChange={e => setName(e.target.value)}
+                                            className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-gray-100 focus:bg-white focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium"
+                                        />
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
                                     <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Descripción</label>
                                     <input
@@ -324,9 +360,9 @@ function Report() {
                             </button>
                         </div>
 
-                        {status && (
+                        {statusError && (
                             <div className="mt-8 text-center text-xs font-semibold text-red-400 uppercase tracking-widest animate-fade-in">
-                                {status}
+                                {statusError}
                             </div>
                         )}
                     </>

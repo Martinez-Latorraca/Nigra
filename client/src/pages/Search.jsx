@@ -10,11 +10,12 @@ function Search() {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [type, setType] = useState('dog');
     const [color, setColor] = useState('black');
-    const [status, setStatus] = useState('');
     const [results, setResults] = useState([]);
+    const [status, setStatus] = useState('');
     const [position, setPosition] = useState(null);
     const [searchRatio, setSearchRatio] = useState(10);
     const [isAdLoading, setIsAdLoading] = useState(false);
+    const [response, setResponse] = useState('');
     const resultsAnchorRef = useRef(null);
 
     const handleCropComplete = (blob, url) => {
@@ -28,26 +29,28 @@ function Search() {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
         setResults([]);
-        setStatus('');
+        setResponse('');
     };
 
     const handleSearch = async () => {
         if (!finalBlob || !position) {
-            setStatus('Se requiere una fotografía y una ubicación en el mapa.');
+            setResponse('Se requiere una fotografía y una ubicación en el mapa.');
             return;
         }
 
-        setStatus('');
+        setResponse('');
         setResults([]);
         setIsAdLoading(true);
 
         const formData = new FormData();
         formData.append('image', finalBlob);
+        formData.append('status', status);
         formData.append('type', type);
         formData.append('color', color);
         formData.append('lat', position.lat);
         formData.append('lng', position.lng);
         formData.append('searchRatio', searchRatio);
+
 
         setTimeout(async () => {
             try {
@@ -62,9 +65,9 @@ function Search() {
                 setResults(data);
 
                 if (data.length === 0) {
-                    setStatus('Sin coincidencias. Intenta ampliar el radio o ajustar el encuadre.');
+                    setResponse('Sin coincidencias. Intenta ampliar el radio o ajustar el encuadre.');
                 } else {
-                    setStatus(`Se encontraron ${data.length} posibles coincidencias.`);
+                    setResponse(`Se encontraron ${data.length} posibles coincidencias.`);
                 }
 
                 setTimeout(() => {
@@ -75,7 +78,7 @@ function Search() {
                 }, 100);
             } catch (error) {
                 console.error(error);
-                setStatus('Error de conexión con el sistema.');
+                setResponse('Error de conexión con el sistema.');
             } finally {
                 setIsAdLoading(false);
             }
@@ -103,7 +106,7 @@ function Search() {
                 )}
 
                 {/* Sección de Imagen */}
-                <div className="mb-10 flex flex-col items-center">
+                <div className="mb-6 flex flex-col items-center">
                     {previewUrl ? (
                         <div className="relative group flex flex-col items-center">
                             <img
@@ -125,10 +128,31 @@ function Search() {
                     )}
                 </div>
 
-                <div className={`space - y - 8 transition - all duration - 500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
+                <div className={`space-y-6 transition-all duration-500 ${finalBlob ? 'opacity-100 translate-y-0' : 'opacity-20 pointer-events-none translate-y-4'}`}>
 
                     {/* Filtros de clasificación */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
+                                Estado
+                            </label>
+                            <div className="relative group">
+                                <select
+                                    value={type}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                    className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
+                                >
+                                    <option value="found">Encontrado</option>
+                                    <option value="lost">Perdido</option>
+                                </select>
+                                {/* Flecha personalizada estilo Apple */}
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
                         <div className="space-y-2">
                             <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">
                                 Especie
@@ -215,9 +239,9 @@ function Search() {
 
                 <div ref={resultsAnchorRef} className="h-1" />
 
-                {status && (
+                {response && (
                     <div className="mt-8 text-center text-[10px] font-bold text-green-500 uppercase tracking-[0.2em] animate-fade-in">
-                        {status}
+                        {response}
                     </div>
                 )}
             </div>

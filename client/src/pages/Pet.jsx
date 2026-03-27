@@ -6,6 +6,23 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { openChat } from '../store/chatSlice';
 
+const colorDictionary = {
+    black: 'negro',
+    white: 'blanco',
+    brown: 'marrón',
+    orange: 'naranja',
+    gray: 'gris',
+    grey: 'gris',
+    mixed: 'mixto',
+    golden: 'rubio',
+    yellow: 'amarillo',
+    spotted: 'manchado',
+    striped: 'atigrado',
+    tan: 'tostado'
+};
+
+
+
 function Pet() {
     const { id } = useParams();
     const token = useSelector(state => state.user?.token);
@@ -27,6 +44,9 @@ function Pet() {
         }, [lat, lng, map]);
         return null;
     }
+
+
+
 
     useEffect(() => {
         const fetchPet = async () => {
@@ -61,6 +81,10 @@ function Pet() {
                 otherUserName: pet.reporter_name
             }));
         }
+    };
+    const translateColor = (color) => {
+        if (!color) return '';
+        return colorDictionary[color.toLowerCase()] || color;
     };
 
 
@@ -148,7 +172,7 @@ function Pet() {
                         {/* 1. Badge de Estado y Metadatos Superiores (Igual que en Card) */}
                         <div className="flex justify-between items-center">
                             <span className={`text-[9px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-sm ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                                {pet.status === 'lost' ? 'Buscando' : 'Hallado'}
+                                {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
                             </span>
                             <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                                 Nigra ID #{pet.id}
@@ -158,12 +182,12 @@ function Pet() {
                         {/* 2. Título y Especie (Igual que en Card) */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.2em]">
-                                    {pet.type === 'dog' ? 'Canino' : 'Felino'} • {pet.color}
+                                <span className="text-[10px] font-bold text-pet-accent uppercase tracking-[0.2em]">
+                                    {pet.type === 'dog' ? 'Perro' : 'Gato'} • {translateColor(pet.color)}
                                 </span>
                             </div>
                             <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-black leading-none">
-                                {pet.description || "Sin nombre asignado"}
+                                {pet.name || "Encontrado"}.
                             </h2>
                         </div>
 
@@ -175,7 +199,7 @@ function Pet() {
 
 
                         {/* 4. Descripción Larga */}
-                        <div className="pt-6 border-t border-gray-100">
+                        <div className=" border-t border-gray-100">
                             <p className="text-gray-600 text-base leading-relaxed font-medium">
                                 Informacion adicional: {pet.description || "Sin detalles adicionales proporcionados."}
                             </p>

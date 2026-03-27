@@ -1,5 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 
+const colorDictionary = {
+    black: 'negro',
+    white: 'blanco',
+    brown: 'marrón',
+    orange: 'naranja',
+    gray: 'gris',
+    grey: 'gris',
+    mixed: 'mixto',
+    golden: 'rubio',
+    yellow: 'amarillo',
+    spotted: 'manchado',
+    striped: 'atigrado',
+    tan: 'tostado'
+};
+
 function SearchResultCard({ pet }) {
     const navigate = useNavigate();
 
@@ -7,6 +22,7 @@ function SearchResultCard({ pet }) {
         ? ((1 - pet.visual_distance) * 100).toFixed(0)
         : null;
 
+    const translatedColor = colorDictionary[pet.color?.toLowerCase()] || pet.color;
 
     const handleButtonClick = () => {
         navigate(`/pet/${pet.id}`);
@@ -23,7 +39,7 @@ function SearchResultCard({ pet }) {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
 
-                <div className={`absolute top-4 left-4 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full shadow-sm ${pet.status === 'lost' ? 'bg-black text-white' : 'bg-white text-black'}`}>
+                <div className={`absolute top-4 left-4 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 rounded-full shadow-sm ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
                     {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
                 </div>
             </div>
@@ -56,7 +72,7 @@ function SearchResultCard({ pet }) {
                             {pet.description !== 'Desconocido' ? pet.description : 'Sin descripción detallada'}
                         </h3>
                         <p className="text-sm font-medium text-gray-400 capitalize">
-                            {pet.type === 'dog' ? 'Canino' : 'Felino'} • {pet.color}
+                            {pet.type === 'dog' ? 'Perro' : 'Gato'} • {translatedColor}
                         </p>
                     </div>
                 </div>

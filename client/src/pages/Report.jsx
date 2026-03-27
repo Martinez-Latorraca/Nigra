@@ -290,6 +290,11 @@ function Report() {
                                             <option value="brown">Marrón</option>
                                             <option value="golden">Dorado / Rubio</option>
                                             <option value="mixed">Mixto</option>
+                                            <option value="orange">Naranja</option>
+                                            <option value="grey">Gris</option>
+                                            <option value="spotted">Manchado</option>
+                                            <option value="striped">Atigrado</option>
+
                                         </select>
                                         {/* Flecha personalizada estilo Apple */}
                                         <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">

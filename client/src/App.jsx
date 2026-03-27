@@ -14,11 +14,14 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
+import { ScrollToTop } from './helpers/scrollToTop';
 
 function App() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user?.data);
   const token = useSelector((state) => state.user?.token);
+
+
 
   // useRef para que el socket persista entre renders sin ser una variable de módulo
   const socketRef = useRef(null);
@@ -89,6 +92,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-pet-light font-sans flex flex-col">
+      <ScrollToTop />
       <Navbar />
       <main className="flex-1 flex flex-col">
         <Routes>

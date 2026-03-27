@@ -3,6 +3,24 @@ import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
+const colorDictionary = {
+    black: 'negro',
+    white: 'blanco',
+    brown: 'marrón',
+    orange: 'naranja',
+    gray: 'gris',
+    grey: 'gris',
+    mixed: 'mixto',
+    golden: 'rubio',
+    yellow: 'amarillo',
+    spotted: 'manchado',
+    striped: 'atigrado',
+    tan: 'tostado'
+};
+
+
+
+
 function PetList() {
     const [pets, setPets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -11,6 +29,7 @@ function PetList() {
     const [filterType, setFilterType] = useState('all');
     const [filterColor, setFilterColor] = useState('all');
     const [filterDate, setFilterDate] = useState('all'); // 'all', 'today', 'week', 'month'
+    const [filterStatus, setFilterStatus] = useState('all');
 
     useEffect(() => {
         const fetchAllPets = async () => {
@@ -50,8 +69,15 @@ function PetList() {
             if (filterDate === 'month') matchesDate = diffDays <= 30;
         }
 
-        return matchesType && matchesColor && matchesDate;
+        const matchesStatus = filterStatus === 'all' || pet.status === filterStatus;
+
+        return matchesType && matchesColor && matchesDate && matchesStatus;
     });
+
+    const translateColor = (color) => {
+        if (!color) return '';
+        return colorDictionary[color.toLowerCase()] || color;
+    };
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans">
@@ -68,15 +94,15 @@ function PetList() {
                 <h1 className="text-6xl md:text-7xl font-semibold tracking-tighter text-black mb-10">Comunidad.</h1>
 
                 {/* --- BARRA DE FILTROS --- */}
-                <div className="flex flex-wrap gap-4 items-center bg-white/50 p-4 rounded-[32px] border border-gray-100 backdrop-blur-xl">
+                <div className="flex flex-wrap  items-center bg-white/50 p-4 rounded-[32px] border border-gray-100 backdrop-blur-xl">
 
                     {/* Filtro Tipo */}
                     <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Especie</label>
+                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Especie</label>
                         <select
                             value={filterType}
                             onChange={(e) => setFilterType(e.target.value)}
-                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer"
+                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer "
                         >
                             <option value="all">Todas</option>
                             <option value="dog">Perros</option>
@@ -86,21 +112,34 @@ function PetList() {
 
                     {/* Filtro Color */}
                     <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Color predominante</label>
+                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Estado</label>
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer capitalize"
+                        >
+                            <option value="all">Todos</option>
+                            <option value="lost">Perdido</option>
+                            <option value="found">Encontrado</option>
+
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
+                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Color predominante</label>
                         <select
                             value={filterColor}
                             onChange={(e) => setFilterColor(e.target.value)}
                             className="bg-transparent text-sm font-semibold outline-none cursor-pointer capitalize"
                         >
                             {availableColors.map(c => (
-                                <option key={c} value={c}>{c === 'all' ? 'Cualquier color' : c}</option>
+                                <option key={c} value={c}>{translateColor(c) === 'all' ? 'Cualquier color' : translateColor(c)}</option>
                             ))}
                         </select>
                     </div>
 
                     {/* Filtro Fecha */}
                     <div className="flex flex-col gap-1.5 px-4">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Antigüedad</label>
+                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Antigüedad</label>
                         <select
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
@@ -162,16 +201,17 @@ function PetList() {
                                 <img src={pet.photo_url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="pet" />
                                 <div className="absolute top-4 left-4">
                                     <span className={`text-[8px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                                        {pet.status === 'lost' ? 'Buscando' : 'Hallado'}
+                                        {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
                                     </span>
                                 </div>
                             </div>
 
                             <div className="px-2">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[9px] font-bold text-pet-primary uppercase tracking-[0.2em]">{pet.type === 'dog' ? 'Canino' : 'Felino'} • {pet.color}</span>
+                                    <span className="text-[9px] font-bold text-pet-primary uppercase tracking-[0.2em]">{pet.type === 'dog' ? 'Perro' : 'Gato'} • {translateColor(pet.color)}</span>
                                     <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">#{pet.id}</span>
                                 </div>
+                                <h1 className="text-2xl font-semibold text-gray-900 leading-tight line-clamp-2 min-h-[3rem]">{pet.name == null ? 'Encontrado' : pet.name}.</h1>
                                 <h3 className="text-xl font-semibold text-gray-900 leading-tight line-clamp-2 min-h-[3rem]">{pet.description}</h3>
                             </div>
 

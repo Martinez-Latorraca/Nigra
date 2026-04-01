@@ -10,7 +10,7 @@ function ChatWidget({ socket }) {
     // 👇 Traemos todo desde Redux
     const { isOpen, activePet, activeChat: messages, loading } = useSelector(state => state.chats);
     const user = useSelector((state) => state.user?.data);
-    const token = useSelector((state) => state.auth?.token);
+    const token = useSelector((state) => state.user?.token);
 
 
     const scrollRef = useRef(null);
@@ -48,7 +48,7 @@ function ChatWidget({ socket }) {
             dispatch(receiveMessage(data));
 
             // Si el mensaje es del otro y tenemos el chat abierto, marcamos leído local
-            if (data.sender_id !== user.id) {
+            if (data.sender_id !== user?.id) {
                 dispatch(markAsReadLocal(data.pet_id));
             }
 
@@ -56,10 +56,10 @@ function ChatWidget({ socket }) {
 
         socket.on('receive_pet_message', handleReceiveMessage);
         return () => socket.off('receive_pet_message', handleReceiveMessage);
-    }, [socket]);
+    }, [socket, user]);
 
     const handleFocus = () => {
-        dispatch(markAsReadLocal(activePet.pet_id))
+        dispatch(markAsReadLocal(activePet?.pet_id))
         dispatch(markChatAsRead());
     }
 

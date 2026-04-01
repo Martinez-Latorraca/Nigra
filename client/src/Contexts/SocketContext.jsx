@@ -1,9 +1,8 @@
 // contexts/SocketContext.jsx
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 import { useAuth } from './AuthContext'; // Asumo que tienes un AuthContext
-
-const SocketContext = createContext();
+import { SocketContext } from './useSocket';
 
 export const SocketProvider = ({ children }) => {
     const { user, token } = useAuth(); // Obtenemos el user y el token del auth
@@ -41,5 +40,3 @@ export const SocketProvider = ({ children }) => {
         </SocketContext.Provider>
     );
 };
-
-export const useSocket = () => useContext(SocketContext);

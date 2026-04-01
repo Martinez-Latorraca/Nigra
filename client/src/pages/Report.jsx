@@ -13,7 +13,7 @@ function Report() {
     const [color, setColor] = useState('black');
     const [description, setDescription] = useState('');
     const [contactInfo, setContactInfo] = useState('');
-    const [status, setStatus] = useState('');
+    const [status, setStatus] = useState('found');
     const [name, setName] = useState('');
     const [position, setPosition] = useState(null);
     const [isAdLoading, setIsAdLoading] = useState(false);
@@ -27,7 +27,7 @@ function Report() {
 
     useEffect(() => {
         if (!token) navigate('/login');
-    }, [navigate]);
+    }, [navigate, token]);
 
     const handleCropComplete = (blob, url) => {
         setFinalBlob(blob);
@@ -57,17 +57,17 @@ function Report() {
         setFinalBlob(null);
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
-        setStatus('');
+        setStatusError('');
     };
 
     const handleReport = async () => {
         if (!finalBlob || !contactInfo || !position) {
-            setStatus('Faltan campos obligatorios: imagen, contacto y ubicación.');
+            setStatusError('Faltan campos obligatorios: imagen, contacto y ubicación.');
             return;
         }
 
         setIsAdLoading(true);
-        setStatus('');
+        setStatusError('');
 
         const formData = new FormData();
         formData.append('image', finalBlob);
@@ -238,7 +238,7 @@ function Report() {
                                     </label>
                                     <div className="relative group">
                                         <select
-                                            value={type}
+                                            value={status}
                                             onChange={(e) => setStatus(e.target.value)}
                                             className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
                                         >

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ImageUploader from '../components/ImageUploader';
 import MapSelector from '../components/MapSelector';
@@ -11,12 +11,17 @@ function Search() {
     const [type, setType] = useState('dog');
     const [color, setColor] = useState('black');
     const [results, setResults] = useState([]);
-    const [status, setStatus] = useState('');
+    const [status, setStatus] = useState('found');
     const [position, setPosition] = useState(null);
     const [searchRatio, setSearchRatio] = useState(10);
     const [isAdLoading, setIsAdLoading] = useState(false);
     const [response, setResponse] = useState('');
     const resultsAnchorRef = useRef(null);
+    const searchTimeoutRef = useRef(null);
+
+    useEffect(() => {
+        return () => clearTimeout(searchTimeoutRef.current);
+    }, []);
 
     const handleCropComplete = (blob, url) => {
         setFinalBlob(blob);
@@ -54,7 +59,7 @@ function Search() {
         formData.append('searchRatio', searchRatio);
 
 
-        setTimeout(async () => {
+        searchTimeoutRef.current = setTimeout(async () => {
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/search-pet`, {
                     method: 'POST',

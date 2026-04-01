@@ -49,7 +49,7 @@ function Profile() {
         };
 
         fetchReports();
-    }, [navigate]);
+    }, [navigate, token]);
 
     const handleLogout = () => {
         dispatch(clearCredentials());
@@ -161,7 +161,7 @@ function Profile() {
                                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
                                                         {new Date(msg.created_at).toLocaleDateString()}
                                                     </span>
-                                                    {hasUnread > 0 && (
+                                                    {hasUnread && (
                                                         <div className="z-10">
                                                             <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"></div>
                                                         </div>

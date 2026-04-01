@@ -101,7 +101,7 @@ function App() {
           <Route path="/profile" element={<Profile socket={socket} />} />
           <Route path="/buscar" element={<Search />} />
           <Route path="/reportar" element={<Report />} />
-          <Route path="/pet/:id" element={<Pet />} socket={socket} />
+          <Route path="/pet/:id" element={<Pet socket={socket} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
         </Routes>

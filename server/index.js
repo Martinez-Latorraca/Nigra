@@ -14,12 +14,14 @@ import petRoutes from './routes/petRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
-app.use(cors());
+app.use(cors({
+    origin: ["https://nigra.onrender.com", "https://nigra-server.onrender.com"]
+}));
 app.use(express.json());
 
 // 2. Servir archivos estáticos (¡Vital para que React cargue sus JS/CSS!)
@@ -57,9 +59,12 @@ app.get('/pet/:id', async (req, res) => {
 
         if (!pet) return res.redirect(frontendUrl);
 
-        const title = `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`;
-        const desc = `Especie: ${pet.type} | Color: ${pet.color}. Ayudanos a difundir en la Red Nigra.`;
-        const image = pet.photo_url;
+        // Escapamos los datos para evitar XSS en los meta tags
+        const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const title = esc(`Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`);
+        const desc = esc(`Especie: ${pet.type} | Color: ${pet.color}. Ayudanos a difundir en la Red Nigra.`);
+        const image = esc(pet.photo_url);
 
         // Le mandamos este mini HTML invisible solo para que el bot chupe la imagen y el título
         const botHTML = `
@@ -132,6 +137,10 @@ io.on('connection', (socket) => {
     socket.on('send_pet_message', async (data) => {
         const { pet_id, receiver_id, content, petPhoto, senderName } = data;
         const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
+
+        if (!pet_id || !receiver_id || !content || !content.trim()) {
+            return socket.emit('error_notification', 'Faltan datos para enviar el mensaje');
+        }
 
         try {
             // A. Guardar en Supabase

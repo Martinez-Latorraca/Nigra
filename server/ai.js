@@ -76,7 +76,17 @@ export async function generateEmbedding(imageBuffer) {
     const id = nextId++;
 
     return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        const timeout = setTimeout(() => {
+            if (pending.has(id)) {
+                pending.delete(id);
+                reject(new Error('AI worker timeout: no respondió en 30s'));
+            }
+        }, 30000);
+
+        pending.set(id, {
+            resolve: (val) => { clearTimeout(timeout); resolve(val); },
+            reject: (err) => { clearTimeout(timeout); reject(err); }
+        });
 
         // Transferimos el buffer al worker sin copiarlo en memoria
         const arrayBuffer = imageBuffer.buffer.slice(

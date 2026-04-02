@@ -8,6 +8,10 @@ export const register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Nombre, email y contraseña son requeridos' });
+        }
+
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (userCheck.rows.length > 0) {
             return res.status(400).json({ error: 'El email ya está registrado' });
@@ -31,6 +35,10 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email y contraseña son requeridos' });
+        }
 
         const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (user.rows.length === 0) {
@@ -59,10 +67,13 @@ export const deleteAccount = async (req, res) => {
     try {
         const user_id = req.user.id;
 
-        // 1. Borramos sus mascotas
+        // 1. Borramos sus mensajes (enviados y recibidos)
+        await pool.query('DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1', [user_id]);
+
+        // 2. Borramos sus mascotas
         await pool.query('DELETE FROM pets WHERE user_id = $1', [user_id]);
 
-        // 2. Borramos el usuario
+        // 3. Borramos el usuario
         const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [user_id]);
 
         if (result.rows.length === 0) {

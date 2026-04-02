@@ -62,8 +62,13 @@ app.get('/pet/:id', async (req, res) => {
         // Escapamos los datos para evitar XSS en los meta tags
         const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        const title = esc(`Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`);
-        const desc = esc(`Especie: ${pet.type} | Color: ${pet.color}. Ayudanos a difundir en la Red Nigra.`);
+        const petName = pet.name || 'una mascota';
+        const title = pet.status === 'lost'
+            ? esc(`🔍 ¡Ayudanos a encontrar a ${petName}!`)
+            : esc(`🐾 ¡${petName} fue encontrado/a!`);
+        const desc = pet.status === 'lost'
+            ? esc(`Se perdió ${pet.type ? 'un/a ' + pet.type : 'una mascota'}${pet.color ? ' de color ' + pet.color : ''}. ${pet.description || ''} Compartí para ayudar a que vuelva a casa.`)
+            : esc(`${pet.type ? 'Un/a ' + pet.type : 'Una mascota'}${pet.color ? ' de color ' + pet.color : ''} fue encontrado/a. ${pet.description || ''} ¿Lo reconocés?`);
         const image = esc(pet.photo_url);
 
         // Le mandamos este mini HTML invisible solo para que el bot chupe la imagen y el título

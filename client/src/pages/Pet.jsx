@@ -100,9 +100,9 @@ function Pet() {
 
     const handleShare = async () => {
         const shareData = {
-            title: `Nigra: ${pet.status === 'lost' ? 'Buscando a' : 'Mascota hallada:'} ${pet.description}`,
-            text: `Ayudanos a difundir este reporte en la Red Nigra.`,
-            url: window.location.href, // La URL actual de la mascota
+            title: pet.status === 'lost' ? `🔍 ¡Ayudanos a encontrar a ${pet.name || 'una mascota'}!` : `🐾 ¡${pet.name || 'Una mascota'} fue encontrado/a!`,
+            text: pet.status === 'lost' ? 'Compartí para ayudar a que vuelva a casa.' : '¿Lo reconocés? Ayudanos a difundir.',
+            url: `${import.meta.env.VITE_API_URL}/pet/${pet.id}`,
         };
 
         if (navigator.share) {

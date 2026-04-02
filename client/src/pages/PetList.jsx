@@ -179,7 +179,7 @@ function PetList() {
                             className="group bg-white rounded-[40px] p-5 flex flex-col gap-5 border border-gray-100 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] transition-all duration-500"
                         >
                             <div className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden bg-gray-100">
-                                <img src={pet.photo_url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="pet" />
+                                <img src={pet.photo_url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt={`${translateType(pet.type) || 'Mascota'} ${translateColor(pet.color) ? 'de color ' + translateColor(pet.color) : ''} - ${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`} />
                                 <div className="absolute top-4 left-4">
                                     <span className={`text-[8px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
                                         {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}

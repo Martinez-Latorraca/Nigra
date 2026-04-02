@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"alt=\" /e/Portfolio/Nigra/client/src/pages/*.jsx /e/Portfolio/Nigra/client/src/components/*.jsx)"
+    ]
+  }
+}

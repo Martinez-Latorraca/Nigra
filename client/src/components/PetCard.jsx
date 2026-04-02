@@ -20,7 +20,7 @@ function PetCard({ pet }) {
             <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 overflow-hidden rounded-[24px] bg-[#F5F5F7]">
                 <img
                     src={pet.photo_url}
-                    alt="Registro"
+                    alt={`${translateType(pet.type) || 'Mascota'} ${translateColor(pet.color) ? 'de color ' + translateColor(pet.color) : ''} - ${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
             </div>

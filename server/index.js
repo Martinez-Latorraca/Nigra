@@ -36,7 +36,32 @@ app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
 
-// 4. RUTA DE SEO INJECTION (Para compartir en RRSS)
+// 4. SITEMAP DINÁMICO
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, created_at FROM pets ORDER BY created_at DESC');
+        const baseUrl = 'https://nigra-server.onrender.com';
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>${baseUrl}/pets</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>${baseUrl}/buscar</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
+
+        for (const pet of result.rows) {
+            const lastmod = new Date(pet.created_at).toISOString().split('T')[0];
+            xml += `\n  <url><loc>${baseUrl}/pet/${pet.id}</loc><lastmod>${lastmod}</lastmod><priority>0.6</priority></url>`;
+        }
+
+        xml += '\n</urlset>';
+        res.header('Content-Type', 'application/xml').send(xml);
+    } catch (error) {
+        console.error('Error sitemap:', error);
+        res.status(500).send('Error generating sitemap');
+    }
+});
+
+// 5. RUTA DE SEO INJECTION (Para compartir en RRSS)
 // Inyectamos los meta tags OG dinámicos en el index.html de React para TODOS (bot y humano)
 const indexHtmlPath = path.join(buildPath, 'index.html');
 const indexHtml = fs.existsSync(indexHtmlPath) ? fs.readFileSync(indexHtmlPath, 'utf-8') : null;
@@ -67,11 +92,25 @@ app.get('/pet/:id', async (req, res) => {
         const ogImage = pet.photo_url.replace('/upload/', '/upload/c_fill,w_600,h_600,f_jpg,q_80/');
         const image = esc(ogImage);
 
+        const jsonLd = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "LostFoundItem",
+            "name": pet.name || 'Mascota',
+            "description": pet.description || desc,
+            "image": ogImage,
+            "url": `${protocol}://${req.get('host')}/pet/${id}`,
+            "datePosted": pet.created_at,
+            "category": petType,
+            "color": petColor || undefined
+        });
+
         const html = indexHtml
             .replace(/Nigra - Red de Reencuentro Animal/g, title)
+            .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Nigra conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
             .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
-            .replace(/\/nigra-white\.svg/g, image)
-            .replace(/https:\/\/nigra-server\.onrender\.com/g, ogUrl);
+            .replace(/https:\/\/nigra-server\.onrender\.com\/nigra-og\.png/g, image)
+            .replace(/https:\/\/nigra-server\.onrender\.com(?!\/nigra-og)/g, ogUrl)
+            .replace('</head>', `<script type="application/ld+json">${jsonLd}</script>\n</head>`);
 
         res.send(html);
 

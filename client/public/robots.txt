@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /profile
+Disallow: /api/
+
+Sitemap: https://nigra-server.onrender.com/sitemap.xml

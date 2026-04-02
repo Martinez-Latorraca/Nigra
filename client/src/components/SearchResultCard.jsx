@@ -19,7 +19,7 @@ function SearchResultCard({ pet }) {
             <div className="relative w-full sm:w-56 h-64 sm:h-56 flex-shrink-0 overflow-hidden rounded-[24px]">
                 <img
                     src={pet.photo_url}
-                    alt="Registro visual"
+                    alt={`${translateType(pet.type) || 'Mascota'} ${translateColor(pet.color) ? 'de color ' + translateColor(pet.color) : ''} - ${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
 

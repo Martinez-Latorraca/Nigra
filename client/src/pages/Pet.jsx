@@ -153,7 +153,7 @@ function Pet() {
             {/* --- MODAL PANTALLA COMPLETA --- */}
             {selectedImage && (
                 <div className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm cursor-zoom-out" onClick={() => setSelectedImage(null)}>
-                    <img src={selectedImage} alt="Mascota Full" className="max-w-full max-h-full object-contain rounded-3xl animate-slide-up" />
+                    <img src={selectedImage} alt={`${pet.name || translateType(pet.type) || 'Mascota'} - vista completa`} className="max-w-full max-h-full object-contain rounded-3xl animate-slide-up" />
                 </div>
             )}
 
@@ -171,13 +171,13 @@ function Pet() {
                 {/* COLUMNA IZQUIERDA: GALERÍA (Sin cambios) */}
                 <div className="md:col-span-6 space-y-6">
                     <div className="bg-white rounded-[40px] p-4 shadow-[0_15px_40px_rgba(0,0,0,0.03)] border border-gray-100 cursor-zoom-in" onClick={() => setSelectedImage(pet.photo_url)}>
-                        <img src={pet.photo_url} alt="Mascota" className="w-full aspect-[4/3] object-cover rounded-[32px]" />
+                        <img src={pet.photo_url} alt={`${translateType(pet.type) || 'Mascota'} ${pet.name ? pet.name + ' - ' : ''}${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`} className="w-full aspect-[4/3] object-cover rounded-[32px]" />
                     </div>
                     {pet.extra_photos?.length > 0 && (
                         <div className="grid grid-cols-4 gap-4 px-2">
                             {pet.extra_photos.map((url, i) => (
                                 <div key={i} className="bg-white rounded-3xl p-2 border border-gray-100 cursor-zoom-in shadow-sm" onClick={() => setSelectedImage(url)}>
-                                    <img src={url} alt={`Extra ${i}`} className="w-full aspect-square object-cover rounded-2xl" />
+                                    <img src={url} alt={`${pet.name || translateType(pet.type) || 'Mascota'} - foto ${i + 1}`} className="w-full aspect-square object-cover rounded-2xl" />
                                 </div>
                             ))}
                         </div>

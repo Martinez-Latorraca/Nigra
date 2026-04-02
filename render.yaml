@@ -4,9 +4,8 @@ services:
     env: node
     region: ohio
     plan: free
-    rootDir: server
-    buildCommand: npm install
-    startCommand: node --experimental-specifier-resolution=node index.js
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && node index.js
     envVars:
       - key: NODE_ENV
         value: production

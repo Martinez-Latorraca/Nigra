@@ -1,11 +1,10 @@
 services:
   - type: web
     name: nigra-backend
-    env: node
+    env: docker
     region: ohio
     plan: free
-    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
-    startCommand: cd server && node index.js
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production

@@ -1,4 +1,5 @@
 import React from 'react';
+import { translateColor, translateType } from '../utils/translations';
 
 function PetCard({ pet }) {
     const isLost = pet.status === 'lost';
@@ -45,7 +46,7 @@ function PetCard({ pet }) {
                     </h3>
 
                     <p className="text-sm font-medium text-gray-400 capitalize">
-                        {pet.type === 'dog' ? 'Canino' : 'Felino'} • {pet.color}
+                        {translateType(pet.type)} • {translateColor(pet.color)}
                     </p>
                 </div>
 

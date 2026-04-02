@@ -5,21 +5,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { openChat } from '../store/chatSlice';
-
-const colorDictionary = {
-    black: 'negro',
-    white: 'blanco',
-    brown: 'marrón',
-    orange: 'naranja',
-    gray: 'gris',
-    grey: 'gris',
-    mixed: 'mixto',
-    golden: 'rubio',
-    yellow: 'amarillo',
-    spotted: 'manchado',
-    striped: 'atigrado',
-    tan: 'tostado'
-};
+import { translateColor, translateType } from '../utils/translations';
 
 
 
@@ -82,12 +68,6 @@ function Pet() {
             }));
         }
     };
-    const translateColor = (color) => {
-        if (!color) return '';
-        return colorDictionary[color.toLowerCase()] || color;
-    };
-
-
     const handleCallClick = (e) => {
         if (!token) {
             e.preventDefault();
@@ -183,7 +163,7 @@ function Pet() {
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <span className="text-[10px] font-bold text-pet-accent uppercase tracking-[0.2em]">
-                                    {pet.type === 'dog' ? 'Perro' : 'Gato'} • {translateColor(pet.color)}
+                                    {translateType(pet.type)} • {translateColor(pet.color)}
                                 </span>
                             </div>
                             <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-black leading-none">

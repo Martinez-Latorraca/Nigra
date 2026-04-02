@@ -2,21 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-
-const colorDictionary = {
-    black: 'negro',
-    white: 'blanco',
-    brown: 'marrón',
-    orange: 'naranja',
-    gray: 'gris',
-    grey: 'gris',
-    mixed: 'mixto',
-    golden: 'rubio',
-    yellow: 'amarillo',
-    spotted: 'manchado',
-    striped: 'atigrado',
-    tan: 'tostado'
-};
+import { translateColor, translateType } from '../utils/translations';
 
 
 
@@ -73,11 +59,6 @@ function PetList() {
 
         return matchesType && matchesColor && matchesDate && matchesStatus;
     });
-
-    const translateColor = (color) => {
-        if (!color) return '';
-        return colorDictionary[color.toLowerCase()] || color;
-    };
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans">
@@ -208,7 +189,7 @@ function PetList() {
 
                             <div className="px-2">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[9px] font-bold text-pet-primary uppercase tracking-[0.2em]">{pet.type === 'dog' ? 'Perro' : 'Gato'} • {translateColor(pet.color)}</span>
+                                    <span className="text-[9px] font-bold text-pet-primary uppercase tracking-[0.2em]">{translateType(pet.type)} • {translateColor(pet.color)}</span>
                                     <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">#{pet.id}</span>
                                 </div>
                                 <h1 className="text-2xl font-semibold text-gray-900 leading-tight line-clamp-2 min-h-[3rem]">{pet.name == null ? 'Encontrado' : pet.name}.</h1>

@@ -1,19 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-
-const colorDictionary = {
-    black: 'negro',
-    white: 'blanco',
-    brown: 'marrón',
-    orange: 'naranja',
-    gray: 'gris',
-    grey: 'gris',
-    mixed: 'mixto',
-    golden: 'rubio',
-    yellow: 'amarillo',
-    spotted: 'manchado',
-    striped: 'atigrado',
-    tan: 'tostado'
-};
+import { translateColor, translateType } from '../utils/translations';
 
 function SearchResultCard({ pet }) {
     const navigate = useNavigate();
@@ -21,8 +7,6 @@ function SearchResultCard({ pet }) {
     const matchPercentage = pet.visual_distance !== undefined
         ? ((1 - pet.visual_distance) * 100).toFixed(0)
         : null;
-
-    const translatedColor = colorDictionary[pet.color?.toLowerCase()] || pet.color;
 
     const handleButtonClick = () => {
         navigate(`/pet/${pet.id}`);
@@ -72,7 +56,7 @@ function SearchResultCard({ pet }) {
                             {pet.description !== 'Desconocido' ? pet.description : 'Sin descripción detallada'}
                         </h3>
                         <p className="text-sm font-medium text-gray-400 capitalize">
-                            {pet.type === 'dog' ? 'Perro' : 'Gato'} • {translatedColor}
+                            {translateType(pet.type)} • {translateColor(pet.color)}
                         </p>
                     </div>
                 </div>

@@ -6,7 +6,9 @@ import http from 'http';
 import pool from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import jwt from 'jsonwebtoken';
+import { translateColor, translateType } from './utils/translations.js';
 
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
@@ -26,7 +28,7 @@ app.use(express.json());
 
 // 2. Servir archivos estáticos (¡Vital para que React cargue sus JS/CSS!)
 // Asumo que tu carpeta de build se llama 'build' o 'dist'
-const buildPath = path.resolve(__dirname, '../client/build');
+const buildPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(buildPath));
 
 // 3. RUTAS DE LA API (Siempre van ARRIBA del SEO y el Catch-all)
@@ -35,62 +37,44 @@ app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
 
 // 4. RUTA DE SEO INJECTION (Para compartir en RRSS)
-// Ojo: Si en React usás /pet/:id, acá debe ser igual
+// Inyectamos los meta tags OG dinámicos en el index.html de React para TODOS (bot y humano)
+const indexHtmlPath = path.join(buildPath, 'index.html');
+const indexHtml = fs.existsSync(indexHtmlPath) ? fs.readFileSync(indexHtmlPath, 'utf-8') : null;
+
 app.get('/pet/:id', async (req, res) => {
-    const { id } = req.params; // ¡Acordate de las llaves acá!
+    const { id } = req.params;
 
-    // 1. Detectamos quién nos visita
-    const userAgent = req.headers['user-agent'] || '';
-    // Expresión regular para detectar bots de redes sociales
-    const isBot = /WhatsApp|facebookexternalhit|Twitterbot|googlebot|bingbot|slackbot/i.test(userAgent);
-
-    // ⚠️ REEMPLAZÁ ESTO POR LA URL DE TU FRONTEND EN RENDER
-    const frontendUrl = `https://nigra-frontend.onrender.com/pet/${id}`;
-
-    // 2. Si es un HUMANO, lo pateamos directo a tu Frontend de React
-    if (!isBot) {
-        return res.redirect(frontendUrl);
-    }
-
-    // 3. Si es WhatsApp/Facebook (BOT), le armamos un HTML "fantasma" solo con la data
     try {
         const result = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
         const pet = result.rows[0];
 
-        if (!pet) return res.redirect(frontendUrl);
+        if (!pet || !indexHtml) return indexHtml ? res.send(indexHtml) : res.status(404).json({ error: 'Not found' });
 
-        // Escapamos los datos para evitar XSS en los meta tags
         const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const petName = pet.name || 'una mascota';
+        const petType = translateType(pet.type) || 'mascota';
+        const petColor = translateColor(pet.color);
+        const ogUrl = esc(`${req.protocol}://${req.get('host')}/pet/${id}`);
         const title = pet.status === 'lost'
             ? esc(`🔍 ¡Ayudanos a encontrar a ${petName}!`)
-            : esc(`🐾 ¡${petName} fue encontrado/a!`);
+            : esc(`🐾 ¡Una mascota fue encontrado/a!`);
         const desc = pet.status === 'lost'
-            ? esc(`Se perdió ${pet.type ? 'un/a ' + pet.type : 'una mascota'}${pet.color ? ' de color ' + pet.color : ''}. ${pet.description || ''} Compartí para ayudar a que vuelva a casa.`)
-            : esc(`${pet.type ? 'Un/a ' + pet.type : 'Una mascota'}${pet.color ? ' de color ' + pet.color : ''} fue encontrado/a. ${pet.description || ''} ¿Lo reconocés?`);
+            ? esc(`Se perdió un/a ${petType}${petColor ? ' de color ' + petColor : ''}. Compartí para ayudar a que vuelva a casa.`)
+            : esc(`Un/a ${petType}${petColor ? ' de color ' + petColor : ''} fue encontrado/a. Compartí para ayudar a que vuelva a casa. ¿Lo reconocés?`);
         const image = esc(pet.photo_url);
 
-        // Le mandamos este mini HTML invisible solo para que el bot chupe la imagen y el título
-        const botHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta property="og:title" content="${title}" />
-                <meta property="og:description" content="${desc}" />
-                <meta property="og:image" content="${image}" />
-                <meta property="og:url" content="${frontendUrl}" />
-                <meta name="twitter:card" content="summary_large_image" />
-            </head>
-            <body></body>
-            </html>
-        `;
+        const html = indexHtml
+            .replace(/Nigra - Red de Reencuentro Animal/g, title)
+            .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
+            .replace(/\/nigra-white\.svg/g, image)
+            .replace(/https:\/\/nigra\.onrender\.com/g, ogUrl);
 
-        res.send(botHTML);
+        res.send(html);
 
     } catch (error) {
         console.error("Error SEO:", error);
-        res.redirect(frontendUrl);
+        indexHtml ? res.send(indexHtml) : res.status(500).json({ error: 'Error interno' });
     }
 });
 

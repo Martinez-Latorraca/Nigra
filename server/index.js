@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
 app.use(cors({
-    origin: ["https://nigra.onrender.com", "https://nigra-server.onrender.com"]
+    origin: ["https://nigra-server.onrender.com"]
 }));
 app.use(express.json());
 
@@ -68,7 +68,7 @@ app.get('/pet/:id', async (req, res) => {
             .replace(/Nigra - Red de Reencuentro Animal/g, title)
             .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
             .replace(/\/nigra-white\.svg/g, image)
-            .replace(/https:\/\/nigra\.onrender\.com/g, ogUrl);
+            .replace(/https:\/\/nigra-server\.onrender\.com/g, ogUrl);
 
         res.send(html);
 
@@ -87,7 +87,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://nigra.onrender.com", "https://nigra-server.onrender.com"],
+        origin: ["https://nigra-server.onrender.com"],
         methods: ["GET", "POST"]
     }
 });

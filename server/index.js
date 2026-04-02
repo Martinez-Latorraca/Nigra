@@ -63,7 +63,9 @@ app.get('/pet/:id', async (req, res) => {
         const desc = pet.status === 'lost'
             ? esc(`Se perdió un/a ${petType}${petColor ? ' de color ' + petColor : ''}. Compartí para ayudar a que vuelva a casa.`)
             : esc(`Un/a ${petType}${petColor ? ' de color ' + petColor : ''} fue encontrado/a. Compartí para ayudar a que vuelva a casa. ¿Lo reconocés?`);
-        const image = esc(pet.photo_url);
+        // Forzamos imagen de 600x600 via Cloudinary para que WhatsApp móvil la muestre bien
+        const ogImage = pet.photo_url.replace('/upload/', '/upload/c_fill,w_600,h_600,f_jpg,q_80/');
+        const image = esc(ogImage);
 
         const html = indexHtml
             .replace(/Nigra - Red de Reencuentro Animal/g, title)

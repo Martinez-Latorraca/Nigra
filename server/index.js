@@ -55,7 +55,8 @@ app.get('/pet/:id', async (req, res) => {
         const petName = pet.name || 'una mascota';
         const petType = translateType(pet.type) || 'mascota';
         const petColor = translateColor(pet.color);
-        const ogUrl = esc(`${req.protocol}://${req.get('host')}/pet/${id}`);
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const ogUrl = esc(`${protocol}://${req.get('host')}/pet/${id}`);
         const title = pet.status === 'lost'
             ? esc(`🔍 ¡Ayudanos a encontrar a ${petName}!`)
             : esc(`🐾 ¡Una mascota fue encontrado/a!`);

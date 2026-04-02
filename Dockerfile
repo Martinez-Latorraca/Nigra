@@ -4,6 +4,7 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm install
 COPY client/ .
+ENV VITE_API_URL=https://nigra-server.onrender.com
 RUN npm run build
 
 # Stage 2: Dependencias del Server

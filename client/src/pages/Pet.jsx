@@ -56,6 +56,45 @@ function Pet() {
         fetchPet();
     }, [id, token]);
 
+    useEffect(() => {
+        if (!pet) return;
+
+        const petName = pet.name || 'una mascota';
+        const petType = translateType(pet.type) || 'mascota';
+        const petColor = translateColor(pet.color);
+
+        const title = pet.status === 'lost'
+            ? `🔍 ¡Ayudanos a encontrar a ${petName}!`
+            : `🐾 ¡Una mascota fue encontrado/a!`;
+        const desc = pet.status === 'lost'
+            ? `Se perdió un/a ${petType}${petColor ? ' de color ' + petColor : ''}. Compartí para ayudar a que vuelva a casa.`
+            : `Un/a ${petType}${petColor ? ' de color ' + petColor : ''} fue encontrado/a. Compartí para ayudar a que vuelva a casa. ¿Lo reconocés?`;
+        const image = pet.photo_url;
+        const url = window.location.href;
+
+        document.title = title;
+
+        const setMeta = (attr, key, content) => {
+            let el = document.querySelector(`meta[${attr}="${key}"]`);
+            if (!el) {
+                el = document.createElement('meta');
+                el.setAttribute(attr, key);
+                document.head.appendChild(el);
+            }
+            el.setAttribute('content', content);
+        };
+
+        setMeta('property', 'og:title', title);
+        setMeta('property', 'og:description', desc);
+        setMeta('property', 'og:image', image);
+        setMeta('property', 'og:url', url);
+        setMeta('name', 'twitter:title', title);
+        setMeta('name', 'twitter:description', desc);
+        setMeta('name', 'twitter:image', image);
+
+        return () => { document.title = 'Nigra - Red de Reencuentro Animal'; };
+    }, [pet]);
+
     const handleOpenChat = () => {
         if (!token) {
             navigate('/login');

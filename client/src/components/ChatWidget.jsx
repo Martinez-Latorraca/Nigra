@@ -8,7 +8,7 @@ function ChatWidget({ socket }) {
 
 
     // 👇 Traemos todo desde Redux
-    const { isOpen, activePet, activeChat: messages, loading } = useSelector(state => state.chats);
+    const { isOpen, activePet, activeChat: messages, loading, chatPage, chatTotalPages } = useSelector(state => state.chats);
     const user = useSelector((state) => state.user?.data);
     const token = useSelector((state) => state.user?.token);
 
@@ -99,15 +99,23 @@ function ChatWidget({ socket }) {
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 flex flex-col">
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center text-[10px] font-bold text-gray-300 uppercase tracking-widest">Sincronizando...</div>
-                ) : (
-                    messages?.map((m, i) => (
+                ) : (<>
+                    {chatPage < chatTotalPages && (
+                        <button
+                            onClick={() => dispatch(fetchChatHistory({ pet_id: activePet.pet_id, otherUserId: activePet.otherUserId, page: chatPage + 1 }))}
+                            className="self-center text-[10px] font-bold text-gray-400 hover:text-black uppercase tracking-widest py-2 transition-colors"
+                        >
+                            Cargar anteriores
+                        </button>
+                    )}
+                    {messages?.map((m, i) => (
                         <div key={i} className={`flex flex-col ${m.sender_id === user.id ? 'items-end' : 'items-start'}`}>
                             <div className={`p-4 rounded-3xl text-sm max-w-[85%] ${m.sender_id === user.id ? 'bg-black text-white' : 'bg-white shadow-sm border border-gray-100'}`}>
                                 {m.content}
                             </div>
                         </div>
-                    ))
-                )}
+                    ))}
+                </>)}
                 <div ref={scrollRef} />
             </div>
 

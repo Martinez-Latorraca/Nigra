@@ -1,64 +1,74 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { translateColor, translateType } from '../utils/translations';
 
-
-
-
 function PetList() {
     const [pets, setPets] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
 
     // --- ESTADOS DE FILTRO ---
     const [filterType, setFilterType] = useState('all');
     const [filterColor, setFilterColor] = useState('all');
-    const [filterDate, setFilterDate] = useState('all'); // 'all', 'today', 'week', 'month'
+    const [filterDate, setFilterDate] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
 
+    // Colores disponibles desde el backend
+    const [availableColors, setAvailableColors] = useState([]);
+
     useEffect(() => {
-        const fetchAllPets = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets`);
-                const data = await response.json();
-                setPets(data);
-            } catch (error) {
-                console.error("Error:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchAllPets();
+        fetch(`${import.meta.env.VITE_API_URL}/api/pets/colors`)
+            .then(res => res.json())
+            .then(setAvailableColors)
+            .catch(() => {});
     }, []);
 
-    // 1. Extraemos colores únicos de la data para el dropdown
-    const availableColors = ['all', ...new Set(pets.map(p => p.color).filter(Boolean))];
+    const fetchPets = useCallback(async (pageNum, append = false) => {
+        if (pageNum === 1) setLoading(true);
+        else setLoadingMore(true);
 
-    // 2. Lógica de Filtrado Compuesta
-    const filteredPets = pets.filter(pet => {
-        // Filtro por Tipo
-        const matchesType = filterType === 'all' || pet.type === filterType;
+        try {
+            const params = new URLSearchParams({ page: pageNum, limit: 12 });
+            if (filterType !== 'all') params.set('type', filterType);
+            if (filterColor !== 'all') params.set('color', filterColor);
+            if (filterStatus !== 'all') params.set('status', filterStatus);
+            if (filterDate !== 'all') params.set('date', filterDate);
 
-        // Filtro por Color
-        const matchesColor = filterColor === 'all' || pet.color === filterColor;
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets?${params}`);
+            const data = await response.json();
 
-        // Filtro por Fecha
-        let matchesDate = true;
-        if (filterDate !== 'all') {
-            const petDate = new Date(pet.created_at);
-            const now = new Date();
-            const diffDays = (now - petDate) / (1000 * 60 * 60 * 24);
-
-            if (filterDate === 'today') matchesDate = diffDays <= 1;
-            if (filterDate === 'week') matchesDate = diffDays <= 7;
-            if (filterDate === 'month') matchesDate = diffDays <= 30;
+            setPets(prev => append ? [...prev, ...data.pets] : data.pets);
+            setPage(data.page);
+            setTotalPages(data.totalPages);
+            setTotal(data.total);
+        } catch (error) {
+            console.error("Error:", error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
         }
+    }, [filterType, filterColor, filterStatus, filterDate]);
 
-        const matchesStatus = filterStatus === 'all' || pet.status === filterStatus;
+    // Cuando cambian los filtros, reseteamos a página 1
+    useEffect(() => {
+        fetchPets(1);
+    }, [fetchPets]);
 
-        return matchesType && matchesColor && matchesDate && matchesStatus;
-    });
+    const handleLoadMore = () => {
+        fetchPets(page + 1, true);
+    };
+
+    const handleResetFilters = () => {
+        setFilterType('all');
+        setFilterColor('all');
+        setFilterDate('all');
+        setFilterStatus('all');
+    };
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans">
@@ -91,7 +101,7 @@ function PetList() {
                         </select>
                     </div>
 
-                    {/* Filtro Color */}
+                    {/* Filtro Estado */}
                     <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
                         <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Estado</label>
                         <select
@@ -102,9 +112,10 @@ function PetList() {
                             <option value="all">Todos</option>
                             <option value="lost">Perdido</option>
                             <option value="found">Encontrado</option>
-
                         </select>
                     </div>
+
+                    {/* Filtro Color */}
                     <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
                         <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Color predominante</label>
                         <select
@@ -112,8 +123,9 @@ function PetList() {
                             onChange={(e) => setFilterColor(e.target.value)}
                             className="bg-transparent text-sm font-semibold outline-none cursor-pointer capitalize"
                         >
+                            <option value="all">Cualquier color</option>
                             {availableColors.map(c => (
-                                <option key={c} value={c}>{translateColor(c) === 'all' ? 'Cualquier color' : translateColor(c)}</option>
+                                <option key={c} value={c}>{translateColor(c)}</option>
                             ))}
                         </select>
                     </div>
@@ -135,7 +147,7 @@ function PetList() {
 
                     <div className="ml-auto pr-4">
                         <span className="text-[10px] font-bold text-pet-link bg-pet-link/10 px-3 py-1 rounded-full uppercase">
-                            {filteredPets.length} resultados
+                            {total} resultados
                         </span>
                     </div>
                 </div>
@@ -143,7 +155,7 @@ function PetList() {
 
             {/* --- GRILLA --- */}
             <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredPets.length === 0 ? (
+                {pets.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 bg-white/30 rounded-[48px] border-2 border-dashed border-gray-200">
                         {/* Icono sutil de búsqueda vacía */}
                         <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -161,18 +173,14 @@ function PetList() {
 
                         {/* Botón para resetear filtros */}
                         <button
-                            onClick={() => {
-                                setFilterType('all');
-                                setFilterColor('all');
-                                setFilterDate('all');
-                            }}
+                            onClick={handleResetFilters}
                             className="px-8 py-3 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10"
                         >
                             Limpiar todos los filtros
                         </button>
                     </div>
                 ) : (
-                    filteredPets.map(pet => (
+                    pets.map(pet => (
                         <Link
                             to={`/pet/${pet.id}`}
                             key={pet.id}
@@ -213,6 +221,19 @@ function PetList() {
                     ))
                 )}
             </div>
+
+            {/* --- BOTÓN CARGAR MÁS --- */}
+            {page < totalPages && (
+                <div className="max-w-7xl mx-auto flex justify-center mt-12">
+                    <button
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                        className="px-10 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {loadingMore ? 'Cargando...' : `Cargar más (${page} de ${totalPages})`}
+                    </button>
+                </div>
+            )}
 
         </div>
     );

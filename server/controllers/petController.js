@@ -222,43 +222,100 @@ export const deleteReport = async (req, res) => {
 
 export const getAllPets = async (req, res) => {
     try {
-        // 1. Pedimos todo, asegurándonos de traer created_at
-        // 2. Ordenamos por fecha (DESC = de más nuevo a más viejo)
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
+        const offset = (page - 1) * limit;
+
+        const { type, color, status, date } = req.query;
+
+        const conditions = [];
+        const params = [];
+        let paramIndex = 1;
+
+        if (type && type !== 'all') {
+            conditions.push(`type = $${paramIndex++}`);
+            params.push(type);
+        }
+        if (color && color !== 'all') {
+            conditions.push(`color = $${paramIndex++}`);
+            params.push(color);
+        }
+        if (status && status !== 'all') {
+            conditions.push(`status = $${paramIndex++}`);
+            params.push(status);
+        }
+        if (date && date !== 'all') {
+            const intervals = { today: '1 day', week: '7 days', month: '30 days' };
+            if (intervals[date]) {
+                conditions.push(`created_at >= NOW() - INTERVAL '${intervals[date]}'`);
+            }
+        }
+
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        const countQuery = `SELECT COUNT(*) FROM pets ${whereClause}`;
+        const countResult = await pool.query(countQuery, params);
+        const total = parseInt(countResult.rows[0].count);
+
         const query = `
-            SELECT 
-                id, 
-                description, 
-                status, 
-                photo_url, 
-                type, 
-                color, 
-                lat, 
-                lng, 
-                extra_photos, 
-                created_at 
-            FROM pets 
-            ORDER BY created_at DESC;
+            SELECT id, description, status, photo_url, type, color,
+                   lat, lng, extra_photos, name, created_at
+            FROM pets
+            ${whereClause}
+            ORDER BY created_at DESC
+            LIMIT $${paramIndex++} OFFSET $${paramIndex++};
         `;
 
-        const result = await pool.query(query);
+        const result = await pool.query(query, [...params, limit, offset]);
 
-        // Enviamos los resultados al frontend
-        res.json(result.rows);
+        res.json({
+            pets: result.rows,
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        });
     } catch (error) {
         console.error("Error al obtener el feed de mascotas:", error);
         res.status(500).json({ error: 'Error al cargar las mascotas.' });
     }
 };
 
+export const getAvailableColors = async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT DISTINCT color FROM pets WHERE color IS NOT NULL ORDER BY color'
+        );
+        res.json(result.rows.map(r => r.color));
+    } catch (error) {
+        console.error('Error al obtener colores:', error);
+        res.status(500).json({ error: 'Error interno' });
+    }
+};
+
 export const getMyReports = async (req, res) => {
     try {
         const user_id = req.user.id;
-        const result = await pool.query(
-            // Cambiamos created_at por id
-            'SELECT * FROM pets WHERE user_id = $1 ORDER BY id DESC',
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+        const offset = (page - 1) * limit;
+
+        const countResult = await pool.query(
+            'SELECT COUNT(*) FROM pets WHERE user_id = $1',
             [user_id]
         );
-        res.json(result.rows);
+        const total = parseInt(countResult.rows[0].count);
+
+        const result = await pool.query(
+            'SELECT * FROM pets WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3',
+            [user_id, limit, offset]
+        );
+
+        res.json({
+            reports: result.rows,
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        });
     } catch (error) {
         console.error('Error al obtener mis reportes:', error);
         res.status(500).json({ error: 'Error interno del servidor' });

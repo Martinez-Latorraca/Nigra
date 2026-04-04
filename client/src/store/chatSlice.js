@@ -4,10 +4,10 @@ import { markAsReadLocal } from './inboxSlice';
 // Thunk para traer el historial de una mascota específica entre dos usuarios
 export const fetchChatHistory = createAsyncThunk(
     'chat/fetchChatHistory',
-    async ({ pet_id, otherUserId }, { getState, rejectWithValue }) => {
+    async ({ pet_id, otherUserId, page = 1 }, { getState, rejectWithValue }) => {
         try {
             const token = getState().user.token;
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${pet_id}/${otherUserId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${pet_id}/${otherUserId}?page=${page}&limit=30`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -15,12 +15,14 @@ export const fetchChatHistory = createAsyncThunk(
 
             const data = await response.json();
 
-            return data.map(m => ({
+            const messages = data.messages.map(m => ({
                 ...m,
                 sender_id: Number(m.sender_id),
                 receiver_id: Number(m.receiver_id),
                 pet_id: Number(m.pet_id)
             }));
+
+            return { messages, page: data.page, totalPages: data.totalPages };
         } catch (error) {
             return rejectWithValue(error.message);
         }
@@ -78,18 +80,24 @@ const chatSlice = createSlice({
         activePet: null,
         isOpen: false,
         loading: false,
-        error: null
+        error: null,
+        chatPage: 1,
+        chatTotalPages: 1,
     },
     reducers: {
         setChatActive: (state, action) => {
             state.activePet = action.payload;
             state.isOpen = true;
-            state.activeChat = []; // Limpiamos el chat para cargar el nuevo historial
+            state.activeChat = [];
+            state.chatPage = 1;
+            state.chatTotalPages = 1;
         },
         closeChat: (state) => {
             state.isOpen = false;
             state.activePet = null;
             state.activeChat = [];
+            state.chatPage = 1;
+            state.chatTotalPages = 1;
         },
         receiveMessage: (state, action) => {
             if (state.activePet && Number(state.activePet.pet_id) === Number(action.payload.pet_id)) {
@@ -104,7 +112,15 @@ const chatSlice = createSlice({
             .addCase(fetchChatHistory.pending, (state) => { state.loading = true; })
             .addCase(fetchChatHistory.fulfilled, (state, action) => {
                 state.loading = false;
-                state.activeChat = action.payload;
+                const { messages, page, totalPages } = action.payload;
+                if (page === 1) {
+                    state.activeChat = messages;
+                } else {
+                    // Mensajes anteriores van al principio
+                    state.activeChat = [...messages, ...state.activeChat];
+                }
+                state.chatPage = page;
+                state.chatTotalPages = totalPages;
             })
             .addCase(fetchChatHistory.rejected, (state, action) => {
                 state.loading = false;

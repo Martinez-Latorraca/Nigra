@@ -14,6 +14,7 @@ import { translateColor, translateType } from './utils/translations.js';
 import authRoutes from './routes/authRoutes.js';
 import petRoutes from './routes/petRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
+import { globalLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -22,9 +23,10 @@ const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
 app.use(cors({
-    origin: ["https://nigra-server.onrender.com"]
+    origin: ["https://nigra-server.onrender.com", "http://localhost:5173"]
 }));
 app.use(express.json());
+app.use('/api', globalLimiter);
 
 // 2. Servir archivos estáticos (¡Vital para que React cargue sus JS/CSS!)
 // Asumo que tu carpeta de build se llama 'build' o 'dist'
@@ -129,7 +131,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://nigra-server.onrender.com"],
+        origin: ["https://nigra-server.onrender.com", "http://localhost:5173"],
         methods: ["GET", "POST"]
     }
 });

@@ -83,29 +83,49 @@ export const getChatHistory = async (req, res) => {
     const pet_id = req.params.pet_id;
     const otherUserId = req.params.otherUserId;
     const myId = req.user.id;
-
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 30));
+    const offset = (page - 1) * limit;
 
     try {
-        const query = `
-            SELECT 
-                id, 
-                content, 
-                sender_id AS "sender_id", 
-                receiver_id AS "receiver_id", 
-                pet_id AS "pet_id", 
-                created_at 
-            FROM messages 
-            WHERE pet_id = $1 
+        const countQuery = `
+            SELECT COUNT(*) FROM messages
+            WHERE pet_id = $1
             AND (
-                (sender_id = $2 AND receiver_id = $3) 
-                OR 
+                (sender_id = $2 AND receiver_id = $3)
+                OR
                 (sender_id = $3 AND receiver_id = $2)
             )
-            ORDER BY created_at ASC;
         `;
-        const result = await pool.query(query, [pet_id, myId, otherUserId]);
+        const countResult = await pool.query(countQuery, [pet_id, myId, otherUserId]);
+        const total = parseInt(countResult.rows[0].count);
 
-        res.json(result.rows);
+        const query = `
+            SELECT
+                id,
+                content,
+                sender_id AS "sender_id",
+                receiver_id AS "receiver_id",
+                pet_id AS "pet_id",
+                created_at
+            FROM messages
+            WHERE pet_id = $1
+            AND (
+                (sender_id = $2 AND receiver_id = $3)
+                OR
+                (sender_id = $3 AND receiver_id = $2)
+            )
+            ORDER BY created_at DESC
+            LIMIT $4 OFFSET $5;
+        `;
+        const result = await pool.query(query, [pet_id, myId, otherUserId, limit, offset]);
+
+        res.json({
+            messages: result.rows.reverse(),
+            page,
+            totalPages: Math.ceil(total / limit),
+            total,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error al obtener el historial' });

@@ -9,6 +9,10 @@ function Profile() {
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [reportsPage, setReportsPage] = useState(1);
+    const [reportsTotalPages, setReportsTotalPages] = useState(1);
+    const [reportsTotal, setReportsTotal] = useState(0);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     const token = useSelector(state => state.user.token);
     const user = useSelector(state => state.user.data);
@@ -23,31 +27,35 @@ function Profile() {
     }).length : 0;
 
 
+    const fetchReports = async (pageNum = 1, append = false) => {
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+        if (pageNum === 1) setLoading(true);
+        else setLoadingMore(true);
+
+        try {
+            const resReports = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/my-reports?page=${pageNum}&limit=10`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!resReports.ok) throw new Error('Error al sincronizar reportes.');
+
+            const data = await resReports.json();
+            setReports(prev => append ? [...prev, ...data.reports] : data.reports);
+            setReportsPage(data.page);
+            setReportsTotalPages(data.totalPages);
+            setReportsTotal(data.total);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchReports = async () => {
-            if (!token) {
-                navigate('/login');
-                return;
-            }
-
-            try {
-
-                const resReports = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/my-reports`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!resReports.ok) throw new Error('Error al sincronizar reportes.');
-
-                const reportsData = await resReports.json();
-                setReports(reportsData);
-            } catch (error) {
-                console.error(error);
-
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchReports();
     }, [navigate, token]);
 
@@ -186,7 +194,7 @@ function Profile() {
                     <div className="bg-black rounded-[40px] p-8 text-white flex flex-col justify-between h-64 shadow-xl">
                         <div>
                             <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-50 mb-2">Reportes activos</p>
-                            <p className="text-7xl font-semibold tracking-tighter">{reports.length}</p>
+                            <p className="text-7xl font-semibold tracking-tighter">{reportsTotal}</p>
                         </div>
                         <Link to="/reportar" className="w-full bg-white text-black py-4 rounded-full font-semibold text-center text-sm hover:bg-gray-200 transition-all">
                             Nuevo reporte
@@ -231,6 +239,18 @@ function Profile() {
                             </div>
                         ))}
                     </div>
+
+                    {reportsPage < reportsTotalPages && (
+                        <div className="flex justify-center mt-8">
+                            <button
+                                onClick={() => fetchReports(reportsPage + 1, true)}
+                                disabled={loadingMore}
+                                className="px-10 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loadingMore ? 'Cargando...' : `Cargar más (${reportsPage} de ${reportsTotalPages})`}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
             </div>

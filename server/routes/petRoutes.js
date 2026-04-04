@@ -3,6 +3,8 @@ import { reportPet, searchPet, getMyReports, deleteReport, getPetById, getAllPet
 import { upload } from '../middlewares/upload.js';
 import { authenticateToken } from '../middlewares/auth.js';
 import { searchLimiter, reportLimiter } from '../middlewares/rateLimiter.js';
+import validate from '../middlewares/validate.js';
+import { reportPetSchema, searchPetSchema } from '../schemas/petSchemas.js';
 
 const router = express.Router();
 
@@ -17,7 +19,7 @@ router.get('/colors', getAvailableColors);
 router.get('/:pet_id', getPetById);
 router.get('/', getAllPets);
 router.delete('/:id', authenticateToken, deleteReport);
-router.post('/search-pet', searchLimiter, upload.single('image'), searchPet);
-router.post('/report-pet', authenticateToken, reportLimiter, reportFields, reportPet);
+router.post('/search-pet', searchLimiter, upload.single('image'), validate(searchPetSchema), searchPet);
+router.post('/report-pet', authenticateToken, reportLimiter, reportFields, validate(reportPetSchema), reportPet);
 
 export default router;

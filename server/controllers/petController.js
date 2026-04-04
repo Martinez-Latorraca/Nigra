@@ -123,10 +123,6 @@ export const searchPet = async (req, res) => {
     try {
         const { type, color, lat, lng, searchRatio, status } = req.body;
 
-        if (!type || !color || !status) {
-            return res.status(400).json({ error: 'Tipo, color y estado son requeridos' });
-        }
-
         if (!req.file || !req.file.buffer) {
             return res.status(400).json({ error: 'Falta la imagen' });
         }

@@ -6,6 +6,7 @@ export const globalLimiter = rateLimit({
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => req.path.startsWith('/admin'),
     message: { error: 'Demasiadas solicitudes. Intentá de nuevo en unos minutos.' },
 });
 

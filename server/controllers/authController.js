@@ -17,7 +17,7 @@ export const register = async (req, res) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         const newUser = await pool.query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, role',
             [name, email, passwordHash]
         );
 
@@ -47,7 +47,7 @@ export const login = async (req, res) => {
         res.json({
             success: true,
             token,
-            user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email }
+            user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, role: user.rows[0].role }
         });
     } catch (error) {
         console.error(error);

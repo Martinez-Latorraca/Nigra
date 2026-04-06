@@ -20,6 +20,11 @@ function Navbar() {
             <div className="flex gap-4 items-center">
                 {token ? (
                     <div className="flex items-center gap-4">
+                        {user?.role === 'admin' && (
+                            <Link to="/admin" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
+                                Admin
+                            </Link>
+                        )}
                         {/* El Punto Verde en el Navbar */}
                         <Link to="/profile" className="relative text-sm font-medium bg-black text-white hover:bg-gray-800 px-5 py-2.5 rounded-full transition-all shadow-sm">
                             Mi Perfil

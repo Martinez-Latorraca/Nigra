@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fetchInbox } from './store/inboxSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
+import AdminPanel from './pages/AdminPanel';
 import { ScrollToTop } from './helpers/ScrollToTop';
 
 function App() {
@@ -104,6 +105,7 @@ function App() {
           <Route path="/pet/:id" element={<Pet socket={socket} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin" element={<AdminPanel />} />
         </Routes>
         <ChatWidget socket={socket} />
         <NotificationToast socket={socket} />

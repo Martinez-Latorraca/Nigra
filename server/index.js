@@ -14,6 +14,7 @@ import { translateColor, translateType } from './utils/translations.js';
 import authRoutes from './routes/authRoutes.js';
 import petRoutes from './routes/petRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { globalLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
@@ -37,6 +38,7 @@ app.use(express.static(buildPath));
 app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 4. SITEMAP DINÁMICO
 app.get('/sitemap.xml', async (req, res) => {

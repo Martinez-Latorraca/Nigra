@@ -10,7 +10,7 @@ export default {
         pet: {
           dark: '#08061D',
           accent: '#4d7298',
-          light: '#ece1d1',
+          light: '#F5F5F7',
           primary: '#0d945c',
           primaryDark: '#127545',
           link: '#0076DF'

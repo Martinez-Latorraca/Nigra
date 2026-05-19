@@ -2,14 +2,28 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+mobile/node_modules/
 
 # Variables de entorno
 .env
 server/.env
 client/.env
+mobile/.env
+mobile/.env.local
 
 # Archivos del sistema
 .DS_Store
 
 # Tests
 test/
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/*.orig.*

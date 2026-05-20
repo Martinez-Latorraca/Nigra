@@ -16,6 +16,7 @@ export default function GoogleButton({ onStart, onSuccess, onError, onCancel, lo
     onStart();
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.signOut();
       const response = await GoogleSignin.signIn();
       const idToken = response.data?.idToken ?? response.idToken;
       if (!idToken) {

@@ -45,6 +45,7 @@ const verifyAppleToken = (identityToken) =>
     });
 
 const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
+    // 1) Already linked: same provider + provider_id.
     const existing = await pool.query(
         'SELECT id, name, email, role, avatar_url FROM users WHERE provider = $1 AND provider_id = $2',
         [provider, providerId]
@@ -53,20 +54,37 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
         return existing.rows[0];
     }
 
+    // 2) Link by email: an account with this email already exists (e.g. created
+    // with a password or another provider). Providers give us verified emails
+    // (Google checks email_verified before calling this; Apple/Facebook return
+    // the account email), so it's safe to log them into the existing account.
     if (email) {
-        const conflict = await pool.query(
-            'SELECT id, provider FROM users WHERE email = $1',
+        const byEmail = await pool.query(
+            'SELECT id, name, email, role, avatar_url, provider_id FROM users WHERE email = $1',
             [email]
         );
-        if (conflict.rows.length > 0) {
-            const err = new Error(
-                `Ya existe una cuenta con este email registrada con ${conflict.rows[0].provider}. Iniciá sesión con ese método.`
-            );
-            err.status = 409;
-            throw err;
+        if (byEmail.rows.length > 0) {
+            const user = byEmail.rows[0];
+            // If the account had no linked social identity yet (e.g. a local
+            // password account), attach this provider so the fast path (1) hits
+            // next time. Backfill the avatar only if missing.
+            if (!user.provider_id) {
+                await pool.query(
+                    'UPDATE users SET provider = $1, provider_id = $2, avatar_url = COALESCE(avatar_url, $3) WHERE id = $4',
+                    [provider, providerId, avatarUrl || null, user.id]
+                );
+            }
+            return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar_url: user.avatar_url || avatarUrl || null,
+            };
         }
     }
 
+    // 3) New user.
     const inserted = await pool.query(
         `INSERT INTO users (name, email, provider, provider_id, avatar_url)
          VALUES ($1, $2, $3, $4, $5)

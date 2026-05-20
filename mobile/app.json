@@ -2,6 +2,7 @@
   "expo": {
     "name": "Nigra-mobile",
     "slug": "Nigra-mobile",
+    "scheme": "nigra",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }

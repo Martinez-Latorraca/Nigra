@@ -28,3 +28,19 @@ export const loginSchema = Joi.object({
     password: Joi.string().required()
         .messages({ 'string.empty': 'La contraseña es requerida' }),
 });
+
+export const googleLoginSchema = Joi.object({
+    idToken: Joi.string().required()
+        .messages({ 'string.empty': 'idToken es requerido' }),
+});
+
+export const appleLoginSchema = Joi.object({
+    identityToken: Joi.string().required()
+        .messages({ 'string.empty': 'identityToken es requerido' }),
+    fullName: Joi.string().trim().min(1).max(100).optional(),
+});
+
+export const facebookLoginSchema = Joi.object({
+    accessToken: Joi.string().required()
+        .messages({ 'string.empty': 'accessToken es requerido' }),
+});

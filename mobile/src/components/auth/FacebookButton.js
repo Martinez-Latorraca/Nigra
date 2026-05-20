@@ -6,6 +6,7 @@ export default function FacebookButton({ onStart, onSuccess, onError, onCancel, 
   const handlePress = async () => {
     onStart();
     try {
+      LoginManager.logOut();
       const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
       if (result.isCancelled) {
         onCancel();

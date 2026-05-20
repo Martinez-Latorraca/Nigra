@@ -124,6 +124,62 @@ app.get('/pet/:id', async (req, res) => {
     }
 });
 
+// Política de Privacidad (requerida por Meta/Google/Apple para OAuth)
+app.get('/privacy', (req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidad — Nigra</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; line-height: 1.6; }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.25rem; margin-top: 2rem; }
+  a { color: #1877F2; }
+  .muted { color: #6b7280; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>Política de Privacidad de Nigra</h1>
+<p class="muted">Última actualización: ${new Date().toISOString().split('T')[0]}</p>
+
+<p>Nigra es una aplicación que ayuda a reunir mascotas perdidas con sus familias mediante reconocimiento de imágenes y geolocalización. Esta política describe qué datos recopilamos y cómo los usamos.</p>
+
+<h2>1. Datos que recopilamos</h2>
+<ul>
+  <li><strong>Datos de cuenta:</strong> nombre, correo electrónico y foto de perfil. Cuando iniciás sesión con Google, Facebook o Apple, recibimos esos datos del proveedor para crear tu cuenta.</li>
+  <li><strong>Ubicación:</strong> coordenadas aproximadas, usadas solo para mostrar y emparejar mascotas perdidas o encontradas cerca tuyo.</li>
+  <li><strong>Contenido que cargás:</strong> fotos de mascotas y descripciones que publicás en reportes.</li>
+  <li><strong>Mensajes:</strong> el contenido de los mensajes que intercambiás con otros usuarios sobre una mascota.</li>
+</ul>
+
+<h2>2. Cómo usamos tus datos</h2>
+<ul>
+  <li>Autenticarte e identificar tu cuenta.</li>
+  <li>Generar coincidencias visuales entre mascotas perdidas y encontradas.</li>
+  <li>Mostrar resultados filtrados por cercanía geográfica.</li>
+  <li>Permitir la comunicación entre usuarios para coordinar reencuentros.</li>
+</ul>
+
+<h2>3. Terceros</h2>
+<p>Compartimos datos únicamente con los servicios necesarios para operar la app:</p>
+<ul>
+  <li><strong>Google, Facebook y Apple</strong> — autenticación (inicio de sesión).</li>
+  <li><strong>Cloudinary</strong> — almacenamiento de imágenes.</li>
+  <li><strong>Render y Supabase</strong> — hosting y base de datos.</li>
+</ul>
+<p>No vendemos tus datos personales a terceros.</p>
+
+<h2>4. Tus derechos</h2>
+<p>Podés eliminar tu cuenta y todos tus reportes y mensajes en cualquier momento desde la app. Al hacerlo, borramos tus datos asociados de nuestra base de datos.</p>
+
+<h2>5. Contacto</h2>
+<p>Por consultas sobre esta política, escribí a <a href="mailto:nicomar2004@gmail.com">nicomar2004@gmail.com</a>.</p>
+</body>
+</html>`);
+});
+
 // 5. CATCH-ALL (Fix para el error del asterisco)
 app.get(/.*/, (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));

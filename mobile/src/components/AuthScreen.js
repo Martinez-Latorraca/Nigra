@@ -5,35 +5,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LogoDark from '../../assets/nigra.svg';
 import LogoLight from '../../assets/nigra-white.svg';
+import { useTheme } from '../lib/theme';
 
-export function useAuthColors() {
-  const isDark = useColorScheme() === 'dark';
-  return {
-    isDark,
-    bg: isDark ? '#0A0A0A' : '#F5F5F7',
-    card: isDark ? '#1C1C1E' : '#FFFFFF',
-    cardBorder: isDark ? '#2C2C2E' : '#F0F0F0',
-    title: isDark ? '#FFFFFF' : '#000000',
-    subtitle: '#9CA3AF',
-    label: '#9CA3AF',
-    inputBg: isDark ? '#2C2C2E' : '#F9FAFB',
-    inputText: isDark ? '#FFFFFF' : '#111827',
-    primary: isDark ? '#FFFFFF' : '#000000',
-    primaryText: isDark ? '#000000' : '#FFFFFF',
-    divider: isDark ? '#3A3A3C' : '#E5E7EB',
-    socialBg: isDark ? '#2C2C2E' : '#FFFFFF',
-    socialBorder: isDark ? '#3A3A3C' : '#E5E7EB',
-    socialText: isDark ? '#FFFFFF' : '#111827',
-  };
-}
+// Re-exported so existing auth screens can keep importing from here.
+export { useTheme as useAuthColors } from '../lib/theme';
 
 export default function AuthScreen({ title, subtitle, footer, children }) {
-  const c = useAuthColors();
+  const c = useTheme();
   const Logo = c.isDark ? LogoLight : LogoDark;
 
   return (

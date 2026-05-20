@@ -1,45 +1,35 @@
-import { useEffect } from 'react';
 import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import * as Facebook from 'expo-auth-session/providers/facebook';
-import { FACEBOOK_APP_ID } from '../../lib/config';
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 import { exchangeFacebookToken } from '../../lib/oauth';
 
 export default function FacebookButton({ onStart, onSuccess, onError, onCancel, loading, disabled }) {
-  const [request, response, promptAsync] = Facebook.useAuthRequest({
-    clientId: FACEBOOK_APP_ID,
-  });
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      const accessToken =
-        response.authentication?.accessToken || response.params?.access_token;
-      if (!accessToken) {
-        onError('Facebook no devolvió un access_token');
-        return;
-      }
-      exchangeFacebookToken(accessToken)
-        .then(onSuccess)
-        .catch((err) =>
-          onError(err.response?.data?.error || 'No se pudo iniciar sesión con Facebook')
-        );
-    } else if (response.type === 'error') {
-      onError('No se pudo iniciar sesión con Facebook');
-    } else {
-      onCancel();
-    }
-  }, [response]);
-
   const handlePress = async () => {
     onStart();
-    await promptAsync();
+    try {
+      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      if (result.isCancelled) {
+        onCancel();
+        return;
+      }
+      const tokenData = await AccessToken.getCurrentAccessToken();
+      if (!tokenData?.accessToken) {
+        onError('Facebook no devolvió un access token');
+        return;
+      }
+      const data = await exchangeFacebookToken(tokenData.accessToken.toString());
+      onSuccess(data);
+    } catch (error) {
+      onError(
+        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Facebook'
+      );
+    }
   };
 
   return (
     <Pressable
-      style={[styles.button, (disabled || !request) && styles.disabled]}
+      style={[styles.button, disabled && styles.disabled]}
       onPress={handlePress}
-      disabled={disabled || !request}
+      disabled={disabled}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />

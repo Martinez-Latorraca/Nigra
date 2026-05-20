@@ -19,7 +19,6 @@ import {
   GOOGLE_CLIENT_ID_WEB,
   GOOGLE_CLIENT_ID_IOS,
   GOOGLE_CLIENT_ID_ANDROID,
-  FACEBOOK_APP_ID,
 } from '../src/lib/config';
 import { setCredentials } from '../src/store/userSlice';
 import GoogleButton from '../src/components/auth/GoogleButton';
@@ -29,7 +28,7 @@ import FacebookButton from '../src/components/auth/FacebookButton';
 WebBrowser.maybeCompleteAuthSession();
 
 const googleConfigured = !!(GOOGLE_CLIENT_ID_WEB || GOOGLE_CLIENT_ID_IOS || GOOGLE_CLIENT_ID_ANDROID);
-const facebookConfigured = !!FACEBOOK_APP_ID;
+const facebookConfigured = true; // native SDK configured via app.json plugin
 const anySocialConfigured = googleConfigured || facebookConfigured || Platform.OS === 'ios';
 
 export default function Login() {

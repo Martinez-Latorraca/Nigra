@@ -38,6 +38,18 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.862423802458-ccdot53ojata0gbft9tol0htil634spr"
         }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1532502761799512",
+          "clientToken": "6859201b614365cedbb83b250e91c06f",
+          "displayName": "Nigra",
+          "scheme": "fb1532502761799512",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
       ]
     ]
   }

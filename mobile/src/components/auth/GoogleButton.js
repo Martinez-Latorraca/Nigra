@@ -1,48 +1,48 @@
-import { useEffect } from 'react';
 import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import * as Google from 'expo-auth-session/providers/google';
 import {
-  GOOGLE_CLIENT_ID_WEB,
-  GOOGLE_CLIENT_ID_IOS,
-  GOOGLE_CLIENT_ID_ANDROID,
-} from '../../lib/config';
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { GOOGLE_CLIENT_ID_WEB, GOOGLE_CLIENT_ID_IOS } from '../../lib/config';
 import { exchangeGoogleToken } from '../../lib/oauth';
 
-export default function GoogleButton({ onStart, onSuccess, onError, onCancel, loading, disabled }) {
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID_WEB,
-    iosClientId: GOOGLE_CLIENT_ID_IOS,
-    androidClientId: GOOGLE_CLIENT_ID_ANDROID,
-  });
+GoogleSignin.configure({
+  webClientId: GOOGLE_CLIENT_ID_WEB,
+  iosClientId: GOOGLE_CLIENT_ID_IOS,
+});
 
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      const idToken = response.params?.id_token;
+export default function GoogleButton({ onStart, onSuccess, onError, onCancel, loading, disabled }) {
+  const handlePress = async () => {
+    onStart();
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken ?? response.idToken;
       if (!idToken) {
         onError('Google no devolvió un id_token');
         return;
       }
-      exchangeGoogleToken(idToken)
-        .then(onSuccess)
-        .catch((err) => onError(err.response?.data?.error || 'No se pudo iniciar sesión con Google'));
-    } else if (response.type === 'error') {
-      onError('No se pudo iniciar sesión con Google');
-    } else {
-      onCancel();
+      const data = await exchangeGoogleToken(idToken);
+      onSuccess(data);
+    } catch (error) {
+      if (
+        error.code === statusCodes.SIGN_IN_CANCELLED ||
+        error.code === statusCodes.IN_PROGRESS
+      ) {
+        onCancel();
+        return;
+      }
+      onError(
+        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Google'
+      );
     }
-  }, [response]);
-
-  const handlePress = async () => {
-    onStart();
-    await promptAsync();
   };
 
   return (
     <Pressable
-      style={[styles.button, (disabled || !request) && styles.disabled]}
+      style={[styles.button, disabled && styles.disabled]}
       onPress={handlePress}
-      disabled={disabled || !request}
+      disabled={disabled}
     >
       {loading ? (
         <ActivityIndicator color="#000" />

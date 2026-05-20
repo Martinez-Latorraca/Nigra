@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -13,17 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 import { router } from 'expo-router';
-import * as Google from 'expo-auth-session/providers/google';
-import * as Facebook from 'expo-auth-session/providers/facebook';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../src/lib/api';
-import {
-  exchangeGoogleToken,
-  exchangeAppleToken,
-  exchangeFacebookToken,
-  formatAppleFullName,
-} from '../src/lib/oauth';
 import {
   GOOGLE_CLIENT_ID_WEB,
   GOOGLE_CLIENT_ID_IOS,
@@ -31,8 +22,15 @@ import {
   FACEBOOK_APP_ID,
 } from '../src/lib/config';
 import { setCredentials } from '../src/store/userSlice';
+import GoogleButton from '../src/components/auth/GoogleButton';
+import AppleButton from '../src/components/auth/AppleButton';
+import FacebookButton from '../src/components/auth/FacebookButton';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const googleConfigured = !!(GOOGLE_CLIENT_ID_WEB || GOOGLE_CLIENT_ID_IOS || GOOGLE_CLIENT_ID_ANDROID);
+const facebookConfigured = !!FACEBOOK_APP_ID;
+const anySocialConfigured = googleConfigured || facebookConfigured || Platform.OS === 'ios';
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -40,56 +38,25 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loadingProvider, setLoadingProvider] = useState(null);
-  const [appleAvailable, setAppleAvailable] = useState(false);
 
-  const [googleRequest, googleResponse, promptGoogle] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID_WEB,
-    iosClientId: GOOGLE_CLIENT_ID_IOS,
-    androidClientId: GOOGLE_CLIENT_ID_ANDROID,
-  });
+  const busy = loadingProvider !== null;
 
-  const [fbRequest, fbResponse, promptFacebook] = Facebook.useAuthRequest({
-    clientId: FACEBOOK_APP_ID,
-  });
+  const handleSocialSuccess = (data) => {
+    dispatch(setCredentials({ user: data.user, token: data.token }));
+    setLoadingProvider(null);
+    router.replace('/home');
+  };
 
-  useEffect(() => {
-    if (Platform.OS === 'ios') {
-      AppleAuthentication.isAvailableAsync().then(setAppleAvailable);
-    }
-  }, []);
+  const handleSocialError = (msg) => {
+    setError(msg);
+    setLoadingProvider(null);
+  };
 
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const idToken = googleResponse.params?.id_token;
-      if (idToken) handleProviderToken('google', () => exchangeGoogleToken(idToken));
-    } else if (googleResponse?.type === 'error') {
-      setError('No se pudo iniciar sesión con Google');
-      setLoadingProvider(null);
-    }
-  }, [googleResponse]);
+  const handleSocialCancel = () => setLoadingProvider(null);
 
-  useEffect(() => {
-    if (fbResponse?.type === 'success') {
-      const accessToken = fbResponse.authentication?.accessToken || fbResponse.params?.access_token;
-      if (accessToken) handleProviderToken('facebook', () => exchangeFacebookToken(accessToken));
-    } else if (fbResponse?.type === 'error') {
-      setError('No se pudo iniciar sesión con Facebook');
-      setLoadingProvider(null);
-    }
-  }, [fbResponse]);
-
-  const handleProviderToken = async (provider, exchangeFn) => {
+  const startSocial = (provider) => {
     setError('');
     setLoadingProvider(provider);
-    try {
-      const data = await exchangeFn();
-      dispatch(setCredentials({ user: data.user, token: data.token }));
-      router.replace('/home');
-    } catch (err) {
-      setError(err.response?.data?.error || `No se pudo iniciar sesión con ${provider}`);
-    } finally {
-      setLoadingProvider(null);
-    }
   };
 
   const handleEmailLogin = async () => {
@@ -105,50 +72,6 @@ export default function Login() {
       setLoadingProvider(null);
     }
   };
-
-  const handleGoogleLogin = async () => {
-    setError('');
-    setLoadingProvider('google');
-    const result = await promptGoogle();
-    if (result?.type !== 'success') setLoadingProvider(null);
-  };
-
-  const handleFacebookLogin = async () => {
-    setError('');
-    setLoadingProvider('facebook');
-    const result = await promptFacebook();
-    if (result?.type !== 'success') setLoadingProvider(null);
-  };
-
-  const handleAppleLogin = async () => {
-    setError('');
-    setLoadingProvider('apple');
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      if (!credential.identityToken) throw new Error('Apple no devolvió un identity token');
-      const data = await exchangeAppleToken(
-        credential.identityToken,
-        formatAppleFullName(credential.fullName)
-      );
-      dispatch(setCredentials({ user: data.user, token: data.token }));
-      router.replace('/home');
-    } catch (err) {
-      if (err.code === 'ERR_REQUEST_CANCELED') {
-        setLoadingProvider(null);
-        return;
-      }
-      setError(err.response?.data?.error || err.message || 'No se pudo iniciar sesión con Apple');
-    } finally {
-      setLoadingProvider(null);
-    }
-  };
-
-  const busy = loadingProvider !== null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -205,45 +128,43 @@ export default function Login() {
               )}
             </Pressable>
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o continuá con</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {anySocialConfigured && (
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>o continuá con</Text>
+                <View style={styles.dividerLine} />
+              </View>
+            )}
 
-            <Pressable
-              style={[styles.button, styles.buttonSocial, busy && styles.buttonDisabled]}
-              onPress={handleGoogleLogin}
-              disabled={busy || !googleRequest}
-            >
-              {loadingProvider === 'google' ? (
-                <ActivityIndicator color="#000" />
-              ) : (
-                <Text style={styles.buttonSocialText}>Continuar con Google</Text>
-              )}
-            </Pressable>
-
-            {appleAvailable && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={999}
-                style={styles.appleButton}
-                onPress={handleAppleLogin}
+            {googleConfigured && (
+              <GoogleButton
+                onStart={() => startSocial('google')}
+                onSuccess={handleSocialSuccess}
+                onError={handleSocialError}
+                onCancel={handleSocialCancel}
+                loading={loadingProvider === 'google'}
+                disabled={busy && loadingProvider !== 'google'}
               />
             )}
 
-            <Pressable
-              style={[styles.button, styles.buttonFacebook, busy && styles.buttonDisabled]}
-              onPress={handleFacebookLogin}
-              disabled={busy || !fbRequest}
-            >
-              {loadingProvider === 'facebook' ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonFacebookText}>Continuar con Facebook</Text>
-              )}
-            </Pressable>
+            <AppleButton
+              onStart={() => startSocial('apple')}
+              onSuccess={handleSocialSuccess}
+              onError={handleSocialError}
+              onCancel={handleSocialCancel}
+              disabled={busy && loadingProvider !== 'apple'}
+            />
+
+            {facebookConfigured && (
+              <FacebookButton
+                onStart={() => startSocial('facebook')}
+                onSuccess={handleSocialSuccess}
+                onError={handleSocialError}
+                onCancel={handleSocialCancel}
+                loading={loadingProvider === 'facebook'}
+                disabled={busy && loadingProvider !== 'facebook'}
+              />
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -293,12 +214,7 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: { backgroundColor: '#000', marginTop: 16 },
   buttonPrimaryText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  buttonSocial: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
-  buttonSocialText: { color: '#111827', fontWeight: '600', fontSize: 16 },
-  buttonFacebook: { backgroundColor: '#1877F2' },
-  buttonFacebookText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   buttonDisabled: { opacity: 0.5 },
-  appleButton: { height: 56, marginTop: 8 },
   divider: { flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E7EB' },
   dividerText: { color: '#9CA3AF', fontSize: 12, paddingHorizontal: 12, fontWeight: '500' },

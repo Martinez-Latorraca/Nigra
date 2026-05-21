@@ -37,45 +37,36 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
           <>
             <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-            {/* Overlay guía: cara de perro line-art */}
+            {/* Overlay guía: chow chow de frente (line-art) */}
             <View style={styles.overlay} pointerEvents="none">
               <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
               <Svg width={340} height={340} viewBox="0 0 200 200">
-                {/* Orejas */}
+                {/* Melena esponjosa (contorno ondulado) */}
                 <Path
-                  d="M64,74 C40,66 30,104 50,128 C62,112 66,92 74,82 Z"
+                  d="M100,50 Q119.8,39.1 129.4,59.5 Q151.8,62.4 147.6,84.5 Q164,100 147.6,115.5 Q151.8,137.6 129.4,140.5 Q119.8,160.9 100,150 Q80.2,160.9 70.6,140.5 Q48.2,137.6 52.4,115.5 Q36,100 52.4,84.5 Q48.2,62.4 70.6,59.5 Q80.2,39.1 100,50 Z"
                   fill="rgba(255,255,255,0.05)"
                   stroke="#fff"
                   strokeWidth={3}
                   strokeLinejoin="round"
                 />
+                {/* Cara interior */}
                 <Path
-                  d="M136,74 C160,66 170,104 150,128 C138,112 134,92 126,82 Z"
-                  fill="rgba(255,255,255,0.05)"
-                  stroke="#fff"
-                  strokeWidth={3}
-                  strokeLinejoin="round"
-                />
-                {/* Cabeza */}
-                <Circle
-                  cx="100"
-                  cy="110"
-                  r="54"
-                  fill="rgba(255,255,255,0.05)"
-                  stroke="#fff"
-                  strokeWidth={3}
-                />
-                {/* Ojos */}
-                <Circle cx="81" cy="102" r="5" fill="#fff" />
-                <Circle cx="119" cy="102" r="5" fill="#fff" />
-                {/* Nariz */}
-                <Path d="M90,122 Q100,115 110,122 Q105,133 100,133 Q95,133 90,122 Z" fill="#fff" />
-                {/* Boca */}
-                <Path
-                  d="M100,133 L100,143 M100,143 Q90,151 81,145 M100,143 Q110,151 119,145"
+                  d="M100,72 C124,72 138,90 138,110 C138,132 122,146 100,146 C78,146 62,132 62,110 C62,90 76,72 100,72 Z"
                   fill="none"
                   stroke="#fff"
-                  strokeWidth={3}
+                  strokeWidth={2.5}
+                />
+                {/* Ojos */}
+                <Circle cx="85" cy="104" r="4.5" fill="#fff" />
+                <Circle cx="115" cy="104" r="4.5" fill="#fff" />
+                {/* Nariz */}
+                <Path d="M91,120 Q100,114 109,120 Q105,129 100,129 Q95,129 91,120 Z" fill="#fff" />
+                {/* Boca / lengua */}
+                <Path
+                  d="M100,129 L100,136 M100,136 Q91,143 84,138 M100,136 Q109,143 116,138"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={2.5}
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />

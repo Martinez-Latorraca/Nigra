@@ -37,7 +37,7 @@ export default function PetCard({ pet, onPress, style }) {
         </Text>
 
         {pet.description && pet.description !== 'Desconocido' ? (
-          <Text style={[styles.description, { color: c.subtitle }]} numberOfLines={2}>
+          <Text style={[styles.description, { color: c.subtitle }]} numberOfLines={1}>
             {pet.description}
           </Text>
         ) : null}

@@ -2,16 +2,6 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { translateType, translateColor } from '../lib/translations';
 import { useTheme } from '../lib/theme';
 
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (Number.isNaN(days)) return '';
-  if (days <= 0) return 'Hoy';
-  if (days === 1) return 'Ayer';
-  if (days < 30) return `Hace ${days} días`;
-  return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-}
-
 export default function PetCard({ pet, onPress, style }) {
   const c = useTheme();
   const isLost = pet.status === 'lost';
@@ -21,8 +11,6 @@ export default function PetCard({ pet, onPress, style }) {
     pet.visual_distance !== undefined ? ((1 - pet.visual_distance) * 100).toFixed(0) : null;
 
   const title = isLost ? pet.name || 'Sin nombre' : 'Encontrado';
-
-  const date = timeAgo(pet.created_at);
 
   return (
     <Pressable
@@ -44,8 +32,6 @@ export default function PetCard({ pet, onPress, style }) {
               <Text style={[styles.matchLabel, { color: c.label }]}>MATCH</Text>
               <Text style={[styles.matchValue, { color: c.title }]}>{matchPercentage}%</Text>
             </View>
-          ) : date ? (
-            <Text style={[styles.date, { color: c.label }]}>{date}</Text>
           ) : null}
         </View>
 
@@ -89,7 +75,6 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   badgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: '#FFFFFF' },
-  date: { fontSize: 11, fontWeight: '600' },
   matchWrap: { alignItems: 'flex-end' },
   matchLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   matchValue: { fontSize: 13, fontWeight: '700' },

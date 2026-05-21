@@ -22,7 +22,7 @@ export default function PetMap({ lat, lng, isDark, style }) {
   var map = L.map('map', {
     zoomControl: false, attributionControl: false,
     dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false
-  }).setView([${latitude}, ${longitude}], 15);
+  }).setView([${latitude}, ${longitude}], 17);
   L.tileLayer('${tiles}', { maxZoom: 19 }).addTo(map);
   L.circleMarker([${latitude}, ${longitude}], {
     radius: 9, color: '#fff', weight: 3, fillColor: '#EF4444', fillOpacity: 1

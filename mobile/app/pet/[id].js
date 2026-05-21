@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Linking,
   Share,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -87,6 +88,12 @@ export default function PetDetail() {
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${pet.lat},${pet.lng}`);
     }
   };
+  const handleChat = () => {
+    Alert.alert(
+      isLost ? 'Enviar información' : 'Contactar al rescatista',
+      'El chat con el informante va a estar disponible muy pronto.'
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
@@ -113,7 +120,7 @@ export default function PetDetail() {
             <Text style={styles.badgeText}>{isLost ? 'Perdido' : 'Encontrado'}</Text>
           </View>
 
-          <Text style={[styles.meta, { color: c.subtitle }]}>
+          <Text style={[styles.meta, { color: '#4d7298' }]}>
             {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
           </Text>
           <Text style={[styles.name, { color: c.title }]}>
@@ -155,9 +162,18 @@ export default function PetDetail() {
           ) : null}
 
           <View style={styles.actions}>
+            <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleChat}>
+              <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>
+                {isLost ? 'Enviar información' : 'Contactar al rescatista'}
+              </Text>
+            </Pressable>
+
             {pet.contact_info ? (
-              <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleCall}>
-                <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>Llamar</Text>
+              <Pressable
+                style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
+                onPress={handleCall}
+              >
+                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Llamar</Text>
               </Pressable>
             ) : null}
 

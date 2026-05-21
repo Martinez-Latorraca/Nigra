@@ -50,6 +50,19 @@
           "autoLogAppEventsEnabled": false,
           "isAutoInitEnabled": true
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Nigra necesita acceso a tus fotos para subir la imagen de la mascota.",
+          "cameraPermission": "Nigra necesita la cámara para tomar la foto de la mascota."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Nigra usa tu ubicación para marcar dónde viste a la mascota."
+        }
       ]
     ]
   }

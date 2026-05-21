@@ -72,7 +72,7 @@ export default function Home() {
         <View style={styles.row}>
           <Pressable
             style={[styles.smallCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
-            onPress={() => soon('El reporte de mascotas')}
+            onPress={() => router.push('/report')}
           >
             <Text style={[styles.smallCardTitle, { color: c.title }]}>Reportar.</Text>
             <Text style={[styles.smallCardSub, { color: c.subtitle }]}>

@@ -63,6 +63,12 @@
         {
           "locationWhenInUsePermission": "Nigra usa tu ubicación para marcar dónde viste a la mascota."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nigra necesita la cámara para tomar la foto de la mascota."
+        }
       ]
     ]
   }

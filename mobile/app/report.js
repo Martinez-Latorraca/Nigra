@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
+import CameraCapture from '../src/components/CameraCapture';
 
 const STATUSES = [
   { value: 'found', label: 'Encontrado' },
@@ -73,6 +74,7 @@ export default function Report() {
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [cameraVisible, setCameraVisible] = useState(false);
 
   const openPicker = async (source) => {
     const perm =
@@ -90,7 +92,7 @@ export default function Report() {
 
   const pickMainImage = () => {
     Alert.alert('Foto de la mascota', 'Elegí de dónde tomarla', [
-      { text: 'Cámara', onPress: () => openPicker('camera') },
+      { text: 'Cámara', onPress: () => setCameraVisible(true) },
       { text: 'Galería', onPress: () => openPicker('library') },
       { text: 'Cancelar', style: 'cancel' },
     ]);
@@ -164,6 +166,11 @@ export default function Report() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+      <CameraCapture
+        visible={cameraVisible}
+        onClose={() => setCameraVisible(false)}
+        onCapture={setMainImage}
+      />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} hitSlop={12}>

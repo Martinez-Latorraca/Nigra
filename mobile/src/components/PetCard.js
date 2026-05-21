@@ -35,13 +35,19 @@ export default function PetCard({ pet, onPress, style }) {
           ) : null}
         </View>
 
+        <Text style={[styles.kicker, { color: '#0d945c' }]} numberOfLines={1}>
+          {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
+        </Text>
+
         <Text style={[styles.title, { color: c.title }]} numberOfLines={1}>
           {title}
         </Text>
 
-        <Text style={[styles.meta, { color: '#0d945c' }]} numberOfLines={1}>
-          {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
-        </Text>
+        {pet.description && pet.description !== 'Desconocido' ? (
+          <Text style={[styles.description, { color: c.subtitle }]} numberOfLines={2}>
+            {pet.description}
+          </Text>
+        ) : null}
 
         {pet.address ? (
           <Text style={[styles.address, { color: c.subtitle }]} numberOfLines={1}>
@@ -78,8 +84,15 @@ const styles = StyleSheet.create({
   matchWrap: { alignItems: 'flex-end' },
   matchLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   matchValue: { fontSize: 13, fontWeight: '700' },
-  title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 8 },
-  meta: { fontSize: 14, fontWeight: '500', textTransform: 'capitalize', marginTop: 2 },
+  kicker: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginTop: 8,
+  },
+  title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 2 },
+  description: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   address: { fontSize: 12, fontWeight: '500', marginTop: 2 },
   footer: {
     flexDirection: 'row',

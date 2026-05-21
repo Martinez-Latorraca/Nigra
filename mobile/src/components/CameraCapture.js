@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import Svg, { Path } from 'react-native-svg';
 
 export default function CameraCapture({ visible, onClose, onCapture }) {
   const cameraRef = useRef(null);
@@ -36,10 +37,18 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
           <>
             <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-            {/* Overlay guía */}
+            {/* Overlay guía: silueta de mascota */}
             <View style={styles.overlay} pointerEvents="none">
-              <Text style={styles.hint}>Centrá el hocico y las orejas dentro del recuadro</Text>
-              <View style={styles.frame} />
+              <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
+              <Svg width={330} height={330} viewBox="0 0 100 100">
+                <Path
+                  d="M50,92 C28,92 14,75 14,52 C14,45 15,39 18,34 L11,13 C10,9 14,7 17,10 L34,24 C39,21 44,20 50,20 C56,20 61,21 66,24 L83,10 C86,7 90,9 89,13 L82,34 C85,39 86,45 86,52 C86,75 72,92 50,92 Z"
+                  fill="rgba(255,255,255,0.06)"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                />
+              </Svg>
             </View>
 
             {/* Controles */}
@@ -58,8 +67,6 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
   );
 }
 
-const FRAME = 280;
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   overlay: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
@@ -73,13 +80,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowRadius: 6,
-  },
-  frame: {
-    width: FRAME,
-    height: FRAME,
-    borderRadius: 28,
-    borderWidth: 3,
-    borderColor: '#fff',
   },
   close: { position: 'absolute', top: 56, left: 24 },
   closeText: { color: '#fff', fontSize: 26, fontWeight: '700' },

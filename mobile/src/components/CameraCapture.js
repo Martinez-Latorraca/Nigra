@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 export default function CameraCapture({ visible, onClose, onCapture }) {
   const cameraRef = useRef(null);
@@ -37,15 +37,46 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
           <>
             <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-            {/* Overlay guía: silueta de mascota */}
+            {/* Overlay guía: cara de perro line-art */}
             <View style={styles.overlay} pointerEvents="none">
               <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
-              <Svg width={330} height={330} viewBox="0 0 100 100">
+              <Svg width={340} height={340} viewBox="0 0 200 200">
+                {/* Orejas */}
                 <Path
-                  d="M50,92 C28,92 14,75 14,52 C14,45 15,39 18,34 L11,13 C10,9 14,7 17,10 L34,24 C39,21 44,20 50,20 C56,20 61,21 66,24 L83,10 C86,7 90,9 89,13 L82,34 C85,39 86,45 86,52 C86,75 72,92 50,92 Z"
-                  fill="rgba(255,255,255,0.06)"
+                  d="M64,74 C40,66 30,104 50,128 C62,112 66,92 74,82 Z"
+                  fill="rgba(255,255,255,0.05)"
                   stroke="#fff"
-                  strokeWidth={2}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                />
+                <Path
+                  d="M136,74 C160,66 170,104 150,128 C138,112 134,92 126,82 Z"
+                  fill="rgba(255,255,255,0.05)"
+                  stroke="#fff"
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                />
+                {/* Cabeza */}
+                <Circle
+                  cx="100"
+                  cy="110"
+                  r="54"
+                  fill="rgba(255,255,255,0.05)"
+                  stroke="#fff"
+                  strokeWidth={3}
+                />
+                {/* Ojos */}
+                <Circle cx="81" cy="102" r="5" fill="#fff" />
+                <Circle cx="119" cy="102" r="5" fill="#fff" />
+                {/* Nariz */}
+                <Path d="M90,122 Q100,115 110,122 Q105,133 100,133 Q95,133 90,122 Z" fill="#fff" />
+                {/* Boca */}
+                <Path
+                  d="M100,133 L100,143 M100,143 Q90,151 81,145 M100,143 Q110,151 119,145"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={3}
+                  strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               </Svg>

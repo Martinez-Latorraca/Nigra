@@ -27,17 +27,10 @@ export default function PetCard({ pet, onPress, style }) {
             <Text style={styles.badgeText}>{isLost ? 'Perdido' : 'Encontrado'}</Text>
           </View>
 
-          {matchPercentage ? (
-            <View style={styles.matchWrap}>
-              <Text style={[styles.matchLabel, { color: c.label }]}>MATCH</Text>
-              <Text style={[styles.matchValue, { color: c.title }]}>{matchPercentage}%</Text>
-            </View>
-          ) : null}
+          <Text style={[styles.kicker, { color: '#0d945c' }]} numberOfLines={1}>
+            {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
+          </Text>
         </View>
-
-        <Text style={[styles.kicker, { color: '#0d945c' }]} numberOfLines={1}>
-          {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
-        </Text>
 
         <Text style={[styles.title, { color: c.title }]} numberOfLines={1}>
           {title}
@@ -78,20 +71,21 @@ const styles = StyleSheet.create({
   },
   image: { width: 124, height: 124, borderRadius: 24, alignSelf: 'center' },
   body: { flex: 1, justifyContent: 'space-between' },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
   badgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: '#FFFFFF' },
   matchWrap: { alignItems: 'flex-end' },
   matchLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
   matchValue: { fontSize: 13, fontWeight: '700' },
   kicker: {
+    flexShrink: 1,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
-    marginTop: 8,
+    textAlign: 'right',
   },
-  title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 2 },
+  title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 8 },
   description: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   address: { fontSize: 12, fontWeight: '500', marginTop: 2 },
   footer: {

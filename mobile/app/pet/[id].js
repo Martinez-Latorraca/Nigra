@@ -139,6 +139,13 @@ export default function PetDetail() {
               : 'Sin detalles adicionales.'}
           </Text>
 
+          {pet.address ? (
+            <Text style={[styles.location, { color: c.subtitle }]}>
+              📍 {isLost ? 'Perdido' : 'Encontrado'} cerca de{' '}
+              <Text style={{ color: c.text, fontWeight: '600' }}>{pet.address}</Text>
+            </Text>
+          ) : null}
+
           {pet.lat && pet.lng ? (
             <Pressable style={styles.mapWrap} onPress={handleMap}>
               <PetMap lat={pet.lat} lng={pet.lng} isDark={c.isDark} style={styles.map} />
@@ -183,7 +190,8 @@ const styles = StyleSheet.create({
   reporter: { fontSize: 13, marginTop: 4 },
   date: { fontSize: 13, marginTop: 2 },
   description: { fontSize: 15, lineHeight: 22, marginTop: 8 },
-  mapWrap: { height: 200, borderRadius: 28, overflow: 'hidden', marginTop: 20, backgroundColor: '#E5E7EB' },
+  location: { fontSize: 14, marginTop: 16, lineHeight: 20 },
+  mapWrap: { height: 200, borderRadius: 28, overflow: 'hidden', marginTop: 12, backgroundColor: '#E5E7EB' },
   map: { flex: 1 },
   actions: { gap: 12, marginTop: 24 },
   primaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center' },

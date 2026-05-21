@@ -58,6 +58,12 @@ export default function PetCard({ pet, onPress, style }) {
           {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
         </Text>
 
+        {pet.address ? (
+          <Text style={[styles.address, { color: c.subtitle }]} numberOfLines={1}>
+            📍 {pet.address}
+          </Text>
+        ) : null}
+
         {/* Footer con divisor */}
         <View style={[styles.footer, { borderTopColor: c.cardBorder }]}>
           <Text style={[styles.footerLeft, { color: c.label }]}>
@@ -90,6 +96,7 @@ const styles = StyleSheet.create({
   matchValue: { fontSize: 13, fontWeight: '700' },
   title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 8 },
   meta: { fontSize: 14, fontWeight: '500', textTransform: 'capitalize', marginTop: 2 },
+  address: { fontSize: 12, fontWeight: '500', marginTop: 2 },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

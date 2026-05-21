@@ -1,6 +1,7 @@
 import pool from '../db.js';
 import { generateEmbedding } from '../ai.js';
 import { v2 as cloudinary } from 'cloudinary';
+import { reverseGeocode } from '../utils/geocode.js';
 
 // CONFIGURACIÓN DE CLOUDINARY
 cloudinary.config({
@@ -40,7 +41,19 @@ export const getPetById = async (req, res) => {
             return res.status(404).json({ error: 'Mascota no encontrada' });
         }
 
-        res.json(result.rows[0]);
+        const pet = result.rows[0];
+
+        // Lazy reverse-geocode: older pets created before the address column
+        // get their address resolved (and saved) the first time they're opened.
+        if (!pet.address && pet.lat != null && pet.lng != null) {
+            const address = await reverseGeocode(pet.lat, pet.lng);
+            if (address) {
+                await pool.query('UPDATE pets SET address = $1 WHERE id = $2', [address, pet.id]);
+                pet.address = address;
+            }
+        }
+
+        res.json(pet);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error al obtener la mascota' });
@@ -82,16 +95,17 @@ export const reportPet = async (req, res) => {
 
         const extraPhotosJson = JSON.stringify(extraPhotosUrls || []);
 
-
-
+        const latNum = lat ? parseFloat(lat) : null;
+        const lngNum = lng ? parseFloat(lng) : null;
+        const address = await reverseGeocode(latNum, lngNum);
 
         const query = `
           INSERT INTO pets (
-            description, status, contact_info, photo_url, 
-            embedding, type, color, user_id, lat, lng, name, extra_photos
+            description, status, contact_info, photo_url,
+            embedding, type, color, user_id, lat, lng, name, extra_photos, address
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-          RETURNING id, description, status, photo_url, name, extra_photos, created_at;
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING id, description, status, photo_url, name, extra_photos, created_at, address;
         `;
 
         // 3. Pasamos las coordenadas convertidas a números decimales
@@ -104,10 +118,11 @@ export const reportPet = async (req, res) => {
             type,
             color,
             user_id,
-            lat ? parseFloat(lat) : null,
-            lng ? parseFloat(lng) : null,
+            latNum,
+            lngNum,
             name,
-            extraPhotosJson
+            extraPhotosJson,
+            address
 
         ]);
 
@@ -255,7 +270,7 @@ export const getAllPets = async (req, res) => {
 
         const query = `
             SELECT id, description, status, photo_url, type, color,
-                   lat, lng, extra_photos, name, created_at
+                   lat, lng, extra_photos, name, created_at, address
             FROM pets
             ${whereClause}
             ORDER BY created_at DESC

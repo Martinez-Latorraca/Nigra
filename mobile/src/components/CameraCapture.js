@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Ellipse } from 'react-native-svg';
 
 export default function CameraCapture({ visible, onClose, onCapture }) {
   const cameraRef = useRef(null);
@@ -40,30 +40,30 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
             {/* Overlay guía: chow chow de frente (line-art) */}
             <View style={styles.overlay} pointerEvents="none">
               <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
-              <Svg width={340} height={340} viewBox="0 0 200 200">
-                {/* Melena esponjosa (contorno ondulado) */}
+              <Svg width={400} height={400} viewBox="0 0 200 200">
+                {/* Contorno de la cabeza (orejas + melena + mentón) */}
                 <Path
-                  d="M100,50 Q119.8,39.1 129.4,59.5 Q151.8,62.4 147.6,84.5 Q164,100 147.6,115.5 Q151.8,137.6 129.4,140.5 Q119.8,160.9 100,150 Q80.2,160.9 70.6,140.5 Q48.2,137.6 52.4,115.5 Q36,100 52.4,84.5 Q48.2,62.4 70.6,59.5 Q80.2,39.1 100,50 Z"
+                  d="M100,40 C96,33 90,32 86,37 C80,25 62,26 56,44 C42,48 33,64 36,86 C30,104 33,128 48,143 C60,160 80,167 100,167 C120,167 140,160 152,143 C167,128 170,104 164,86 C167,64 158,48 144,44 C138,26 120,25 114,37 C110,32 104,33 100,40 Z"
                   fill="rgba(255,255,255,0.05)"
                   stroke="#fff"
                   strokeWidth={3}
                   strokeLinejoin="round"
                 />
-                {/* Cara interior */}
+                {/* Cara interior (mejillas / hocico) */}
                 <Path
-                  d="M100,72 C124,72 138,90 138,110 C138,132 122,146 100,146 C78,146 62,132 62,110 C62,90 76,72 100,72 Z"
+                  d="M100,104 C110,96 126,99 130,116 C134,133 119,148 100,148 C81,148 66,133 70,116 C74,99 90,96 100,104 Z"
                   fill="none"
                   stroke="#fff"
                   strokeWidth={2.5}
                 />
                 {/* Ojos */}
-                <Circle cx="85" cy="104" r="4.5" fill="#fff" />
-                <Circle cx="115" cy="104" r="4.5" fill="#fff" />
+                <Ellipse cx="82" cy="98" rx="5.5" ry="8.5" fill="#fff" />
+                <Ellipse cx="118" cy="98" rx="5.5" ry="8.5" fill="#fff" />
                 {/* Nariz */}
-                <Path d="M91,120 Q100,114 109,120 Q105,129 100,129 Q95,129 91,120 Z" fill="#fff" />
-                {/* Boca / lengua */}
+                <Path d="M91,114 Q100,108 109,114 Q108,124 100,125 Q92,124 91,114 Z" fill="#fff" />
+                {/* Boca */}
                 <Path
-                  d="M100,129 L100,136 M100,136 Q91,143 84,138 M100,136 Q109,143 116,138"
+                  d="M100,125 L100,133 M100,133 Q90,141 82,134 M100,133 Q110,141 118,134"
                   fill="none"
                   stroke="#fff"
                   strokeWidth={2.5}

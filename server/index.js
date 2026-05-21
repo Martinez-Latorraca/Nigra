@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { translateColor, translateType } from './utils/translations.js';
+import { reverseGeocode } from './utils/geocode.js';
 
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
@@ -273,9 +274,34 @@ io.on('connection', (socket) => {
     });
 });
 
+// Backfill de direcciones: geocodifica en segundo plano las mascotas que
+// todavía no tienen address (las creadas antes de esta feature). Idempotente:
+// solo toca las que tienen address NULL, así que en arranques posteriores no
+// hace nada. Respeta el rate limit de Nominatim (~1 req/seg).
+async function backfillAddresses() {
+    try {
+        const { rows } = await pool.query(
+            'SELECT id, lat, lng FROM pets WHERE address IS NULL AND lat IS NOT NULL AND lng IS NOT NULL'
+        );
+        if (rows.length === 0) return;
+        console.log(`📍 Backfill de direcciones: ${rows.length} pendientes`);
+        for (const pet of rows) {
+            const address = await reverseGeocode(pet.lat, pet.lng);
+            if (address) {
+                await pool.query('UPDATE pets SET address = $1 WHERE id = $2', [address, pet.id]);
+            }
+            await new Promise((r) => setTimeout(r, 1100));
+        }
+        console.log('📍 Backfill de direcciones completado');
+    } catch (error) {
+        console.error('Error en backfill de direcciones:', error.message);
+    }
+}
+
 // 6. INICIALIZACIÓN
 server.listen(port, async () => {
     console.log('⏳ Cargando IA y arrancando servidor...');
     await loadModel();
     console.log(`🚀 Servidor listo en http://localhost:${port}`);
+    backfillAddresses();
 });

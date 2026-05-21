@@ -20,8 +20,7 @@ export default function PetCard({ pet, onPress, style }) {
   const matchPercentage =
     pet.visual_distance !== undefined ? ((1 - pet.visual_distance) * 100).toFixed(0) : null;
 
-  const title =
-    pet.description && pet.description !== 'Desconocido' ? pet.description : pet.name || 'Sin nombre';
+  const title = isLost ? pet.name || 'Sin nombre' : 'Encontrado';
 
   const date = timeAgo(pet.created_at);
 

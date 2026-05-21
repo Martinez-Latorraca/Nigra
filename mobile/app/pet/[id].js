@@ -116,7 +116,9 @@ export default function PetDetail() {
           <Text style={[styles.meta, { color: c.subtitle }]}>
             {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
           </Text>
-          <Text style={[styles.name, { color: c.title }]}>{pet.name || 'Sin nombre'}</Text>
+          <Text style={[styles.name, { color: c.title }]}>
+            {isLost ? pet.name || 'Sin nombre' : 'Encontrado'}
+          </Text>
 
           <Text style={[styles.reporter, { color: c.subtitle }]}>
             Informante: <Text style={{ color: c.text, fontWeight: '600' }}>{pet.reporter_name || 'Anónimo'}</Text>

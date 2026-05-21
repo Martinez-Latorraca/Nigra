@@ -122,6 +122,17 @@ export default function PetDetail() {
             Informante: <Text style={{ color: c.text, fontWeight: '600' }}>{pet.reporter_name || 'Anónimo'}</Text>
           </Text>
 
+          {pet.created_at ? (
+            <Text style={[styles.date, { color: c.subtitle }]}>
+              Reportado el{' '}
+              {new Date(pet.created_at).toLocaleDateString('es-AR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
+          ) : null}
+
           <Text style={[styles.description, { color: c.text }]}>
             {pet.description && pet.description !== 'Desconocido'
               ? pet.description
@@ -170,6 +181,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginTop: 8 },
   name: { fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
   reporter: { fontSize: 13, marginTop: 4 },
+  date: { fontSize: 13, marginTop: 2 },
   description: { fontSize: 15, lineHeight: 22, marginTop: 8 },
   mapWrap: { height: 200, borderRadius: 28, overflow: 'hidden', marginTop: 20, backgroundColor: '#E5E7EB' },
   map: { flex: 1 },

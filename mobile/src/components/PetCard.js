@@ -12,7 +12,7 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
 }
 
-export default function PetCard({ pet, onPress }) {
+export default function PetCard({ pet, onPress, style }) {
   const c = useTheme();
   const isLost = pet.status === 'lost';
   const statusColor = isLost ? '#EF4444' : '#22C55E';
@@ -28,7 +28,7 @@ export default function PetCard({ pet, onPress }) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}
+      style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }, style]}
     >
       {/* Imagen cuadrada */}
       <Image source={{ uri: pet.photo_url }} style={[styles.image, { backgroundColor: c.inputBg }]} />
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
   },
-  image: { width: 110, height: 110, borderRadius: 22, alignSelf: 'center' },
+  image: { width: 124, height: 124, borderRadius: 24, alignSelf: 'center' },
   body: { flex: 1, justifyContent: 'space-between' },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },

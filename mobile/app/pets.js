@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -22,6 +23,8 @@ const FILTERS = [
 
 export default function Pets() {
   const c = useTheme();
+  const { width } = useWindowDimensions();
+  const numColumns = width >= 700 ? 2 : 1;
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,9 +93,16 @@ export default function Pets() {
       ) : (
         <FlatList
           data={pets}
+          key={numColumns}
+          numColumns={numColumns}
           keyExtractor={(item) => String(item.id)}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
           renderItem={({ item }) => (
-            <PetCard pet={item} onPress={() => router.push(`/pet/${item.id}`)} />
+            <PetCard
+              pet={item}
+              onPress={() => router.push(`/pet/${item.id}`)}
+              style={numColumns > 1 ? styles.gridCard : undefined}
+            />
           )}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -118,6 +128,8 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, borderWidth: 1 },
   chipText: { fontSize: 13, fontWeight: '600' },
   list: { paddingHorizontal: 20, paddingBottom: 32 },
+  columnWrapper: { gap: 12 },
+  gridCard: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 14, fontWeight: '500' },
 });

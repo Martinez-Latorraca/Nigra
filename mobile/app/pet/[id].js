@@ -16,6 +16,7 @@ import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import { translateType, translateColor } from '../../src/lib/translations';
 import { API_URL } from '../../src/lib/config';
+import PetMap from '../../src/components/PetMap';
 
 function parseExtraPhotos(value) {
   if (!value) return [];
@@ -127,19 +128,16 @@ export default function PetDetail() {
               : 'Sin detalles adicionales.'}
           </Text>
 
+          {pet.lat && pet.lng ? (
+            <Pressable style={styles.mapWrap} onPress={handleMap}>
+              <PetMap lat={pet.lat} lng={pet.lng} isDark={c.isDark} style={styles.map} />
+            </Pressable>
+          ) : null}
+
           <View style={styles.actions}>
             {pet.contact_info ? (
               <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleCall}>
                 <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>Llamar</Text>
-              </Pressable>
-            ) : null}
-
-            {pet.lat && pet.lng ? (
-              <Pressable
-                style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
-                onPress={handleMap}
-              >
-                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Ver ubicación</Text>
               </Pressable>
             ) : null}
 
@@ -173,6 +171,8 @@ const styles = StyleSheet.create({
   name: { fontSize: 36, fontWeight: '700', letterSpacing: -0.8 },
   reporter: { fontSize: 13, marginTop: 4 },
   description: { fontSize: 15, lineHeight: 22, marginTop: 8 },
+  mapWrap: { height: 200, borderRadius: 28, overflow: 'hidden', marginTop: 20, backgroundColor: '#E5E7EB' },
+  map: { flex: 1 },
   actions: { gap: 12, marginTop: 24 },
   primaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center' },
   primaryBtnText: { fontWeight: '700', fontSize: 15 },

@@ -278,9 +278,9 @@ export default function Report() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Pressable
-          style={[styles.submit, { backgroundColor: c.primary }, submitting && styles.disabled]}
+          style={[styles.submit, { backgroundColor: c.primary }, (submitting || !mainImage) && styles.disabled]}
           onPress={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || !mainImage}
         >
           {submitting ? (
             <ActivityIndicator color={c.primaryText} />
@@ -288,6 +288,12 @@ export default function Report() {
             <Text style={[styles.submitText, { color: c.primaryText }]}>Publicar reporte</Text>
           )}
         </Pressable>
+
+        {!mainImage ? (
+          <Text style={[styles.hintText, { color: c.subtitle }]}>
+            Agregá la foto de la mascota para poder publicar.
+          </Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -364,4 +370,5 @@ const styles = StyleSheet.create({
   submit: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
   submitText: { fontWeight: '700', fontSize: 16 },
   disabled: { opacity: 0.5 },
+  hintText: { textAlign: 'center', fontSize: 12, marginTop: 10 },
 });

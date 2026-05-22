@@ -18,6 +18,7 @@ import CameraCapture from '../src/components/CameraCapture';
 import ReportLoading from '../src/components/ReportLoading';
 import ChipGroup from '../src/components/ChipGroup';
 import PetCard from '../src/components/PetCard';
+import MapPicker from '../src/components/MapPicker';
 
 const SITUATIONS = [
   { value: 'found', label: 'La encontré' },
@@ -53,6 +54,7 @@ export default function Search() {
   const [color, setColor] = useState('black');
   const [radius, setRadius] = useState(10);
   const [position, setPosition] = useState(null);
+  const [gpsCenter, setGpsCenter] = useState(null);
   const [results, setResults] = useState([]);
   const [message, setMessage] = useState('');
   const [searching, setSearching] = useState(false);
@@ -74,15 +76,17 @@ export default function Search() {
     ]);
   };
 
-  const getLocation = async () => {
+  const useCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso necesario', 'Necesitamos tu ubicación para buscar cerca.');
+        Alert.alert('Permiso necesario', 'Necesitamos tu ubicación para centrar el mapa.');
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
-      setPosition({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      setPosition(coords);
+      setGpsCenter(coords); // centra el mapa en el GPS
     } catch {
       Alert.alert('Error', 'No pudimos obtener tu ubicación.');
     }
@@ -143,6 +147,16 @@ export default function Search() {
           <Text style={[styles.title, { color: c.title }]}>Búsqueda visual</Text>
         </View>
 
+        {/* Resultados (arriba, para no scrollear) */}
+        {message ? <Text style={[styles.message, { color: '#22C55E' }]}>{message}</Text> : null}
+        {results.length > 0 && (
+          <View style={styles.results}>
+            {results.map((pet) => (
+              <PetCard key={pet.id} pet={pet} onPress={() => router.push(`/pet/${pet.id}`)} />
+            ))}
+          </View>
+        )}
+
         {/* Foto */}
         <Text style={[styles.label, { color: c.label }]}>Foto de la mascota</Text>
         {mainImage ? (
@@ -171,15 +185,28 @@ export default function Search() {
         <Text style={[styles.label, { color: c.label }]}>Radio de búsqueda</Text>
         <ChipGroup options={RADII} value={radius} onChange={setRadius} c={c} />
 
-        <Text style={[styles.label, { color: c.label }]}>Ubicación</Text>
+        <Text style={[styles.label, { color: c.label }]}>¿Dónde se perdió?</Text>
+        <Text style={[styles.locationHint, { color: c.subtitle }]}>
+          Tocá el mapa para marcar la zona, o usá tu ubicación actual.
+        </Text>
+        <View style={[styles.mapWrap, { borderColor: c.cardBorder }]}>
+          <MapPicker
+            value={position}
+            centerOn={gpsCenter}
+            isDark={c.isDark}
+            onChange={(lat, lng) => setPosition({ lat, lng })}
+            style={styles.map}
+          />
+        </View>
         <Pressable
-          onPress={getLocation}
+          onPress={useCurrentLocation}
           style={[styles.locationBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
         >
-          <Text style={[styles.locationText, { color: position ? '#22C55E' : c.text }]}>
-            {position ? '✓ Ubicación capturada' : '📍 Usar mi ubicación'}
-          </Text>
+          <Text style={[styles.locationText, { color: c.text }]}>📍 Usar mi ubicación actual</Text>
         </Pressable>
+        {position ? (
+          <Text style={[styles.locationOk, { color: '#22C55E' }]}>✓ Ubicación seleccionada</Text>
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -190,17 +217,6 @@ export default function Search() {
         >
           <Text style={[styles.submitText, { color: c.primaryText }]}>Ejecutar búsqueda</Text>
         </Pressable>
-
-        {message ? <Text style={[styles.message, { color: '#22C55E' }]}>{message}</Text> : null}
-
-        {/* Resultados */}
-        {results.length > 0 && (
-          <View style={styles.results}>
-            {results.map((pet) => (
-              <PetCard key={pet.id} pet={pet} onPress={() => router.push(`/pet/${pet.id}`)} />
-            ))}
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -233,8 +249,12 @@ const styles = StyleSheet.create({
   },
   uploadPlus: { fontSize: 28, fontWeight: '300' },
   uploadText: { fontSize: 13, fontWeight: '500' },
-  locationBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
+  locationHint: { fontSize: 13, marginBottom: 10, marginTop: -2 },
+  mapWrap: { height: 240, borderRadius: 20, overflow: 'hidden', borderWidth: 1 },
+  map: { flex: 1 },
+  locationBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1, marginTop: 10 },
   locationText: { fontWeight: '600', fontSize: 15 },
+  locationOk: { textAlign: 'center', fontWeight: '700', fontSize: 13, marginTop: 8 },
   error: {
     color: '#EF4444',
     textAlign: 'center',

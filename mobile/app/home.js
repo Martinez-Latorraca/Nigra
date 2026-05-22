@@ -57,7 +57,7 @@ export default function Home() {
         {/* Acción principal: Búsqueda Visual */}
         <Pressable
           style={[styles.bigCard, { backgroundColor: c.primary }]}
-          onPress={() => soon('La búsqueda visual con IA')}
+          onPress={() => router.push('/search')}
         >
           <Text style={[styles.bigCardTitle, { color: c.primaryText }]}>Búsqueda Visual.</Text>
           <Text style={[styles.bigCardSub, { color: c.primaryText, opacity: 0.7 }]}>

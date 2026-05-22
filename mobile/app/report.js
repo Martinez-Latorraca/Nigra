@@ -18,6 +18,7 @@ import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import CameraCapture from '../src/components/CameraCapture';
 import ReportLoading from '../src/components/ReportLoading';
+import ChipGroup from '../src/components/ChipGroup';
 
 const STATUSES = [
   { value: 'found', label: 'Encontrado' },
@@ -38,28 +39,6 @@ const COLORS = [
   { value: 'spotted', label: 'Manchado' },
   { value: 'striped', label: 'Atigrado' },
 ];
-
-function ChipGroup({ options, value, onChange, c }) {
-  return (
-    <View style={styles.chipRow}>
-      {options.map((o) => {
-        const active = value === o.value;
-        return (
-          <Pressable
-            key={o.value}
-            onPress={() => onChange(o.value)}
-            style={[
-              styles.chip,
-              { backgroundColor: active ? c.primary : c.card, borderColor: active ? c.primary : c.cardBorder },
-            ]}
-          >
-            <Text style={[styles.chipText, { color: active ? c.primaryText : c.text }]}>{o.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
 
 export default function Report() {
   const c = useTheme();

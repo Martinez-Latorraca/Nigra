@@ -50,8 +50,12 @@ export default function PetCard({ pet, onPress, style }) {
 
         {/* Footer con divisor */}
         <View style={[styles.footer, { borderTopColor: c.cardBorder }]}>
-          <Text style={[styles.footerLeft, { color: c.label }]}>
-            {pet.distance_km ? `📍 ${parseFloat(pet.distance_km).toFixed(1)} km` : `Nigra ID #${pet.id}`}
+          <Text style={[styles.footerLeft, { color: matchPercentage ? '#0d945c' : c.label }]}>
+            {matchPercentage
+              ? `${matchPercentage}% de coincidencia`
+              : pet.distance_km
+              ? `📍 ${parseFloat(pet.distance_km).toFixed(1)} km`
+              : `Nigra ID #${pet.id}`}
           </Text>
           <Text style={[styles.contact, { color: c.title }]}>Contactar ↗</Text>
         </View>

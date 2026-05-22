@@ -7,11 +7,20 @@ import { PNG } from 'pngjs';
 
 let model = null;
 
-async function loadModel() {
+async function loadModel(retries = 4) {
     if (model) return;
     await tf.setBackend('cpu');
-    model = await mobilenet.load({ version: 2, alpha: 1.0 });
-    console.log('✅ [Worker] Modelo cargado.');
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            model = await mobilenet.load({ version: 2, alpha: 1.0 });
+            console.log('✅ [Worker] Modelo cargado.');
+            return;
+        } catch (err) {
+            console.error(`⚠️ [Worker] Falló carga del modelo (intento ${attempt}/${retries}): ${err.message}`);
+            if (attempt === retries) throw err;
+            await new Promise((r) => setTimeout(r, 1500 * attempt));
+        }
+    }
 }
 
 function imageToTensor(buffer) {
@@ -48,10 +57,15 @@ function imageToTensor(buffer) {
 }
 
 // Cargamos el modelo apenas arranca el worker
-loadModel().then(() => {
-    // Avisamos al hilo principal que estamos listos
-    parentPort.postMessage({ type: 'ready' });
-});
+loadModel()
+    .then(() => {
+        // Avisamos al hilo principal que estamos listos
+        parentPort.postMessage({ type: 'ready' });
+    })
+    .catch((err) => {
+        console.error('❌ [Worker] No se pudo cargar el modelo tras reintentos:', err);
+        process.exit(1);
+    });
 
 // Escuchamos trabajos del hilo principal
 parentPort.on('message', async ({ id, imageBuffer }) => {
@@ -69,6 +83,7 @@ parentPort.on('message', async ({ id, imageBuffer }) => {
 
         parentPort.postMessage({ type: 'result', id, vector: cleanVector });
     } catch (error) {
-        parentPort.postMessage({ type: 'error', id, error: error.message });
+        console.error('❌ [Worker] Error en el job:', error);
+        parentPort.postMessage({ type: 'error', id, error: error.stack || error.message });
     }
 });

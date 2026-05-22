@@ -20,6 +20,10 @@ import { globalLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Render (y otros PaaS) ponen un proxy delante: confiamos en 1 salto
+// para que express-rate-limit identifique al cliente por su IP real.
+app.set('trust proxy', 1);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

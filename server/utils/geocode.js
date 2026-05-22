@@ -14,7 +14,7 @@ export async function searchAddress(query) {
   try {
     const url =
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}` +
-      `&language=es&key=${key}`;
+      `&language=es&region=uy&components=country:UY&key=${key}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.status !== 'OK') return [];

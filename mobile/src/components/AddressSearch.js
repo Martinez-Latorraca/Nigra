@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import api from '../lib/api';
 
 export default function AddressSearch({ onSelect, c, placeholder = 'Buscar dirección o barrio' }) {
   const [query, setQuery] = useState('');
@@ -17,10 +18,7 @@ export default function AddressSearch({ onSelect, c, placeholder = 'Buscar direc
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&accept-language=es`
-        );
-        const data = await res.json();
+        const { data } = await api.get('/api/geo/search', { params: { q: text } });
         setSuggestions(Array.isArray(data) ? data : []);
       } catch {
         setSuggestions([]);

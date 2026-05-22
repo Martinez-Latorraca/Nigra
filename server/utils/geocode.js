@@ -2,6 +2,34 @@
 // Usage policy: <=1 req/sec and a valid User-Agent identifying the app.
 // We only call this once per pet (on report, or lazily on first detail view).
 
+// Forward geocoding (address text -> coordinates) via Google Geocoding API.
+// Key lives in GOOGLE_GEOCODING_API_KEY (server env), never in the app.
+export async function searchAddress(query) {
+  if (!query || query.trim().length < 3) return [];
+  const key = process.env.GOOGLE_GEOCODING_API_KEY;
+  if (!key) {
+    console.error('searchAddress: GOOGLE_GEOCODING_API_KEY no configurada');
+    return [];
+  }
+  try {
+    const url =
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}` +
+      `&language=es&key=${key}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status !== 'OK') return [];
+    return data.results.slice(0, 5).map((r) => ({
+      place_id: r.place_id,
+      display_name: r.formatted_address,
+      lat: String(r.geometry.location.lat),
+      lon: String(r.geometry.location.lng),
+    }));
+  } catch (error) {
+    console.error('searchAddress error:', error.message);
+    return [];
+  }
+}
+
 export async function reverseGeocode(lat, lng) {
   if (lat == null || lng == null) return null;
 

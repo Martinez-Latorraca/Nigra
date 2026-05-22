@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { translateColor, translateType } from './utils/translations.js';
-import { reverseGeocode } from './utils/geocode.js';
+import { reverseGeocode, searchAddress } from './utils/geocode.js';
 
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
@@ -123,6 +123,12 @@ app.get('/pet/:id', async (req, res) => {
         console.error("Error SEO:", error);
         indexHtml ? res.send(indexHtml) : res.status(500).json({ error: 'Error interno' });
     }
+});
+
+// Búsqueda de direcciones (proxy a Google Geocoding; la key queda en el server)
+app.get('/api/geo/search', async (req, res) => {
+    const results = await searchAddress(req.query.q || '');
+    res.json(results);
 });
 
 // Política de Privacidad (requerida por Meta/Google/Apple para OAuth)

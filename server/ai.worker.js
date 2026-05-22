@@ -68,12 +68,19 @@ loadModel()
     });
 
 // Escuchamos trabajos del hilo principal
+const mb = (n) => Math.round(n / 1024 / 1024);
+
 parentPort.on('message', async ({ id, imageBuffer }) => {
+    const t0 = Date.now();
     try {
         if (!model) await loadModel();
 
         const buffer = Buffer.from(imageBuffer);
         const imageTensor = imageToTensor(buffer);
+        console.log(
+            `[Worker] job ${id}: tensor ${imageTensor.shape} en ${Date.now() - t0}ms | rss=${mb(process.memoryUsage().rss)}MB`
+        );
+
         const embedding = model.infer(imageTensor, true);
         const vector = await embedding.array();
         const cleanVector = Array.from(vector).slice(0, 1280)[0];
@@ -81,9 +88,12 @@ parentPort.on('message', async ({ id, imageBuffer }) => {
         imageTensor.dispose();
         embedding.dispose();
 
+        console.log(
+            `[Worker] job ${id}: infer OK en ${Date.now() - t0}ms | rss=${mb(process.memoryUsage().rss)}MB`
+        );
         parentPort.postMessage({ type: 'result', id, vector: cleanVector });
     } catch (error) {
-        console.error('❌ [Worker] Error en el job:', error);
+        console.error(`❌ [Worker] Error en job ${id} (${Date.now() - t0}ms):`, error);
         parentPort.postMessage({ type: 'error', id, error: error.stack || error.message });
     }
 });

@@ -1,7 +1,12 @@
 import { useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Modal, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import Svg, { Path, Ellipse } from 'react-native-svg';
+
+// Lado del overlay de la silueta en DP. Se usa para dibujar el SVG y para
+// recortar la foto exactamente a esa región (hocico y orejas quedan dentro).
+const SILHOUETTE_DP = 400;
 
 export default function CameraCapture({ visible, onClose, onCapture }) {
   const cameraRef = useRef(null);
@@ -11,7 +16,19 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
     if (!cameraRef.current) return;
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      onCapture(photo);
+      // Recortamos al cuadrado que ocupa la silueta en pantalla. El preview usa
+      // "cover" (escala la foto para llenar la pantalla, centrada), así que
+      // convertimos los 400 DP del SVG a píxeles de la foto con esa misma escala.
+      const { width: screenW, height: screenH } = Dimensions.get('window');
+      const coverScale = Math.max(screenW / photo.width, screenH / photo.height);
+      const size = Math.min(Math.round(SILHOUETTE_DP / coverScale), photo.width, photo.height);
+      const originX = Math.round((photo.width - size) / 2);
+      const originY = Math.round((photo.height - size) / 2);
+      const rendered = await ImageManipulator.manipulate(photo.uri)
+        .crop({ originX, originY, width: size, height: size })
+        .renderAsync();
+      const cropped = await rendered.saveAsync({ compress: 0.7, format: SaveFormat.JPEG });
+      onCapture(cropped);
       onClose();
     } catch {
       onClose();
@@ -40,7 +57,7 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
             {/* Overlay guía: chow chow (silueta del asset, en blanco) */}
             <View style={styles.overlay} pointerEvents="none">
               <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
-              <Svg width={400} height={400} viewBox="20 16 176 192">
+              <Svg width={SILHOUETTE_DP} height={SILHOUETTE_DP} viewBox="20 16 176 192">
                 {/* Contorno cabeza / melena */}
                 <Path
                   d="M 75.761327,199.70103 C 56.199471,194.08763 44.761084,189.27907 31.874729,164.14948 20.299123,135.81293 28.105713,107.10117 34.859043,93.386596 42.77099,77.269556 58.268447,47.562985 80.288658,41.505155 c 10.212881,2.900862 21.418042,5.827602 32.300722,6.606605 10.45141,-1.039704 11.12554,-1.378009 27.2165,-5.443298 18.458,3.685961 27.74306,15.089085 35.4003,30.475867 11.45371,23.814384 16.24422,33.855541 18.53416,63.514761 1.26503,40.24907 -23.15731,55.03639 -43.70942,62.87184"

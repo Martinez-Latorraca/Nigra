@@ -18,7 +18,8 @@ import CameraCapture from '../src/components/CameraCapture';
 import ReportLoading from '../src/components/ReportLoading';
 import ChipGroup from '../src/components/ChipGroup';
 import PetCard from '../src/components/PetCard';
-import MapPicker from '../src/components/MapPicker';
+import PetMap from '../src/components/PetMap';
+import AddressSearch from '../src/components/AddressSearch';
 
 const SITUATIONS = [
   { value: 'found', label: 'La encontré' },
@@ -54,7 +55,6 @@ export default function Search() {
   const [color, setColor] = useState('black');
   const [radius, setRadius] = useState(10);
   const [position, setPosition] = useState(null);
-  const [gpsCenter, setGpsCenter] = useState(null);
   const [results, setResults] = useState([]);
   const [message, setMessage] = useState('');
   const [searching, setSearching] = useState(false);
@@ -84,9 +84,7 @@ export default function Search() {
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
-      const coords = { lat: loc.coords.latitude, lng: loc.coords.longitude };
-      setPosition(coords);
-      setGpsCenter(coords); // centra el mapa en el GPS
+      setPosition({ lat: loc.coords.latitude, lng: loc.coords.longitude });
     } catch {
       Alert.alert('Error', 'No pudimos obtener tu ubicación.');
     }
@@ -187,17 +185,9 @@ export default function Search() {
 
         <Text style={[styles.label, { color: c.label }]}>¿Dónde se perdió?</Text>
         <Text style={[styles.locationHint, { color: c.subtitle }]}>
-          Tocá el mapa para marcar la zona, o usá tu ubicación actual.
+          Buscá la dirección o barrio, o usá tu ubicación actual.
         </Text>
-        <View style={[styles.mapWrap, { borderColor: c.cardBorder }]}>
-          <MapPicker
-            value={position}
-            centerOn={gpsCenter}
-            isDark={c.isDark}
-            onChange={(lat, lng) => setPosition({ lat, lng })}
-            style={styles.map}
-          />
-        </View>
+        <AddressSearch c={c} onSelect={(lat, lng) => setPosition({ lat, lng })} />
         <Pressable
           onPress={useCurrentLocation}
           style={[styles.locationBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
@@ -205,7 +195,12 @@ export default function Search() {
           <Text style={[styles.locationText, { color: c.text }]}>📍 Usar mi ubicación actual</Text>
         </Pressable>
         {position ? (
-          <Text style={[styles.locationOk, { color: '#22C55E' }]}>✓ Ubicación seleccionada</Text>
+          <>
+            <View style={[styles.mapWrap, { borderColor: c.cardBorder }]} pointerEvents="none">
+              <PetMap lat={position.lat} lng={position.lng} isDark={c.isDark} style={styles.map} />
+            </View>
+            <Text style={[styles.locationOk, { color: '#22C55E' }]}>✓ Ubicación seleccionada</Text>
+          </>
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

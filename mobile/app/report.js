@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import CameraCapture from '../src/components/CameraCapture';
+import ReportLoading from '../src/components/ReportLoading';
 
 const STATUSES = [
   { value: 'found', label: 'Encontrado' },
@@ -163,6 +164,8 @@ export default function Report() {
       setSubmitting(false);
     }
   };
+
+  if (submitting) return <ReportLoading />;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>

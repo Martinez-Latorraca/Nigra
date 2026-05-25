@@ -14,7 +14,8 @@ async function setupBackend() {
     decodeImage = (buffer) => tf.node.decodeImage(buffer, 3);
     backendName = 'tfjs-node';
     console.log('✅ [Worker] Backend: tfjs-node (TF nativo).');
-  } catch {
+  } catch (err) {
+    console.error('⚠️ [Worker] No se pudo cargar tfjs-node, motivo:', err?.message || err);
     tf = await import('@tensorflow/tfjs');
     await import('@tensorflow/tfjs-backend-cpu');
     await tf.setBackend('cpu');

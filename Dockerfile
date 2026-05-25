@@ -1,5 +1,5 @@
 # Stage 1: Build del Client (React/Vite)
-FROM node:22-alpine AS client-build
+FROM node:22-slim AS client-build
 WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm install
@@ -8,13 +8,15 @@ ENV VITE_API_URL=https://nigra-server.onrender.com
 RUN npm run build
 
 # Stage 2: Dependencias del Server
-FROM node:22-alpine AS server-deps
+# Usamos slim (Debian) en vez de Alpine porque tfjs-node depende de libtensorflow.so
+# compilada contra glibc; en Alpine (musl) falla con "ld-linux-x86-64.so.2 not found".
+FROM node:22-slim AS server-deps
 WORKDIR /app/server
 COPY server/package*.json ./
-RUN npm install --only=production
+RUN npm install --omit=dev
 
 # Stage 3: Production Image
-FROM node:22-alpine
+FROM node:22-slim
 WORKDIR /app
 
 # Traemos las dependencias del server
@@ -26,11 +28,8 @@ COPY server/ ./server/
 # Traemos el build del client
 COPY --from=client-build /app/client/dist ./client/dist
 
-# Seguridad: usuario no root
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-RUN chown -R nodejs:nodejs /app
-USER nodejs
+# Seguridad: corremos como el usuario `node` (uid 1000) que ya viene en la imagen oficial.
+USER node
 
 EXPOSE 10000
 

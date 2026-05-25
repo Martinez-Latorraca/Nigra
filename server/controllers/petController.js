@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { generateEmbedding } from '../ai.js';
+import { generateEmbedding, generateEmbeddings } from '../ai.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
 
@@ -143,46 +143,49 @@ export const searchPet = async (req, res) => {
         }
 
         const imageBuffer = req.file.buffer;
-        const vector = await generateEmbedding(imageBuffer);
-        const vectorString = JSON.stringify(vector);
+        // TTA: el worker devuelve varios embeddings (original + flip + brillo).
+        // En SQL tomamos LEAST(distancia a cada variante) por mascota, así una
+        // foto de baja calidad tiene varias chances de matchear contra el embedding
+        // guardado, sin tener que aflojar el umbral global.
+        const vectors = await generateEmbeddings(imageBuffer);
+        const vectorStrings = vectors.map((v) => JSON.stringify(v));
 
         let query = '';
         let params = [];
 
-        // 1. Solo le pedimos a la DB que ordene (sin el filtro estricto de IA en el WHERE)
         if (lat && lng) {
-            const radioKm = parseFloat(searchRatio) || 10; // Radio de búsqueda en kilómetros, por defecto 10 km
+            const radioKm = parseFloat(searchRatio) || 10;
             query = `
-                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name, 
-                u.name AS reporter_name, u.id AS reporter_id, 
+                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name,
+                u.name AS reporter_name, u.id AS reporter_id,
                 (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
-                (p.embedding <=> $7) AS visual_distance 
+                LEAST(p.embedding <=> $7, p.embedding <=> $8, p.embedding <=> $9) AS visual_distance
                 FROM pets p
                 JOIN users u ON p.user_id = u.id
-                WHERE p.type = $3 
+                WHERE p.type = $3
                 AND p.color = $4
                 AND p.status = $6
-                AND p.lat IS NOT NULL 
+                AND p.lat IS NOT NULL
                 AND p.lng IS NOT NULL
                 AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
-                ORDER BY p.embedding <=> $7
+                ORDER BY visual_distance
                 LIMIT 10;
             `;
-            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, status, vectorString];
+            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, status, ...vectorStrings];
         } else {
             query = `
                 SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.name,
                 u.name AS reporter_name, u.id AS reporter_id,
-                (p.embedding <=> $4) AS visual_distance 
+                LEAST(p.embedding <=> $4, p.embedding <=> $5, p.embedding <=> $6) AS visual_distance
                 FROM pets p
                 JOIN users u ON p.user_id = u.id
-                WHERE p.type = $1 
-                AND p.color = $2 
+                WHERE p.type = $1
+                AND p.color = $2
                 AND p.status = $3
-                ORDER BY p.embedding <=> $4
+                ORDER BY visual_distance
                 LIMIT 10;
             `;
-            params = [type, color, status, vectorString];
+            params = [type, color, status, ...vectorStrings];
         }
 
         const result = await pool.query(query, params);

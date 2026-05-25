@@ -15,7 +15,7 @@ let nextId = 0;
 function createWorker() {
     worker = new Worker(path.join(__dirname, 'ai.worker.js'));
 
-    worker.on('message', ({ type, id, vector, error }) => {
+    worker.on('message', ({ type, id, vectors, error }) => {
         if (type === 'ready') {
             workerReady = true;
             console.log('✅ [AI] Worker listo para recibir trabajo.');
@@ -27,7 +27,7 @@ function createWorker() {
         pending.delete(id);
 
         if (type === 'result') {
-            job.resolve(vector);
+            job.resolve(vectors);
         } else {
             job.reject(new Error(error));
         }
@@ -35,12 +35,10 @@ function createWorker() {
 
     worker.on('error', (err) => {
         console.error('❌ [AI Worker] Error crítico:', err);
-        // Rechazamos todos los trabajos pendientes
         for (const [id, job] of pending.entries()) {
             job.reject(err);
             pending.delete(id);
         }
-        // Recreamos el worker
         workerReady = false;
         createWorker();
     });
@@ -59,7 +57,6 @@ export async function loadModel() {
     console.log('⏳ [AI] Iniciando worker thread...');
     createWorker();
 
-    // Esperamos a que el worker cargue el modelo
     await new Promise((resolve) => {
         const interval = setInterval(() => {
             if (workerReady) {
@@ -70,30 +67,40 @@ export async function loadModel() {
     });
 }
 
-export async function generateEmbedding(imageBuffer) {
-    if (!worker || !workerReady) await loadModel();
-
-    const id = nextId++;
-
+function runJob(imageBuffer, { variants } = {}) {
     return new Promise((resolve, reject) => {
+        const id = nextId++;
         const timeout = setTimeout(() => {
             if (pending.has(id)) {
                 pending.delete(id);
-                reject(new Error('AI worker timeout: no respondió en 60s'));
+                reject(new Error('AI worker timeout: no respondió en 30s'));
             }
-        }, 60000);
+        }, 30000);
 
         pending.set(id, {
             resolve: (val) => { clearTimeout(timeout); resolve(val); },
-            reject: (err) => { clearTimeout(timeout); reject(err); }
+            reject: (err) => { clearTimeout(timeout); reject(err); },
         });
 
-        // Transferimos el buffer al worker sin copiarlo en memoria
+        // Transferimos el buffer al worker sin copiarlo en memoria.
         const arrayBuffer = imageBuffer.buffer.slice(
             imageBuffer.byteOffset,
             imageBuffer.byteOffset + imageBuffer.byteLength
         );
 
-        worker.postMessage({ id, imageBuffer: arrayBuffer }, [arrayBuffer]);
+        worker.postMessage({ id, imageBuffer: arrayBuffer, variants }, [arrayBuffer]);
     });
+}
+
+// Para reporte: un solo embedding.
+export async function generateEmbedding(imageBuffer) {
+    if (!worker || !workerReady) await loadModel();
+    const vectors = await runJob(imageBuffer, { variants: false });
+    return vectors[0];
+}
+
+// Para búsqueda: varios embeddings (TTA). La query SQL toma LEAST(dist) por mascota.
+export async function generateEmbeddings(imageBuffer) {
+    if (!worker || !workerReady) await loadModel();
+    return runJob(imageBuffer, { variants: true });
 }

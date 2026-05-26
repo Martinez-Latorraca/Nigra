@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { generateEmbedding } from '../ai.js';
 
 // ─── DASHBOARD STATS ────────────────────────────────────────
 export const getDashboardStats = async (req, res) => {
@@ -311,5 +312,48 @@ export const adminDeleteMessage = async (req, res) => {
     } catch (error) {
         console.error('Error eliminando mensaje (admin):', error);
         res.status(500).json({ error: 'Error eliminando mensaje' });
+    }
+};
+
+// ─── BACKFILL DE EMBEDDINGS ─────────────────────────────────
+// Re-genera los embeddings de todas las mascotas con el pipeline actual.
+// Se usa después de cambiar el pipeline de inferencia (ej. tfjs puro → tfjs-node)
+// porque los vectores quedan en espacios numéricos distintos y las distancias
+// pgvector se descalibran. Es idempotente: se puede correr cuantas veces se quiera.
+export const backfillEmbeddings = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            'SELECT id, photo_url FROM pets WHERE photo_url IS NOT NULL ORDER BY id'
+        );
+        console.log(`[Backfill] arrancando, ${rows.length} mascotas`);
+
+        let done = 0;
+        let failed = 0;
+        const errors = [];
+
+        for (const pet of rows) {
+            try {
+                const response = await fetch(pet.photo_url);
+                if (!response.ok) throw new Error(`HTTP ${response.status} bajando ${pet.photo_url}`);
+                const buffer = Buffer.from(await response.arrayBuffer());
+                const vector = await generateEmbedding(buffer);
+                await pool.query('UPDATE pets SET embedding = $1 WHERE id = $2', [
+                    JSON.stringify(vector),
+                    pet.id,
+                ]);
+                done++;
+                console.log(`[Backfill] pet ${pet.id} OK (${done}/${rows.length})`);
+            } catch (err) {
+                failed++;
+                errors.push({ id: pet.id, error: err.message });
+                console.error(`[Backfill] pet ${pet.id} FALLO:`, err.message);
+            }
+        }
+
+        console.log(`[Backfill] terminado: ${done} OK, ${failed} fallaron`);
+        res.json({ total: rows.length, done, failed, errors });
+    } catch (error) {
+        console.error('Error en backfill de embeddings:', error);
+        res.status(500).json({ error: 'Error en backfill' });
     }
 };

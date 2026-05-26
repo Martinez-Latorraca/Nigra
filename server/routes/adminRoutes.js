@@ -13,6 +13,7 @@ import {
     adminGetConversations,
     adminGetConversationMessages,
     adminDeleteMessage,
+    backfillEmbeddings,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -36,5 +37,8 @@ router.delete('/pets/:id', adminDeletePet);
 router.get('/conversations', adminGetConversations);
 router.get('/conversations/:pet_id/:user_a/:user_b', adminGetConversationMessages);
 router.delete('/messages/:id', adminDeleteMessage);
+
+// Mantenimiento
+router.post('/backfill-embeddings', backfillEmbeddings);
 
 export default router;

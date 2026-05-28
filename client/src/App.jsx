@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
-import Search from './pages/Search';
-import Report from './pages/Report';
+import Find from './pages/Find';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Navbar from './components/Navbar';
@@ -100,8 +99,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path='/pets' element={<PetList />} />
           <Route path="/profile" element={<Profile socket={socket} />} />
-          <Route path="/buscar" element={<Search />} />
-          <Route path="/reportar" element={<Report />} />
+          <Route path="/buscar" element={<Find />} />
+          <Route path="/reportar" element={<Find />} />
           <Route path="/pet/:id" element={<Pet socket={socket} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />

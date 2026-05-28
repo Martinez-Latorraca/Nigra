@@ -35,32 +35,20 @@ function Home() {
             {/* --- GRID DE ACCIONES (Bento Style) --- */}
             <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-6 mb-24">
 
-                {/* 1. Buscar (Grande) */}
-                <Link to="/buscar" className="md:col-span-8 group bg-black p-12 rounded-[48px] flex flex-col justify-between min-h-[400px] transition-all duration-500 hover:scale-[1.01] shadow-2xl">
+                {/* 1. Perdí / Encontré (Grande, flujo unificado) */}
+                <div onClick={handleReportClick} className="md:col-span-12 group bg-black p-12 rounded-[48px] flex flex-col justify-between min-h-[360px] transition-all duration-500 hover:scale-[1.005] shadow-2xl cursor-pointer">
                     <div className="text-white">
-                        <h2 className="text-4xl font-semibold tracking-tight mb-4">Búsqueda Visual.</h2>
-                        <p className="text-gray-400 text-lg max-w-md leading-relaxed">
-                            Subí una foto y dejá que nuestra IA analice rasgos biométricos para encontrar coincidencias en segundos.
+                        <h2 className="text-4xl font-semibold tracking-tight mb-4">Perdí / Encontré.</h2>
+                        <p className="text-gray-400 text-lg max-w-xl leading-relaxed">
+                            Subí una foto y nuestra IA busca coincidencias al instante. Si no aparece, publicás el reporte en un solo paso.
                         </p>
                     </div>
                     <span className="w-fit text-xs font-bold py-4 px-8 bg-white text-black rounded-full uppercase tracking-widest group-hover:bg-gray-200 transition-colors">
-                        Iniciar Escaneo
+                        Empezar
                     </span>
-                </Link>
-
-                {/* 2. Reportar (Pequeño) */}
-                <div onClick={handleReportClick} className="md:col-span-4 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col justify-between min-h-[400px] cursor-pointer hover:shadow-xl transition-all">
-                    <div>
-                        <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                        </div>
-                        <h2 className="text-2xl font-semibold tracking-tight mb-2">Reportar.</h2>
-                        <p className="text-gray-400 text-sm leading-relaxed">¿Encontraste a alguien? Publicalo ahora.</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-300 group-hover:text-black uppercase tracking-[0.2em] transition-colors">Crear Alerta →</span>
                 </div>
 
-                {/* 3. Explorar (Ancho Completo) */}
+                {/* 2. Explorar (Ancho Completo) */}
                 <Link to="/pets" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
                     <div className="flex-1">
                         <h2 className="text-3xl font-semibold tracking-tight mb-2">Explorar Comunidad.</h2>

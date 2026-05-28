@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
@@ -8,9 +8,18 @@ import Svg, { Path, Ellipse } from 'react-native-svg';
 // recortar la foto exactamente a esa región (hocico y orejas quedan dentro).
 const SILHOUETTE_DP = 400;
 
+const FLASH_CYCLE = { off: 'auto', auto: 'on', on: 'off' };
+const FLASH_LABEL = { off: '⚡ Off', auto: '⚡ Auto', on: '⚡ On' };
+
 export default function CameraCapture({ visible, onClose, onCapture }) {
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [flash, setFlash] = useState('off');
+  const [facing, setFacing] = useState('back');
+  const [torch, setTorch] = useState(false);
+  const [zoom, setZoom] = useState(0);
+
+  const stepZoom = (delta) => setZoom((z) => Math.min(1, Math.max(0, Math.round((z + delta) * 100) / 100)));
 
   const takePhoto = async () => {
     if (!cameraRef.current) return;
@@ -52,11 +61,18 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
           </View>
         ) : (
           <>
-            <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+            <CameraView
+              ref={cameraRef}
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              flash={flash}
+              enableTorch={torch}
+              zoom={zoom}
+            />
 
             {/* Overlay guía: chow chow (silueta del asset, en blanco) */}
             <View style={styles.overlay} pointerEvents="none">
-              <Text style={styles.hint}>Centrá la mascota dentro de la silueta</Text>
+              <Text style={styles.hint}>Solo la cara: orejas y hocico dentro de la silueta</Text>
               <Svg width={SILHOUETTE_DP} height={SILHOUETTE_DP} viewBox="20 16 176 192">
                 {/* Contorno cabeza / melena */}
                 <Path
@@ -118,7 +134,43 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
             <Pressable style={styles.close} onPress={onClose} hitSlop={12}>
               <Text style={styles.closeText}>✕</Text>
             </Pressable>
+
+            <View style={styles.topControls}>
+              <Pressable
+                style={[styles.iconBtn, flash !== 'off' && styles.iconBtnActive]}
+                onPress={() => setFlash((f) => FLASH_CYCLE[f])}
+                hitSlop={8}
+              >
+                <Text style={[styles.iconBtnText, flash !== 'off' && styles.iconBtnTextActive]}>
+                  {FLASH_LABEL[flash]}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.iconBtn, torch && styles.iconBtnActive]}
+                onPress={() => setTorch((t) => !t)}
+                hitSlop={8}
+              >
+                <Text style={[styles.iconBtnText, torch && styles.iconBtnTextActive]}>🔦 Luz</Text>
+              </Pressable>
+              <Pressable
+                style={styles.iconBtn}
+                onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+                hitSlop={8}
+              >
+                <Text style={styles.iconBtnText}>🔄 Girar</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.controls}>
+              <View style={styles.zoomRow}>
+                <Pressable style={styles.zoomBtn} onPress={() => stepZoom(-0.1)} hitSlop={8}>
+                  <Text style={styles.zoomBtnText}>－</Text>
+                </Pressable>
+                <Text style={styles.zoomLabel}>{Math.round(zoom * 100)}%</Text>
+                <Pressable style={styles.zoomBtn} onPress={() => stepZoom(0.1)} hitSlop={8}>
+                  <Text style={styles.zoomBtnText}>＋</Text>
+                </Pressable>
+              </View>
               <Pressable style={styles.shutter} onPress={takePhoto}>
                 <View style={styles.shutterInner} />
               </Pressable>
@@ -146,7 +198,21 @@ const styles = StyleSheet.create({
   },
   close: { position: 'absolute', top: 56, left: 24 },
   closeText: { color: '#fff', fontSize: 26, fontWeight: '700' },
-  controls: { position: 'absolute', bottom: 48, left: 0, right: 0, alignItems: 'center' },
+  topControls: { position: 'absolute', top: 52, right: 20, flexDirection: 'row', gap: 10 },
+  iconBtn: {
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  iconBtnActive: { backgroundColor: 'rgba(250,204,21,0.85)' },
+  iconBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  iconBtnTextActive: { color: '#1a1a00' },
+  controls: { position: 'absolute', bottom: 48, left: 0, right: 0, alignItems: 'center', gap: 18 },
+  zoomRow: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  zoomBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  zoomBtnText: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  zoomLabel: { color: '#fff', fontSize: 14, fontWeight: '700', minWidth: 44, textAlign: 'center' },
   shutter: {
     width: 76,
     height: 76,

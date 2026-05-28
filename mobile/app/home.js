@@ -54,32 +54,22 @@ export default function Home() {
           </Text>
         </View>
 
-        {/* Acción principal: Búsqueda Visual */}
+        {/* Acción principal: Buscar / Reportar (flujo unificado) */}
         <Pressable
           style={[styles.bigCard, { backgroundColor: c.primary }]}
-          onPress={() => router.push('/search')}
+          onPress={() => router.push('/report')}
         >
-          <Text style={[styles.bigCardTitle, { color: c.primaryText }]}>Búsqueda Visual.</Text>
+          <Text style={[styles.bigCardTitle, { color: c.primaryText }]}>Perdí / Encontré.</Text>
           <Text style={[styles.bigCardSub, { color: c.primaryText, opacity: 0.7 }]}>
-            Subí una foto y dejá que la IA analice rasgos biométricos para encontrar coincidencias.
+            Subí una foto y la IA busca coincidencias al instante. Si no aparece, publicás el reporte en un paso.
           </Text>
           <View style={[styles.pill, { backgroundColor: c.primaryText }]}>
-            <Text style={[styles.pillText, { color: c.primary }]}>Iniciar escaneo</Text>
+            <Text style={[styles.pillText, { color: c.primary }]}>Empezar</Text>
           </View>
         </Pressable>
 
-        {/* Reportar + Explorar */}
+        {/* Explorar */}
         <View style={styles.row}>
-          <Pressable
-            style={[styles.smallCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
-            onPress={() => router.push('/report')}
-          >
-            <Text style={[styles.smallCardTitle, { color: c.title }]}>Reportar.</Text>
-            <Text style={[styles.smallCardSub, { color: c.subtitle }]}>
-              ¿Encontraste o perdiste a alguien? Publicalo.
-            </Text>
-          </Pressable>
-
           <Pressable
             style={[styles.smallCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
             onPress={() => router.push('/pets')}

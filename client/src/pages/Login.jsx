@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { setCredentials } from '../store/userSlice';
+import SocialAuth from '../components/SocialAuth';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -99,6 +100,8 @@ function Login() {
                         {loading ? 'Verificando...' : 'Iniciar Sesión'}
                     </button>
                 </form>
+
+                <SocialAuth />
 
                 <div className="mt-10 text-center text-sm font-medium text-gray-400">
                     ¿Nuevo en Nigra?{' '}

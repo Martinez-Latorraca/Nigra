@@ -5,6 +5,9 @@ COPY client/package*.json ./
 RUN npm install
 COPY client/ .
 ENV VITE_API_URL=https://nigra-server.onrender.com
+# IDs públicos de OAuth (se inlinean en el bundle del cliente).
+ENV VITE_GOOGLE_CLIENT_ID=862423802458-7ivoqalvkr1ve65p3qratl6104ul2s71.apps.googleusercontent.com
+ENV VITE_FACEBOOK_APP_ID=1532502761799512
 RUN npm run build
 
 # Stage 2: Dependencias del Server

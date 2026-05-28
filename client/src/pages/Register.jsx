@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import SocialAuth from '../components/SocialAuth';
 
 function Register() {
     const [name, setName] = useState('');
@@ -107,6 +108,8 @@ function Register() {
                         {loading ? 'Procesando...' : 'Crear cuenta'}
                     </button>
                 </form>
+
+                <SocialAuth />
 
                 <div className="mt-10 text-center text-sm font-medium text-gray-400">
                     ¿Ya tienes una cuenta?{' '}

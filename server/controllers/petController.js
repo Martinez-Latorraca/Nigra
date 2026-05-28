@@ -191,7 +191,7 @@ export const searchPet = async (req, res) => {
         const result = await pool.query(query, params);
 
 
-        const SIMILARITY_THRESHOLD = 0.2;
+        const SIMILARITY_THRESHOLD = 0.25;
 
         // Filtramos el array descartando los que superen la distancia permitida
         const filteredResults = result.rows.filter(

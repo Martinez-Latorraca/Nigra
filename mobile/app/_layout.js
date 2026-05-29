@@ -4,15 +4,21 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { store, persistor } from '../src/store/store';
+import { SocketProvider } from '../src/lib/socket';
+import { SidebarProvider } from '../src/lib/sidebar';
 
 export default function RootLayout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <SafeAreaProvider>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
-        </SafeAreaProvider>
+        <SocketProvider>
+          <SafeAreaProvider>
+            <StatusBar style="auto" />
+            <SidebarProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </SidebarProvider>
+          </SafeAreaProvider>
+        </SocketProvider>
       </PersistGate>
     </Provider>
   );

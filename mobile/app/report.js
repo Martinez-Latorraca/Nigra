@@ -265,18 +265,18 @@ export default function Find() {
             <Text style={[styles.label, { color: c.label }]}>
               {isLost ? '¿Dónde se perdió?' : '¿Dónde la encontraste?'}
             </Text>
-            <Text style={[styles.locationHint, { color: c.subtitle }]}>
+            <Text style={[styles.locationHint, { color: '#22C55E' }]}>
               Buscá la dirección o barrio, o usá tu ubicación actual.
             </Text>
             <AddressSearch c={c} onSelect={(lat, lng) => setPosition({ lat, lng })} />
             <Pressable
               onPress={useCurrentLocation}
-              style={[styles.locationBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
+              style={[styles.locationBtn, { borderColor: '#22C55E', backgroundColor: c.card }]}
             >
               {locating ? (
-                <ActivityIndicator color={c.text} />
+                <ActivityIndicator color="#22C55E" />
               ) : (
-                <Text style={[styles.locationText, { color: c.text }]}>📍 Usar mi ubicación actual</Text>
+                <Text style={[styles.locationText, { color: '#22C55E' }]}>📍 Usar mi ubicación actual</Text>
               )}
             </Pressable>
             {position ? (

@@ -13,8 +13,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
+import MenuButton from '../../src/components/MenuButton';
 import { translateType, translateColor } from '../../src/lib/translations';
 import { API_URL } from '../../src/lib/config';
 import PetMap from '../../src/components/PetMap';
@@ -33,6 +35,7 @@ function parseExtraPhotos(value) {
 export default function PetDetail() {
   const { id } = useLocalSearchParams();
   const c = useTheme();
+  const me = useSelector((s) => s.user.data);
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,6 +73,7 @@ export default function PetDetail() {
   }
 
   const isLost = pet.status === 'lost';
+  const isOwn = me?.id != null && Number(me.id) === Number(pet.user_id);
   const extras = parseExtraPhotos(pet.extra_photos);
 
   const handleCall = () => {
@@ -89,9 +93,34 @@ export default function PetDetail() {
     }
   };
   const handleChat = () => {
+    router.push({
+      pathname: `/chat/${pet.id}`,
+      params: {
+        otherUserId: String(pet.user_id),
+        name: pet.reporter_name || 'Informante',
+        photo: pet.photo_url || '',
+      },
+    });
+  };
+  const handleDelete = () => {
     Alert.alert(
-      isLost ? 'Enviar información' : 'Contactar al rescatista',
-      'El chat con el informante va a estar disponible muy pronto.'
+      'Eliminar publicación',
+      '¿Eliminar este reporte permanentemente? No se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/pets/${pet.id}`);
+              router.back();
+            } catch {
+              Alert.alert('Error', 'No se pudo eliminar la publicación.');
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -102,7 +131,10 @@ export default function PetDetail() {
           <Pressable onPress={() => router.back()} hitSlop={12}>
             <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
           </Pressable>
-          <Text style={[styles.idLabel, { color: c.label }]}>Nigra ID #{pet.id}</Text>
+          <View style={styles.headerRight}>
+            <Text style={[styles.idLabel, { color: c.label }]}>Nigra ID #{pet.id}</Text>
+            <MenuButton />
+          </View>
         </View>
 
         <Image source={{ uri: pet.photo_url }} style={styles.mainImage} />
@@ -162,13 +194,17 @@ export default function PetDetail() {
           ) : null}
 
           <View style={styles.actions}>
-            <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleChat}>
-              <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>
-                {isLost ? 'Enviar información' : 'Contactar al rescatista'}
-              </Text>
-            </Pressable>
+            {isOwn ? (
+              <Text style={[styles.ownNote, { color: c.subtitle }]}>Esta es tu publicación.</Text>
+            ) : (
+              <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleChat}>
+                <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>
+                  {isLost ? 'Enviar información' : 'Contactar al rescatista'}
+                </Text>
+              </Pressable>
+            )}
 
-            {pet.contact_info ? (
+            {pet.contact_info && !isOwn ? (
               <Pressable
                 style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
                 onPress={handleCall}
@@ -184,6 +220,12 @@ export default function PetDetail() {
               <Text style={[styles.secondaryBtnText, { color: c.text }]}>Compartir</Text>
             </Pressable>
           </View>
+
+          {isOwn ? (
+            <Pressable style={styles.deleteBtn} onPress={handleDelete}>
+              <Text style={styles.deleteBtnText}>Eliminar publicación</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -195,6 +237,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   scroll: { padding: 20, paddingBottom: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { fontSize: 15, fontWeight: '600' },
   idLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   mainImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 28, backgroundColor: '#E5E7EB' },
@@ -216,6 +259,16 @@ const styles = StyleSheet.create({
   primaryBtnText: { fontWeight: '700', fontSize: 15 },
   secondaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
   secondaryBtnText: { fontWeight: '600', fontSize: 15 },
+  ownNote: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  deleteBtn: {
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    marginTop: 32,
+  },
+  deleteBtnText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
   notFound: { fontSize: 64, fontWeight: '700' },
   notFoundMsg: { fontSize: 15 },
 });

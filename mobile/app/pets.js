@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import PetCard from '../src/components/PetCard';
+import MenuButton from '../src/components/MenuButton';
 
 const FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -57,9 +58,12 @@ export default function Pets() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-        </Pressable>
+        <View style={styles.headerTop}>
+          <Pressable onPress={() => router.back()} hitSlop={12}>
+            <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
+          </Pressable>
+          <MenuButton />
+        </View>
         <Text style={[styles.title, { color: c.title }]}>Explorar</Text>
       </View>
 
@@ -122,6 +126,7 @@ export default function Pets() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { fontSize: 15, fontWeight: '600' },
   title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
   filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 16 },

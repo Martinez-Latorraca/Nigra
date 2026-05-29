@@ -1,9 +1,9 @@
 import { View, Text, Pressable, StyleSheet, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
-import { useDispatch, useSelector } from 'react-redux';
-import { clearCredentials } from '../src/store/userSlice';
+import { useSelector } from 'react-redux';
 import { useTheme } from '../src/lib/theme';
+import MenuButton from '../src/components/MenuButton';
 
 const SUCCESS_STORIES = [
   { id: 1, name: 'Morocha', days: 3, img: 'https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?q=80&w=500' },
@@ -22,15 +22,9 @@ const soon = (feature) =>
 
 export default function Home() {
   const { data, token } = useSelector((s) => s.user);
-  const dispatch = useDispatch();
   const c = useTheme();
 
   if (!token) return <Redirect href="/login" />;
-
-  const handleLogout = () => {
-    dispatch(clearCredentials());
-    router.replace('/login');
-  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
@@ -40,9 +34,7 @@ export default function Home() {
           <Text style={[styles.hello, { color: c.subtitle }]} numberOfLines={1}>
             Hola, <Text style={{ color: c.title, fontWeight: '700' }}>{data?.name || 'usuario'}</Text>
           </Text>
-          <Pressable onPress={handleLogout} hitSlop={12}>
-            <Text style={[styles.logout, { color: c.subtitle }]}>Salir</Text>
-          </Pressable>
+          <MenuButton />
         </View>
 
         {/* Hero */}
@@ -119,7 +111,6 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 48 },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   hello: { fontSize: 15, fontWeight: '500', flex: 1 },
-  logout: { fontSize: 14, fontWeight: '600' },
   hero: { marginTop: 32, marginBottom: 28 },
   kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 3, marginBottom: 8 },
   heroTitle: { fontSize: 64, fontWeight: '700', letterSpacing: -2 },

@@ -10,6 +10,7 @@ export const registerPushToken = async (req, res) => {
 
     try {
         await pool.query('UPDATE users SET push_token = $1 WHERE id = $2', [token, userId]);
+        console.log(`📲 push_token registrado para user ${userId}: ${token.slice(0, 30)}…`);
         res.json({ success: true });
     } catch (error) {
         console.error('Error registrando push token:', error);

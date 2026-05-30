@@ -77,8 +77,16 @@ export function PushProvider({ children }) {
     if (!token) return;
     let cancelled = false;
     registerForPush().then((expoToken) => {
-      if (cancelled || !expoToken) return;
-      api.post('/api/users/push-token', { token: expoToken }).catch(() => {});
+      if (cancelled) return;
+      if (!expoToken) {
+        console.warn('📲 Push: no se obtuvo expo push token');
+        return;
+      }
+      console.log('📲 Push token obtenido:', expoToken.slice(0, 30) + '…');
+      api
+        .post('/api/users/push-token', { token: expoToken })
+        .then(() => console.log('📲 Push token registrado en el backend'))
+        .catch((e) => console.warn('📲 Push token POST falló:', e?.message));
     });
     return () => {
       cancelled = true;

@@ -279,7 +279,11 @@ io.on('connection', (socket) => {
             pool.query('SELECT push_token FROM users WHERE id = $1', [receiver_id])
                 .then(({ rows }) => {
                     const pushToken = rows[0]?.push_token;
-                    if (!pushToken) return;
+                    if (!pushToken) {
+                        console.log(`🔕 no push_token para user ${receiver_id} (no recibe push)`);
+                        return;
+                    }
+                    console.log(`🔔 enviando push a user ${receiver_id}`);
                     sendExpoPush(pushToken, {
                         title: senderName || 'Mensaje nuevo',
                         body: content.length > 120 ? content.slice(0, 117) + '…' : content,
@@ -292,7 +296,7 @@ io.on('connection', (socket) => {
                         },
                     });
                 })
-                .catch(() => {});
+                .catch((e) => console.error('push lookup error:', e.message));
 
             console.log(`✉️ Mensaje guardado y enviado de ${sender_id} a ${receiver_id}`);
 

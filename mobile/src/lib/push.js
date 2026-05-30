@@ -1,0 +1,95 @@
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+import { useSelector } from 'react-redux';
+import { router } from 'expo-router';
+import api from './api';
+
+// Foreground: mostrar el banner + reproducir sonido si la app está abierta.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPush() {
+  if (!Device.isDevice) return null;
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: 'default',
+    });
+  }
+
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  let finalStatus = existing;
+  if (existing !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== 'granted') return null;
+
+  const projectId =
+    Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+  if (!projectId) {
+    console.warn('Push: no hay extra.eas.projectId en app.json — corré `npx eas init`.');
+    return null;
+  }
+
+  try {
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    return data;
+  } catch (e) {
+    console.warn('getExpoPushTokenAsync error:', e?.message);
+    return null;
+  }
+}
+
+function handleNotificationResponse(response) {
+  const data = response?.notification?.request?.content?.data || {};
+  if (data.type === 'message' && data.pet_id && data.otherUserId) {
+    router.push({
+      pathname: `/chat/${data.pet_id}`,
+      params: {
+        otherUserId: String(data.otherUserId),
+        name: data.name || '',
+        photo: data.photo || '',
+      },
+    });
+  } else if (data.type === 'match' && data.pet_id) {
+    router.push(`/pet/${data.pet_id}`);
+  }
+}
+
+export function PushProvider({ children }) {
+  const token = useSelector((s) => s.user.token);
+
+  // Registra el push token con el backend cuando el usuario está logueado.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    registerForPush().then((expoToken) => {
+      if (cancelled || !expoToken) return;
+      api.post('/api/users/push-token', { token: expoToken }).catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // Tap en una notificación → navega.
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    return () => sub.remove();
+  }, []);
+
+  return children;
+}

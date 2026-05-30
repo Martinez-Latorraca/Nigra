@@ -16,6 +16,8 @@ import authRoutes from './routes/authRoutes.js';
 import petRoutes from './routes/petRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import usersRoutes from './routes/usersRoutes.js';
+import { sendExpoPush } from './utils/push.js';
 import { globalLimiter } from './middlewares/rateLimiter.js';
 
 const app = express();
@@ -44,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/users', usersRoutes);
 
 // 4. SITEMAP DINÁMICO
 app.get('/sitemap.xml', async (req, res) => {
@@ -271,6 +274,26 @@ io.on('connection', (socket) => {
                 content: content
             });
 
+            // E. Push notification al receptor (si tiene token guardado).
+            // Fire-and-forget: no bloqueamos la respuesta del socket.
+            pool.query('SELECT push_token FROM users WHERE id = $1', [receiver_id])
+                .then(({ rows }) => {
+                    const pushToken = rows[0]?.push_token;
+                    if (!pushToken) return;
+                    sendExpoPush(pushToken, {
+                        title: senderName || 'Mensaje nuevo',
+                        body: content.length > 120 ? content.slice(0, 117) + '…' : content,
+                        data: {
+                            type: 'message',
+                            pet_id,
+                            otherUserId: sender_id,
+                            name: senderName,
+                            photo: petPhoto,
+                        },
+                    });
+                })
+                .catch(() => {});
+
             console.log(`✉️ Mensaje guardado y enviado de ${sender_id} a ${receiver_id}`);
 
         } catch (error) {
@@ -308,10 +331,22 @@ async function backfillAddresses() {
     }
 }
 
+// Migración idempotente: agrega columnas nuevas si no existen. Se corre al
+// arrancar para evitar pasos manuales. Como usa IF NOT EXISTS, en arranques
+// posteriores es no-op.
+async function ensureSchema() {
+    try {
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
+    } catch (error) {
+        console.error('Error en ensureSchema:', error.message);
+    }
+}
+
 // 6. INICIALIZACIÓN
 server.listen(port, async () => {
     console.log('⏳ Cargando IA y arrancando servidor...');
     await loadModel();
+    await ensureSchema();
     console.log(`🚀 Servidor listo en http://localhost:${port}`);
     backfillAddresses();
 });

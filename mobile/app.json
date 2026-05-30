@@ -16,7 +16,17 @@
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.nigra.mobile"
+      "bundleIdentifier": "com.nigra.mobile",
+      "infoPlist": {
+        "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +34,14 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.nigra.mobile"
+      "package": "com.nigra.mobile",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,6 +50,7 @@
       "expo-router",
       "expo-web-browser",
       "expo-apple-authentication",
+      "expo-notifications",
       [
         "@react-native-google-signin/google-signin",
         {
@@ -70,6 +88,13 @@
           "cameraPermission": "Nigra necesita la cámara para tomar la foto de la mascota."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5ef16804-86c2-49a8-b31d-66607e6f3c1a"
+      }
+    },
+    "owner": "nicomartinezlatorraca"
   }
 }

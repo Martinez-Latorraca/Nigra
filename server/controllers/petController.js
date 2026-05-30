@@ -2,6 +2,51 @@ import pool from '../db.js';
 import { generateEmbedding, generateEmbeddings } from '../ai.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
+import { sendExpoPush } from '../utils/push.js';
+
+// Busca matches del nuevo reporte en el pool opuesto y avisa por push a los
+// dueños de las candidatas. Async + fire-and-forget desde reportPet: no
+// bloqueamos la respuesta al reportero. Usa el embedding ya generado (sin TTA)
+// para no sumar inferencias al flujo de reporte.
+async function notifyMatchesForReport({ newPet, vector, type, color, status, lat, lng, reporterId }) {
+    if (lat == null || lng == null) return;
+    try {
+        const oppositeStatus = status === 'lost' ? 'found' : 'lost';
+        const radioKm = 50;
+        const sql = `
+            SELECT p.id, p.name, p.description,
+                (p.embedding <=> $7) AS visual_distance,
+                u.push_token
+            FROM pets p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.type = $3
+              AND p.color = $4
+              AND p.status = $6
+              AND p.user_id <> $8
+              AND p.lat IS NOT NULL
+              AND p.lng IS NOT NULL
+              AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
+            ORDER BY visual_distance
+            LIMIT 5
+        `;
+        const params = [lat, lng, type, color, radioKm, oppositeStatus, JSON.stringify(vector), reporterId];
+        const { rows } = await pool.query(sql, params);
+        const matches = rows.filter((r) => r.visual_distance <= 0.25);
+        for (const m of matches) {
+            if (!m.push_token) continue;
+            sendExpoPush(m.push_token, {
+                title: 'Posible coincidencia en Nigra',
+                body: `Reportaron una mascota similar a la tuya${m.name ? ` (${m.name})` : ''}. ¿Es la tuya?`,
+                data: { type: 'match', pet_id: newPet.id },
+            });
+        }
+        if (matches.length > 0) {
+            console.log(`🔔 ${matches.length} match push(es) enviados para pet ${newPet.id}`);
+        }
+    } catch (error) {
+        console.error('notifyMatchesForReport error:', error.message);
+    }
+}
 
 // CONFIGURACIÓN DE CLOUDINARY
 cloudinary.config({
@@ -127,6 +172,19 @@ export const reportPet = async (req, res) => {
         ]);
 
         res.json({ success: true, pet: result.rows[0] });
+
+        // Fire-and-forget: notificamos por push a los dueños de mascotas
+        // del pool opuesto cuya foto coincide visualmente.
+        notifyMatchesForReport({
+            newPet: result.rows[0],
+            vector,
+            type,
+            color,
+            status,
+            lat: latNum,
+            lng: lngNum,
+            reporterId: user_id,
+        });
 
     } catch (error) {
         console.error('Error procesando el reporte:', error);

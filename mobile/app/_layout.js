@@ -6,18 +6,21 @@ import { StatusBar } from 'expo-status-bar';
 import { store, persistor } from '../src/store/store';
 import { SocketProvider } from '../src/lib/socket';
 import { SidebarProvider } from '../src/lib/sidebar';
+import { PushProvider } from '../src/lib/push';
 
 export default function RootLayout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <SocketProvider>
-          <SafeAreaProvider>
-            <StatusBar style="auto" />
-            <SidebarProvider>
-              <Stack screenOptions={{ headerShown: false }} />
-            </SidebarProvider>
-          </SafeAreaProvider>
+          <PushProvider>
+            <SafeAreaProvider>
+              <StatusBar style="auto" />
+              <SidebarProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+              </SidebarProvider>
+            </SafeAreaProvider>
+          </PushProvider>
         </SocketProvider>
       </PersistGate>
     </Provider>

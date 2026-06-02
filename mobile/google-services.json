@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "769083324849",
+    "project_id": "fir-5c8c9",
+    "storage_bucket": "fir-5c8c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:769083324849:android:285f805ceeebc753b7e590",
+        "android_client_info": {
+          "package_name": "com.nigra.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYVpuh4gcgaqP-TFfRv1ugYNApX_25aT8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

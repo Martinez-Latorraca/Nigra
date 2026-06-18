@@ -22,6 +22,7 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
             WHERE p.type = $3
               AND p.color = $4
               AND p.status = $6
+              AND p.resolved_at IS NULL
               AND p.user_id <> $8
               AND p.lat IS NOT NULL
               AND p.lng IS NOT NULL
@@ -223,6 +224,7 @@ export const searchPet = async (req, res) => {
                 WHERE p.type = $3
                 AND p.color = $4
                 AND p.status = $6
+                AND p.resolved_at IS NULL
                 AND p.lat IS NOT NULL
                 AND p.lng IS NOT NULL
                 AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
@@ -240,6 +242,7 @@ export const searchPet = async (req, res) => {
                 WHERE p.type = $1
                 AND p.color = $2
                 AND p.status = $3
+                AND p.resolved_at IS NULL
                 ORDER BY visual_distance
                 LIMIT 10;
             `;
@@ -268,6 +271,32 @@ export const searchPet = async (req, res) => {
     } catch (error) {
         console.error('Error buscando mascotas:', error);
         res.status(500).json({ error: 'Error procesando la búsqueda' });
+    }
+};
+
+// Marca la mascota como reunida (resolved_at = NOW) o la reabre (NULL).
+// Solo el dueño del reporte puede cambiar el estado.
+export const resolvePet = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const petId = req.params.id;
+        const { resolved } = req.body;
+        if (typeof resolved !== 'boolean') {
+            return res.status(400).json({ error: 'Falta el campo resolved (boolean)' });
+        }
+        const ownerCheck = await pool.query('SELECT user_id FROM pets WHERE id = $1', [petId]);
+        if (ownerCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Mascota no encontrada' });
+        }
+        if (Number(ownerCheck.rows[0].user_id) !== Number(userId)) {
+            return res.status(403).json({ error: 'No autorizado' });
+        }
+        const resolvedAt = resolved ? new Date() : null;
+        await pool.query('UPDATE pets SET resolved_at = $1 WHERE id = $2', [resolvedAt, petId]);
+        res.json({ success: true, resolved_at: resolvedAt });
+    } catch (error) {
+        console.error('Error en resolvePet:', error);
+        res.status(500).json({ error: 'Error procesando la solicitud' });
     }
 };
 
@@ -300,7 +329,7 @@ export const getAllPets = async (req, res) => {
 
         const { type, color, status, date } = req.query;
 
-        const conditions = [];
+        const conditions = ['resolved_at IS NULL'];
         const params = [];
         let paramIndex = 1;
 

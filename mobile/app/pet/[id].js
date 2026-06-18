@@ -74,6 +74,7 @@ export default function PetDetail() {
 
   const isLost = pet.status === 'lost';
   const isOwn = me?.id != null && Number(me.id) === Number(pet.user_id);
+  const isResolved = !!pet.resolved_at;
   const extras = parseExtraPhotos(pet.extra_photos);
 
   const handleCall = () => {
@@ -101,6 +102,26 @@ export default function PetDetail() {
         photo: pet.photo_url || '',
       },
     });
+  };
+  const handleResolve = (resolved) => {
+    const title = resolved ? 'Marcar como reunida' : 'Reabrir reporte';
+    const message = resolved
+      ? '¿Confirmás que se reunió con su familia? Se ocultará de búsquedas y del feed.'
+      : '¿Reabrir el reporte? Vuelve a aparecer en búsquedas y feed.';
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: resolved ? 'Marcar reunida' : 'Reabrir',
+        onPress: async () => {
+          try {
+            const { data } = await api.patch(`/api/pets/${pet.id}/resolve`, { resolved });
+            setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
+          } catch {
+            Alert.alert('Error', 'No se pudo actualizar el estado.');
+          }
+        },
+      },
+    ]);
   };
   const handleDelete = () => {
     Alert.alert(
@@ -148,8 +169,15 @@ export default function PetDetail() {
         )}
 
         <View style={styles.info}>
-          <View style={[styles.badge, { backgroundColor: isLost ? '#EF4444' : '#22C55E' }]}>
-            <Text style={styles.badgeText}>{isLost ? 'Perdido' : 'Encontrado'}</Text>
+          <View
+            style={[
+              styles.badge,
+              { backgroundColor: isResolved ? '#3B82F6' : isLost ? '#EF4444' : '#22C55E' },
+            ]}
+          >
+            <Text style={styles.badgeText}>
+              {isResolved ? 'Reencontrada ✓' : isLost ? 'Perdido' : 'Encontrado'}
+            </Text>
           </View>
 
           <Text style={[styles.meta, { color: '#4d7298' }]}>
@@ -196,6 +224,8 @@ export default function PetDetail() {
           <View style={styles.actions}>
             {isOwn ? (
               <Text style={[styles.ownNote, { color: c.subtitle }]}>Esta es tu publicación.</Text>
+            ) : isResolved ? (
+              <Text style={[styles.ownNote, { color: c.subtitle }]}>Esta mascota ya se reencontró con su familia.</Text>
             ) : (
               <Pressable style={[styles.primaryBtn, { backgroundColor: c.primary }]} onPress={handleChat}>
                 <Text style={[styles.primaryBtnText, { color: c.primaryText }]}>
@@ -204,7 +234,7 @@ export default function PetDetail() {
               </Pressable>
             )}
 
-            {pet.contact_info && !isOwn ? (
+            {pet.contact_info && !isOwn && !isResolved ? (
               <Pressable
                 style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
                 onPress={handleCall}
@@ -220,6 +250,18 @@ export default function PetDetail() {
               <Text style={[styles.secondaryBtnText, { color: c.text }]}>Compartir</Text>
             </Pressable>
           </View>
+
+          {isOwn && !isResolved ? (
+            <Pressable style={styles.resolveBtn} onPress={() => handleResolve(true)}>
+              <Text style={styles.resolveBtnText}>Marcar como reunida ✓</Text>
+            </Pressable>
+          ) : null}
+
+          {isOwn && isResolved ? (
+            <Pressable onPress={() => handleResolve(false)} style={styles.reopenLink}>
+              <Text style={[styles.reopenLinkText, { color: c.subtitle }]}>Reabrir reporte</Text>
+            </Pressable>
+          ) : null}
 
           {isOwn ? (
             <Pressable style={styles.deleteBtn} onPress={handleDelete}>
@@ -260,13 +302,24 @@ const styles = StyleSheet.create({
   secondaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
   secondaryBtnText: { fontWeight: '600', fontSize: 15 },
   ownNote: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
+  resolveBtn: {
+    borderRadius: 999,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#22C55E',
+    marginTop: 32,
+  },
+  resolveBtnText: { color: '#22C55E', fontWeight: '700', fontSize: 15 },
+  reopenLink: { alignItems: 'center', paddingVertical: 12, marginTop: 16 },
+  reopenLinkText: { fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   deleteBtn: {
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#EF4444',
-    marginTop: 32,
+    marginTop: 16,
   },
   deleteBtnText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
   notFound: { fontSize: 64, fontWeight: '700' },

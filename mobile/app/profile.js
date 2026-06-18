@@ -51,6 +51,7 @@ export default function Profile() {
 
   const renderItem = ({ item }) => {
     const isLost = item.status === 'lost';
+    const isResolved = !!item.resolved_at;
     return (
       <Pressable
         onPress={() => router.push(`/pet/${item.id}`)}
@@ -58,8 +59,13 @@ export default function Profile() {
       >
         <Image source={{ uri: item.photo_url }} style={styles.cardImg} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.cardStatus, { color: isLost ? '#EF4444' : '#22C55E' }]}>
-            {isLost ? 'Buscando' : 'Registrado'}
+          <Text
+            style={[
+              styles.cardStatus,
+              { color: isResolved ? '#3B82F6' : isLost ? '#EF4444' : '#22C55E' },
+            ]}
+          >
+            {isResolved ? 'Reencontrada ✓' : isLost ? 'Buscando' : 'Registrado'}
           </Text>
           <Text style={[styles.cardTitle, { color: c.title }]} numberOfLines={1}>
             {item.description && item.description !== 'Desconocido' ? item.description : 'Sin descripción'}

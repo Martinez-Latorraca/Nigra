@@ -341,6 +341,7 @@ async function backfillAddresses() {
 async function ensureSchema() {
     try {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
+        await pool.query('ALTER TABLE pets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP');
     } catch (error) {
         console.error('Error en ensureSchema:', error.message);
     }

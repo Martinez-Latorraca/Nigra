@@ -117,6 +117,27 @@ function Pet() {
     };
 
 
+    const handleResolve = async (resolved) => {
+        const ok = window.confirm(
+            resolved
+                ? '¿Confirmás que se reunió con su familia? Se ocultará de búsquedas y del feed.'
+                : '¿Reabrir el reporte? Vuelve a aparecer en búsquedas y feed.'
+        );
+        if (!ok) return;
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${pet.id}/resolve`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resolved }),
+            });
+            if (!res.ok) throw new Error('No se pudo actualizar el estado.');
+            const data = await res.json();
+            setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
     const handleShare = async () => {
         const shareData = {
             title: pet.status === 'lost' ? `🔍 ¡Ayudanos a encontrar a ${pet.name || 'una mascota'}!` : `🐾 ¡${pet.name || 'Una mascota'} fue encontrado/a!`,
@@ -190,8 +211,8 @@ function Pet() {
                     <div className="space-y-6">
                         {/* 1. Badge de Estado y Metadatos Superiores (Igual que en Card) */}
                         <div className="flex justify-between items-center">
-                            <span className={`text-[9px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-sm ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                                {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
+                            <span className={`text-[9px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-sm ${pet.resolved_at ? 'bg-blue-500 text-white' : pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                                {pet.resolved_at ? 'Reencontrada ✓' : pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
                             </span>
                             <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                                 Nigra ID #{pet.id}
@@ -241,9 +262,13 @@ function Pet() {
 
                         <div className="flex flex-col gap-4">
 
-                            {currentUser?.id !== pet.user_id && (
+                            {pet.resolved_at && currentUser?.id !== pet.user_id && (
+                                <p className="text-center text-sm text-gray-500 font-medium py-4">
+                                    Esta mascota ya se reencontró con su familia.
+                                </p>
+                            )}
 
-
+                            {!pet.resolved_at && currentUser?.id !== pet.user_id && (
                                 <button
                                     onClick={handleOpenChat}
                                     className="w-full py-5 border-2 border-transparent bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
@@ -255,7 +280,7 @@ function Pet() {
                                 </button>
 
                             )}
-                            {currentUser?.id !== pet.user_id && (
+                            {!pet.resolved_at && currentUser?.id !== pet.user_id && pet.contact_info && (
                                 <a
                                     href={`tel:${pet.contact_info}`}
                                     onClick={handleCallClick}
@@ -279,6 +304,24 @@ function Pet() {
                                 </svg>
                                 Compartir
                             </button>
+
+                            {currentUser?.id === pet.user_id && !pet.resolved_at && (
+                                <button
+                                    onClick={() => handleResolve(true)}
+                                    className="w-full py-5 border-2 border-green-500 text-green-600 hover:bg-green-50 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all active:scale-95 mt-4"
+                                >
+                                    Marcar como reunida ✓
+                                </button>
+                            )}
+
+                            {currentUser?.id === pet.user_id && pet.resolved_at && (
+                                <button
+                                    onClick={() => handleResolve(false)}
+                                    className="text-[10px] font-bold text-gray-400 hover:text-black uppercase tracking-[0.2em] underline transition-colors py-3 mt-2"
+                                >
+                                    Reabrir reporte
+                                </button>
+                            )}
 
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
                                 Sistema de Mensajería Encriptado Red Nigra

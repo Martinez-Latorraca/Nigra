@@ -223,8 +223,8 @@ function Profile() {
                                     <img src={report.photo_url} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" alt="pet" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${report.status === 'lost' ? 'text-red-500' : 'text-gray-400'}`}>
-                                        {report.status === 'lost' ? 'Buscando' : 'Registrado'}
+                                    <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${report.resolved_at ? 'text-blue-500' : report.status === 'lost' ? 'text-red-500' : 'text-gray-400'}`}>
+                                        {report.resolved_at ? 'Reencontrada ✓' : report.status === 'lost' ? 'Buscando' : 'Registrado'}
                                     </p>
                                     <h4 className="font-semibold text-gray-900 truncate tracking-tight text-lg leading-tight mb-2">
                                         {report.description || 'Sin descripción'}

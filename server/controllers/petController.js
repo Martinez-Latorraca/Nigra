@@ -8,13 +8,13 @@ import { sendExpoPush } from '../utils/push.js';
 // dueños de las candidatas. Async + fire-and-forget desde reportPet: no
 // bloqueamos la respuesta al reportero. Usa el embedding ya generado (sin TTA)
 // para no sumar inferencias al flujo de reporte.
-async function notifyMatchesForReport({ newPet, vector, type, color, status, lat, lng, reporterId }) {
+async function notifyMatchesForReport({ newPet, vector, type, color, status, lat, lng, reporterId, io }) {
     if (lat == null || lng == null) return;
     try {
         const oppositeStatus = status === 'lost' ? 'found' : 'lost';
         const radioKm = 50;
         const sql = `
-            SELECT p.id, p.name, p.description,
+            SELECT p.id, p.user_id, p.name, p.description,
                 (p.embedding <=> $7) AS visual_distance,
                 u.push_token
             FROM pets p
@@ -34,15 +34,41 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
         const { rows } = await pool.query(sql, params);
         const matches = rows.filter((r) => r.visual_distance <= 0.25);
         for (const m of matches) {
-            if (!m.push_token) continue;
-            sendExpoPush(m.push_token, {
-                title: 'Posible coincidencia en Nigra',
-                body: `Reportaron una mascota similar a la tuya${m.name ? ` (${m.name})` : ''}. ¿Es la tuya?`,
-                data: { type: 'match', pet_id: newPet.id },
-            });
+            const notifData = {
+                pet_id: newPet.id,
+                photo_url: newPet.photo_url,
+                status: newPet.status,
+                name: newPet.name,
+                description: newPet.description,
+                match_name: m.name,
+            };
+            // 1) Persistimos la notificación para que aparezca en el inbox.
+            let inserted = null;
+            try {
+                const ins = await pool.query(
+                    `INSERT INTO notifications (user_id, type, data) VALUES ($1, 'match', $2::jsonb)
+                     RETURNING id, user_id, type, data, read_at, created_at`,
+                    [m.user_id, JSON.stringify(notifData)]
+                );
+                inserted = ins.rows[0];
+            } catch (e) {
+                console.error('No se pudo persistir match notification:', e.message);
+            }
+            // 2) Avisamos en tiempo real al receptor (si está conectado).
+            if (io && inserted) {
+                io.to(`user_${m.user_id}`).emit('new_match_notification', inserted);
+            }
+            // 3) Push del sistema (lo de antes).
+            if (m.push_token) {
+                sendExpoPush(m.push_token, {
+                    title: 'Posible coincidencia en Nigra',
+                    body: `Reportaron una mascota similar a la tuya${m.name ? ` (${m.name})` : ''}. ¿Es la tuya?`,
+                    data: { type: 'match', pet_id: newPet.id },
+                });
+            }
         }
         if (matches.length > 0) {
-            console.log(`🔔 ${matches.length} match push(es) enviados para pet ${newPet.id}`);
+            console.log(`🔔 ${matches.length} match notification(s) generadas para pet ${newPet.id}`);
         }
     } catch (error) {
         console.error('notifyMatchesForReport error:', error.message);
@@ -174,7 +200,7 @@ export const reportPet = async (req, res) => {
 
         res.json({ success: true, pet: result.rows[0] });
 
-        // Fire-and-forget: notificamos por push a los dueños de mascotas
+        // Fire-and-forget: notificamos por push + inbox a los dueños de mascotas
         // del pool opuesto cuya foto coincide visualmente.
         notifyMatchesForReport({
             newPet: result.rows[0],
@@ -185,6 +211,7 @@ export const reportPet = async (req, res) => {
             lat: latNum,
             lng: lngNum,
             reporterId: user_id,
+            io: req.app.locals.io,
         });
 
     } catch (error) {

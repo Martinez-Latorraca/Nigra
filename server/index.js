@@ -17,6 +17,7 @@ import petRoutes from './routes/petRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
+import notificationsRoutes from './routes/notificationsRoutes.js';
 import { sendExpoPush } from './utils/push.js';
 import { globalLimiter } from './middlewares/rateLimiter.js';
 
@@ -47,6 +48,7 @@ app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // 4. SITEMAP DINÁMICO
 app.get('/sitemap.xml', async (req, res) => {
@@ -207,6 +209,8 @@ const io = new Server(server, {
         methods: ["GET", "POST"]
     }
 });
+// Permite que controllers (ej. reportPet) emitan via req.app.locals.io.
+app.locals.io = io;
 
 // Middleware de autenticación para Sockets
 io.use((socket, next) => {
@@ -342,6 +346,17 @@ async function ensureSchema() {
     try {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
         await pool.query('ALTER TABLE pets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP');
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                read_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query('CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC)');
     } catch (error) {
         console.error('Error en ensureSchema:', error.message);
     }

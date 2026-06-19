@@ -7,6 +7,7 @@ import { store, persistor } from '../src/store/store';
 import { SocketProvider } from '../src/lib/socket';
 import { SidebarProvider } from '../src/lib/sidebar';
 import { PushProvider } from '../src/lib/push';
+import BannerHost from '../src/components/BannerHost';
 
 export default function RootLayout() {
   return (
@@ -18,6 +19,7 @@ export default function RootLayout() {
               <StatusBar style="auto" />
               <SidebarProvider>
                 <Stack screenOptions={{ headerShown: false }} />
+                <BannerHost />
               </SidebarProvider>
             </SafeAreaProvider>
           </PushProvider>

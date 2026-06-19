@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { View, Text, Pressable, Image, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,11 +10,33 @@ import MenuButton from '../src/components/MenuButton';
 export default function Messages() {
   const c = useTheme();
   const me = useSelector((s) => s.user.data);
-  const { inbox, refreshInbox } = useSocket();
+  const { inbox, notifications, refreshInbox, refreshNotifications, markNotificationRead } = useSocket();
 
   useEffect(() => {
     refreshInbox();
-  }, [refreshInbox]);
+    refreshNotifications();
+  }, [refreshInbox, refreshNotifications]);
+
+  // Mergeamos chats y notifications en una sola lista ordenada por recency.
+  const items = useMemo(() => {
+    const chats = inbox.map((c) => ({
+      kind: 'chat',
+      key: `chat-${c.pet_id}-${c.other_user_id}`,
+      sortDate: c.created_at,
+      ...c,
+    }));
+    const matches = notifications
+      .filter((n) => n.type === 'match')
+      .map((n) => ({
+        kind: 'match',
+        key: `notif-${n.id}`,
+        sortDate: n.created_at,
+        ...n,
+      }));
+    return [...chats, ...matches].sort(
+      (a, b) => new Date(b.sortDate) - new Date(a.sortDate)
+    );
+  }, [inbox, notifications]);
 
   const openChat = (item) => {
     router.push({
@@ -27,28 +49,57 @@ export default function Messages() {
     });
   };
 
+  const openMatch = (item) => {
+    if (!item.read_at) markNotificationRead(item.id);
+    const petId = item.data?.pet_id;
+    if (petId) router.push(`/pet/${petId}`);
+  };
+
   const renderItem = ({ item }) => {
-    const unread = !item.is_read && Number(item.receiver_id) === Number(me?.id);
-    const mineLast = Number(item.sender_id) === Number(me?.id);
+    if (item.kind === 'chat') {
+      const unread = !item.is_read && Number(item.receiver_id) === Number(me?.id);
+      const mineLast = Number(item.sender_id) === Number(me?.id);
+      return (
+        <Pressable
+          onPress={() => openChat(item)}
+          style={[styles.row, { borderBottomColor: c.divider }]}
+        >
+          <Image source={{ uri: item.photo_url }} style={styles.avatar} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
+              {item.other_user_name || 'Usuario'}
+            </Text>
+            <Text
+              style={[styles.preview, { color: unread ? c.text : c.subtitle, fontWeight: unread ? '700' : '400' }]}
+              numberOfLines={1}
+            >
+              {mineLast ? 'Vos: ' : ''}
+              {item.content}
+            </Text>
+          </View>
+          {unread ? <View style={[styles.dot, { backgroundColor: '#22C55E' }]} /> : null}
+        </Pressable>
+      );
+    }
+    // kind === 'match'
+    const unread = !item.read_at;
+    const photo = item.data?.photo_url;
     return (
       <Pressable
-        onPress={() => openChat(item)}
+        onPress={() => openMatch(item)}
         style={[styles.row, { borderBottomColor: c.divider }]}
       >
-        <Image source={{ uri: item.photo_url }} style={styles.avatar} />
+        {photo ? <Image source={{ uri: photo }} style={styles.avatar} /> : <View style={styles.avatar} />}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
-            {item.other_user_name || 'Usuario'}
-          </Text>
+          <Text style={[styles.kicker, { color: '#3B82F6' }]}>POSIBLE COINCIDENCIA</Text>
           <Text
             style={[styles.preview, { color: unread ? c.text : c.subtitle, fontWeight: unread ? '700' : '400' }]}
-            numberOfLines={1}
+            numberOfLines={2}
           >
-            {mineLast ? 'Vos: ' : ''}
-            {item.content}
+            Reportaron una mascota similar{item.data?.match_name ? ` a ${item.data.match_name}` : ''}. ¿Es la tuya?
           </Text>
         </View>
-        {unread ? <View style={[styles.dot, { backgroundColor: '#22C55E' }]} /> : null}
+        {unread ? <View style={[styles.dot, { backgroundColor: '#3B82F6' }]} /> : null}
       </Pressable>
     );
   };
@@ -66,13 +117,13 @@ export default function Messages() {
       </View>
 
       <FlatList
-        data={inbox}
-        keyExtractor={(item) => `${item.pet_id}-${item.other_user_id}`}
+        data={items}
+        keyExtractor={(item) => item.key}
         renderItem={renderItem}
-        contentContainerStyle={inbox.length === 0 && styles.emptyWrap}
+        contentContainerStyle={items.length === 0 && styles.emptyWrap}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: c.subtitle }]}>
-            No tenés conversaciones todavía. Cuando contactes (o te contacten) por una mascota, aparecen acá.
+            No tenés actividad todavía. Cuando contactes (o te contacten) por una mascota, aparece acá.
           </Text>
         }
       />
@@ -96,6 +147,7 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#E5E7EB' },
   name: { fontSize: 16, fontWeight: '700' },
+  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 4 },
   preview: { fontSize: 14, marginTop: 2 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   emptyWrap: { flexGrow: 1, justifyContent: 'center' },

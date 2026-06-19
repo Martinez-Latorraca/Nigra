@@ -7,8 +7,11 @@ import api from './api';
 const SocketContext = createContext({
   socket: null,
   inbox: [],
+  notifications: [],
   unreadCount: 0,
   refreshInbox: () => {},
+  refreshNotifications: () => {},
+  markNotificationRead: () => {},
 });
 
 export const useSocket = () => useContext(SocketContext);
@@ -18,6 +21,7 @@ export function SocketProvider({ children }) {
   const userId = useSelector((s) => s.user.data?.id);
   const [socket, setSocket] = useState(null);
   const [inbox, setInbox] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const socketRef = useRef(null);
 
   const refreshInbox = useCallback(async () => {
@@ -26,9 +30,30 @@ export function SocketProvider({ children }) {
       const { data } = await api.get('/api/messages/inbox');
       setInbox(Array.isArray(data) ? data : []);
     } catch {
-      // silencioso: el inbox es secundario
+      // silencioso
     }
   }, [token]);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { data } = await api.get('/api/notifications');
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {
+      // silencioso
+    }
+  }, [token]);
+
+  const markNotificationRead = useCallback(async (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
+    );
+    try {
+      await api.patch(`/api/notifications/${id}/read`);
+    } catch {
+      // si falla, el reintento es OK en el próximo refresh
+    }
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -38,6 +63,7 @@ export function SocketProvider({ children }) {
       }
       setSocket(null);
       setInbox([]);
+      setNotifications([]);
       return;
     }
 
@@ -45,7 +71,14 @@ export function SocketProvider({ children }) {
     socketRef.current = s;
     s.on('connect', () => setSocket(s));
     s.on('new_notification', () => refreshInbox());
+    s.on('new_match_notification', (notif) => {
+      setNotifications((prev) => {
+        if (prev.some((n) => n.id === notif.id)) return prev;
+        return [notif, ...prev];
+      });
+    });
     refreshInbox();
+    refreshNotifications();
 
     return () => {
       s.off();
@@ -53,14 +86,26 @@ export function SocketProvider({ children }) {
       socketRef.current = null;
       setSocket(null);
     };
-  }, [token, refreshInbox]);
+  }, [token, refreshInbox, refreshNotifications]);
 
-  const unreadCount = inbox.filter(
+  const unreadChats = inbox.filter(
     (c) => !c.is_read && Number(c.receiver_id) === Number(userId)
   ).length;
+  const unreadNotifs = notifications.filter((n) => !n.read_at).length;
+  const unreadCount = unreadChats + unreadNotifs;
 
   return (
-    <SocketContext.Provider value={{ socket, inbox, unreadCount, refreshInbox }}>
+    <SocketContext.Provider
+      value={{
+        socket,
+        inbox,
+        notifications,
+        unreadCount,
+        refreshInbox,
+        refreshNotifications,
+        markNotificationRead,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );

@@ -20,6 +20,7 @@ import usersRoutes from './routes/usersRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
 import { sendExpoPush } from './utils/push.js';
 import { globalLimiter } from './middlewares/rateLimiter.js';
+import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -234,81 +235,12 @@ io.on('connection', (socket) => {
     socket.join(`user_${socket.userId}`);
     console.log(`👤 Usuario ${socket.userId} conectado y unido a su sala.`);
 
-    // --- CHAT DE MASCOTAS ---
-
-    // 1. Unirse a la sala específica del chat (opcional pero recomendado para escalabilidad)
-    socket.on('join_pet_chat', ({ pet_id }) => {
-        socket.join(`pet_chat_${pet_id}`);
-        console.log(`🐾 Usuario ${socket.userId} se unió al chat de la mascota: ${pet_id}`);
+    socket.on('join_pet_chat', (data) => {
+        handleJoinPetChat({ socket, data });
     });
 
-    // 2. Escuchar el envío de mensajes
-    socket.on('send_pet_message', async (data) => {
-        const { pet_id, receiver_id, content, petPhoto, senderName } = data;
-        const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
-
-        if (!pet_id || !receiver_id || !content || !content.trim()) {
-            return socket.emit('error_notification', 'Faltan datos para enviar el mensaje');
-        }
-
-        try {
-            // A. Guardar en Supabase
-            // IMPORTANTE: Verifica que los nombres de columnas coincidan con tu tabla
-            const query = `
-                INSERT INTO messages (pet_id, sender_id, receiver_id, content, created_at)
-                VALUES ($1, $2, $3, $4, NOW())
-                RETURNING *
-            `;
-            const result = await pool.query(query, [pet_id, sender_id, receiver_id, content]);
-            const newMessage = result.rows[0];
-
-            // B. Enviar al destinatario en tiempo real
-            // Enviamos a la sala privada del receptor
-            io.to(`user_${receiver_id}`).emit('receive_pet_message', newMessage);
-
-            // C. Enviar también al emisor (para que se vea en sus otras pestañas si tiene varias)
-            socket.emit('receive_pet_message', newMessage);
-
-            // D. (Extra) Notificación global para actualizar el Inbox
-            io.to(`user_${receiver_id}`).emit('new_notification', {
-                pet_id: pet_id,
-                petPhoto: petPhoto,
-                sender_id: sender_id,
-                senderName: senderName,
-                content: content
-            });
-
-            // E. Push notification al receptor (si tiene token guardado).
-            // Fire-and-forget: no bloqueamos la respuesta del socket.
-            pool.query('SELECT push_token FROM users WHERE id = $1', [receiver_id])
-                .then(({ rows }) => {
-                    const pushToken = rows[0]?.push_token;
-                    if (!pushToken) {
-                        console.log(`🔕 no push_token para user ${receiver_id} (no recibe push)`);
-                        return;
-                    }
-                    console.log(`🔔 enviando push a user ${receiver_id}`);
-                    sendExpoPush(pushToken, {
-                        title: senderName || 'Mensaje nuevo',
-                        body: content.length > 120 ? content.slice(0, 117) + '…' : content,
-                        data: {
-                            type: 'message',
-                            pet_id,
-                            otherUserId: sender_id,
-                            receiver_id, // para que el cliente valide contra el user logueado
-                            name: senderName,
-                            photo: petPhoto,
-                        },
-                    });
-                })
-                .catch((e) => console.error('push lookup error:', e.message));
-
-            console.log(`✉️ Mensaje guardado y enviado de ${sender_id} a ${receiver_id}`);
-
-        } catch (error) {
-            console.error('❌ Error en send_pet_message:', error);
-            socket.emit('error_notification', 'No se pudo enviar el mensaje');
-        }
+    socket.on('send_pet_message', (data) => {
+        handleSendPetMessage({ pool, io, sendExpoPush, socket, data });
     });
 
     socket.on('disconnect', () => {

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Nigra-mobile",
+    "name": "Mimo",
     "slug": "Nigra-mobile",
     "scheme": "nigra",
     "version": "1.0.0",
@@ -63,7 +63,7 @@
         {
           "appID": "1532502761799512",
           "clientToken": "6859201b614365cedbb83b250e91c06f",
-          "displayName": "Nigra",
+          "displayName": "Mimo",
           "scheme": "fb1532502761799512",
           "advertiserIDCollectionEnabled": false,
           "autoLogAppEventsEnabled": false,
@@ -73,20 +73,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Nigra necesita acceso a tus fotos para subir la imagen de la mascota.",
-          "cameraPermission": "Nigra necesita la cámara para tomar la foto de la mascota."
+          "photosPermission": "Mimo necesita acceso a tus fotos para subir la imagen de la mascota.",
+          "cameraPermission": "Mimo necesita la cámara para tomar la foto de la mascota."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Nigra usa tu ubicación para marcar dónde viste a la mascota."
+          "locationWhenInUsePermission": "Mimo usa tu ubicación para marcar dónde viste a la mascota."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Nigra necesita la cámara para tomar la foto de la mascota."
+          "cameraPermission": "Mimo necesita la cámara para tomar la foto de la mascota."
         }
       ]
     ],

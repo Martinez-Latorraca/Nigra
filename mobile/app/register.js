@@ -36,7 +36,7 @@ export default function Register() {
   return (
     <AuthScreen
       title="Crear cuenta"
-      subtitle="Unite a la red de búsqueda y rescate de Nigra"
+      subtitle="Unite a la comunidad de búsqueda y rescate de Mimo"
       footer={
         <Text style={[styles.footerText, { color: c.subtitle }]}>
           ¿Ya tenés cuenta?{' '}

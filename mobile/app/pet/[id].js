@@ -153,7 +153,7 @@ export default function PetDetail() {
             <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
           </Pressable>
           <View style={styles.headerRight}>
-            <Text style={[styles.idLabel, { color: c.label }]}>Nigra ID #{pet.id}</Text>
+            <Text style={[styles.idLabel, { color: c.label }]}>Mimo ID #{pet.id}</Text>
             <MenuButton />
           </View>
         </View>

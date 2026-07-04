@@ -58,7 +58,7 @@ function Login() {
             <div className="w-full max-w-[400px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100">
                 <div className="text-center mb-10">
                     <h2 className="text-4xl font-semibold tracking-tighter text-black mb-2">Bienvenido.</h2>
-                    <p className="text-gray-400 font-medium">Inicia sesión en Nigra para continuar</p>
+                    <p className="text-gray-400 font-medium">Inicia sesión en Mimo para continuar</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="flex flex-col gap-6">
@@ -104,7 +104,7 @@ function Login() {
                 <SocialAuth />
 
                 <div className="mt-10 text-center text-sm font-medium text-gray-400">
-                    ¿Nuevo en Nigra?{' '}
+                    ¿Nuevo en Mimo?{' '}
                     <Link to="/register" className="text-black font-semibold hover:underline">
                         Crea una cuenta
                     </Link>
@@ -112,7 +112,7 @@ function Login() {
             </div>
 
             <div className="mt-8 text-[10px] text-gray-300 font-bold tracking-[0.2em] uppercase">
-                Seguridad Encriptada Nigra
+                Seguridad Encriptada Mimo
             </div>
         </div>
     );

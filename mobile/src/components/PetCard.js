@@ -55,7 +55,7 @@ export default function PetCard({ pet, onPress, style }) {
               ? `${matchPercentage}% de coincidencia`
               : pet.distance_km
               ? `📍 ${parseFloat(pet.distance_km).toFixed(1)} km`
-              : `Nigra ID #${pet.id}`}
+              : `Mimo ID #${pet.id}`}
           </Text>
           <Text style={[styles.contact, { color: c.title }]}>Contactar ↗</Text>
         </View>

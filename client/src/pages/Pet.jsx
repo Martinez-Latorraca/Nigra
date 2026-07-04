@@ -92,7 +92,7 @@ function Pet() {
         setMeta('name', 'twitter:description', desc);
         setMeta('name', 'twitter:image', image);
 
-        return () => { document.title = 'Nigra - Red de Reencuentro Animal'; };
+        return () => { document.title = 'Mimo - Comunidad de Reencuentro Animal'; };
     }, [pet]);
 
     const handleOpenChat = () => {
@@ -110,7 +110,7 @@ function Pet() {
     const handleCallClick = (e) => {
         if (!token) {
             e.preventDefault();
-            alert('Inicia sesión en Nigra para acceder a los datos de contacto.');
+            alert('Inicia sesión en Mimo para acceder a los datos de contacto.');
             navigate('/login');
             return;
         }
@@ -156,7 +156,7 @@ function Pet() {
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans text-gray-400">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Sincronizando Nigra ID</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Sincronizando Mimo ID</div>
         </div>
     );
 
@@ -215,7 +215,7 @@ function Pet() {
                                 {pet.resolved_at ? 'Reencontrada ✓' : pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
                             </span>
                             <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
-                                Nigra ID #{pet.id}
+                                Mimo ID #{pet.id}
                             </span>
                         </div>
 
@@ -324,7 +324,7 @@ function Pet() {
                             )}
 
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
-                                Sistema de Mensajería Encriptado Red Nigra
+                                Sistema de Mensajería Encriptado Comunidad Mimo
                             </p>
                         </div>
                     </div>

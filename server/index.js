@@ -119,8 +119,8 @@ app.get('/pet/:id', async (req, res) => {
         });
 
         const html = indexHtml
-            .replace(/Nigra - Red de Reencuentro Animal/g, title)
-            .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Nigra conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
+            .replace(/Mimo - Comunidad de Reencuentro Animal/g, title)
+            .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Mimo conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
             .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
             .replace(/https:\/\/nigra-server\.onrender\.com\/nigra-og\.png/g, image)
             .replace(/https:\/\/nigra-server\.onrender\.com(?!\/nigra-og)/g, ogUrl)
@@ -147,7 +147,7 @@ app.get('/privacy', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Política de Privacidad — Nigra</title>
+<title>Política de Privacidad — Mimo</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; max-width: 720px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; line-height: 1.6; }
   h1 { font-size: 2rem; }
@@ -157,10 +157,10 @@ app.get('/privacy', (req, res) => {
 </style>
 </head>
 <body>
-<h1>Política de Privacidad de Nigra</h1>
+<h1>Política de Privacidad de Mimo</h1>
 <p class="muted">Última actualización: ${new Date().toISOString().split('T')[0]}</p>
 
-<p>Nigra es una aplicación que ayuda a reunir mascotas perdidas con sus familias mediante reconocimiento de imágenes y geolocalización. Esta política describe qué datos recopilamos y cómo los usamos.</p>
+<p>Mimo es una aplicación que ayuda a reunir mascotas perdidas con sus familias mediante reconocimiento de imágenes y geolocalización. Esta política describe qué datos recopilamos y cómo los usamos.</p>
 
 <h2>1. Datos que recopilamos</h2>
 <ul>

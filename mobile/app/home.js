@@ -18,7 +18,7 @@ const PROTOCOL = [
 ];
 
 const soon = (feature) =>
-  Alert.alert('Próximamente', `${feature} va a estar disponible en una próxima versión de Nigra mobile.`);
+  Alert.alert('Próximamente', `${feature} va a estar disponible en una próxima versión de Mimo mobile.`);
 
 export default function Home() {
   const { data, token } = useSelector((s) => s.user);
@@ -40,9 +40,9 @@ export default function Home() {
         {/* Hero */}
         <View style={styles.hero}>
           <Text style={[styles.kicker, { color: c.subtitle }]}>RED DE VIGILANCIA ANIMAL</Text>
-          <Text style={[styles.heroTitle, { color: c.title }]}>Nigra.</Text>
+          <Text style={[styles.heroTitle, { color: c.title }]}>Mimo.</Text>
           <Text style={[styles.heroSub, { color: c.subtitle }]}>
-            La red civil que usa visión computacional para conectar mascotas perdidas con sus familias.
+            La comunidad civil que usa visión computacional para conectar mascotas perdidas con sus familias.
           </Text>
         </View>
 
@@ -91,7 +91,7 @@ export default function Home() {
         </ScrollView>
 
         {/* Protocol */}
-        <Text style={[styles.protocolTitle, { color: c.label }]}>NIGRA PROTOCOL</Text>
+        <Text style={[styles.protocolTitle, { color: c.label }]}>MIMO PROTOCOL</Text>
         {PROTOCOL.map((p) => (
           <View key={p.n} style={styles.protocolRow}>
             <Text style={[styles.protocolNum, { color: c.title }]}>{p.n}</Text>

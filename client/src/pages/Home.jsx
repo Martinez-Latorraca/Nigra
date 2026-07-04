@@ -22,12 +22,12 @@ function Home() {
             {/* --- HERO SECTION --- */}
             <div className="flex flex-col items-center justify-center pt-32 pb-20 px-6 text-center">
                 <div className="animate-fade-in">
-                    <span className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.3em] mb-4 block">Red de Vigilancia Animal</span>
+                    <span className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.3em] mb-4 block">Comunidad de Vigilancia Animal</span>
                     <h1 className="text-7xl md:text-9xl font-semibold tracking-tighter text-black mb-8">
-                        Nigra.
+                        Mimo.
                     </h1>
                     <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto leading-tight mb-12">
-                        La primera red civil que utiliza visión computacional para conectar mascotas perdidas con sus familias.
+                        La primera comunidad civil que utiliza visión computacional para conectar mascotas perdidas con sus familias.
                     </p>
                 </div>
             </div>
@@ -99,7 +99,7 @@ function Home() {
 
             {/* --- FOOTER / DESCRIPCIÓN --- */}
             <div className="max-w-4xl mx-auto px-6 text-center border-t border-gray-200 pt-20">
-                <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-300 mb-8">Nigra Protocol</h3>
+                <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-300 mb-8">Mimo Protocol</h3>
                 <div className="grid md:grid-cols-3 gap-12 text-left">
                     <div>
                         <h4 className="font-bold text-black mb-2 uppercase text-[10px] tracking-widest">01. Registro</h4>

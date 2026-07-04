@@ -91,7 +91,7 @@ function ChatWidget({ socket }) {
                 <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-sm bg-gray-50 mb-3">
                     <img src={activePet.petPhoto} className="w-full h-full object-cover" alt="Pet" />
                 </div>
-                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1">Red Nigra</p>
+                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1">Comunidad Mimo</p>
                 <p className="text-sm font-semibold text-gray-900 leading-tight">Hablando con {activePet.otherUserName}</p>
             </div>
 

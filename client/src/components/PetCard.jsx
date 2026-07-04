@@ -59,7 +59,7 @@ function PetCard({ pet }) {
                             </span>
                         ) : (
                             <span className="text-[10px] font-bold text-gray-200 uppercase tracking-tight">
-                                Nigra ID
+                                Mimo ID
                             </span>
                         )}
                     </div>

@@ -91,7 +91,7 @@ function Profile() {
 
     if (loading) return (
         <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">Sincronizando Nigra ID</div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">Sincronizando Mimo ID</div>
         </div>
     );
 
@@ -205,7 +205,7 @@ function Profile() {
                         <p className="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-2 text-center">Estado del sistema</p>
                         <div className="flex items-center justify-center gap-2">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm font-semibold text-gray-900 tracking-tight">Red Nigra Activa</span>
+                            <span className="text-sm font-semibold text-gray-900 tracking-tight">Comunidad Mimo Activa</span>
                         </div>
                     </div>
                 </div>
@@ -257,7 +257,7 @@ function Profile() {
 
             {/* Footer sutil */}
             <div className="mt-20 text-[10px] text-gray-300 font-bold tracking-[0.3em] uppercase">
-                Nigra Identity Service
+                Mimo Identity Service
             </div>
         </div>
     );

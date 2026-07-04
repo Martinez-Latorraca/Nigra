@@ -196,7 +196,7 @@ function Find() {
                         </div>
                         <h2 className="text-4xl font-semibold tracking-tighter text-black mb-4">Reporte enviado.</h2>
                         <p className="text-gray-400 font-medium mb-12 max-w-xs leading-relaxed">
-                            Tu reporte ya está activo en Nigra. Te avisaremos si aparece una coincidencia.
+                            Tu reporte ya está activo en Mimo. Te avisaremos si aparece una coincidencia.
                         </p>
                         <span className="text-xs font-bold text-gray-300 uppercase tracking-widest animate-pulse">
                             Redirigiendo...

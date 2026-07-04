@@ -71,10 +71,10 @@ export default function Login() {
   return (
     <AuthScreen
       title="Bienvenido"
-      subtitle="Inicia sesión en Nigra"
+      subtitle="Inicia sesión en Mimo"
       footer={
         <Text style={[styles.footerText, { color: c.subtitle }]}>
-          ¿Nuevo en Nigra?{' '}
+          ¿Nuevo en Mimo?{' '}
           <Link href="/register" style={[styles.footerLink, { color: c.title }]}>
             Crear cuenta
           </Link>

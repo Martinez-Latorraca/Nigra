@@ -7,8 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LogoDark from '../../assets/nigra.svg';
-import LogoLight from '../../assets/nigra-white.svg';
+import Logo from '../../assets/Mimo-logo-paw.svg';
 import { useTheme } from '../lib/theme';
 
 // Re-exported so existing auth screens can keep importing from here.
@@ -16,7 +15,6 @@ export { useTheme as useAuthColors } from '../lib/theme';
 
 export default function AuthScreen({ title, subtitle, footer, children }) {
   const c = useTheme();
-  const Logo = c.isDark ? LogoLight : LogoDark;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>

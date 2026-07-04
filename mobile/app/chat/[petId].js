@@ -133,7 +133,7 @@ export default function Chat() {
           <Text style={[styles.title, { color: c.title }]} numberOfLines={1}>
             {name || 'Conversación'}
           </Text>
-          <Text style={[styles.subtitle, { color: c.subtitle }]}>Red Nigra</Text>
+          <Text style={[styles.subtitle, { color: c.subtitle }]}>Comunidad Mimo</Text>
         </View>
       </View>
 

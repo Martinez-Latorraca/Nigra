@@ -61,7 +61,7 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
             // 3) Push del sistema (lo de antes).
             if (m.push_token) {
                 sendExpoPush(m.push_token, {
-                    title: 'Posible coincidencia en Nigra',
+                    title: 'Posible coincidencia en Mimo',
                     body: `Reportaron una mascota similar a la tuya${m.name ? ` (${m.name})` : ''}. ¿Es la tuya?`,
                     data: {
                         type: 'match',

@@ -14,7 +14,7 @@ function Navbar() {
     return (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 md:px-8 flex justify-between items-center transition-all">
             <Link to="/" className="text-xl font-semibold tracking-tight text-gray-900 hover:opacity-70 transition-opacity">
-                Nigra.
+                Mimo.
             </Link>
 
             <div className="flex gap-4 items-center">

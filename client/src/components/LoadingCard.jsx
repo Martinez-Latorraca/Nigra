@@ -16,7 +16,7 @@ export default function AILoadingScreen({
         "Iniciando motor de IA...",
         "Analizando rasgos faciales de la mascota...",
         "Extrayendo vectores biométricos...",
-        "Buscando coincidencias en la Red Nigra...",
+        "Buscando coincidencias en la Comunidad Mimo...",
         "Procesando imágenes en alta resolución...",
         "Generando reporte inteligente..."
     ];

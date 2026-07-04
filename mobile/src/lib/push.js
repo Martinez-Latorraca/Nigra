@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { useSelector } from 'react-redux';
 import { router } from 'expo-router';
 import api from './api';
+import { store } from '../store/store';
 
 // Foreground: mostrar el banner + reproducir sonido si la app está abierta.
 Notifications.setNotificationHandler({
@@ -55,6 +56,30 @@ async function registerForPush() {
 
 function handleNotificationResponse(response) {
   const data = response?.notification?.request?.content?.data || {};
+  const user = store.getState().user.data;
+  const currentUserId = user?.id;
+
+  // Si el push trae receiver_id (versión nueva del server), validamos que el
+  // usuario logueado ahora sea el destinatario original. Bloqueamos si no.
+  if (data.receiver_id != null) {
+    if (currentUserId == null) {
+      Alert.alert(
+        'Iniciá sesión',
+        'Necesitás iniciar sesión con la cuenta que recibió esta notificación para abrirla.'
+      );
+      return;
+    }
+    if (Number(data.receiver_id) !== Number(currentUserId)) {
+      Alert.alert(
+        'Notificación de otra cuenta',
+        `Esta notificación no era para tu cuenta actual${
+          user?.name ? ` (${user.name})` : ''
+        }. Iniciá sesión con la cuenta correcta para verla.`
+      );
+      return;
+    }
+  }
+
   if (data.type === 'message' && data.pet_id && data.otherUserId) {
     router.push({
       pathname: `/chat/${data.pet_id}`,

@@ -63,7 +63,11 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
                 sendExpoPush(m.push_token, {
                     title: 'Posible coincidencia en Nigra',
                     body: `Reportaron una mascota similar a la tuya${m.name ? ` (${m.name})` : ''}. ¿Es la tuya?`,
-                    data: { type: 'match', pet_id: newPet.id },
+                    data: {
+                        type: 'match',
+                        pet_id: newPet.id,
+                        receiver_id: m.user_id, // para que el cliente valide
+                    },
                 });
             }
         }

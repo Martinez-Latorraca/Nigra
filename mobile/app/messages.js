@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { View, Text, Pressable, Image, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { useTheme } from '../src/lib/theme';
 import { useSocket } from '../src/lib/socket';
@@ -12,10 +12,14 @@ export default function Messages() {
   const me = useSelector((s) => s.user.data);
   const { inbox, notifications, refreshInbox, refreshNotifications, markNotificationRead } = useSocket();
 
-  useEffect(() => {
-    refreshInbox();
-    refreshNotifications();
-  }, [refreshInbox, refreshNotifications]);
+  // Refresca cada vez que la pantalla toma foco (no solo en mount), así al
+  // volver desde el chat la lista muestra el último mensaje sin quedar stale.
+  useFocusEffect(
+    useCallback(() => {
+      refreshInbox();
+      refreshNotifications();
+    }, [refreshInbox, refreshNotifications])
+  );
 
   // Mergeamos chats y notifications en una sola lista ordenada por recency.
   const items = useMemo(() => {

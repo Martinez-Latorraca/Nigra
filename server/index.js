@@ -295,6 +295,7 @@ io.on('connection', (socket) => {
                             type: 'message',
                             pet_id,
                             otherUserId: sender_id,
+                            receiver_id, // para que el cliente valide contra el user logueado
                             name: senderName,
                             photo: petPhoto,
                         },

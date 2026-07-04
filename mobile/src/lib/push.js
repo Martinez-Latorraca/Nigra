@@ -54,45 +54,55 @@ async function registerForPush() {
   }
 }
 
-function handleNotificationResponse(response) {
-  const data = response?.notification?.request?.content?.data || {};
-  const user = store.getState().user.data;
-  const currentUserId = user?.id;
+// Fábrica testable del handler que se ejecuta cuando el user toca un push.
+// Valida receiver_id contra el user logueado para bloquear notifs de otras
+// cuentas (bug detectado antes: al re-loguearse con otra cuenta en el mismo
+// device, tocar un push viejo enlazaba el chat con la cuenta equivocada).
+export function createNotificationResponseHandler({ getUser, alert, navigate } = {}) {
+  return function handleNotificationResponse(response) {
+    const data = response?.notification?.request?.content?.data || {};
+    const user = getUser();
+    const currentUserId = user?.id;
 
-  // Si el push trae receiver_id (versión nueva del server), validamos que el
-  // usuario logueado ahora sea el destinatario original. Bloqueamos si no.
-  if (data.receiver_id != null) {
-    if (currentUserId == null) {
-      Alert.alert(
-        'Iniciá sesión',
-        'Necesitás iniciar sesión con la cuenta que recibió esta notificación para abrirla.'
-      );
-      return;
+    if (data.receiver_id != null) {
+      if (currentUserId == null) {
+        alert(
+          'Iniciá sesión',
+          'Necesitás iniciar sesión con la cuenta que recibió esta notificación para abrirla.'
+        );
+        return;
+      }
+      if (Number(data.receiver_id) !== Number(currentUserId)) {
+        alert(
+          'Notificación de otra cuenta',
+          `Esta notificación no era para tu cuenta actual${
+            user?.name ? ` (${user.name})` : ''
+          }. Iniciá sesión con la cuenta correcta para verla.`
+        );
+        return;
+      }
     }
-    if (Number(data.receiver_id) !== Number(currentUserId)) {
-      Alert.alert(
-        'Notificación de otra cuenta',
-        `Esta notificación no era para tu cuenta actual${
-          user?.name ? ` (${user.name})` : ''
-        }. Iniciá sesión con la cuenta correcta para verla.`
-      );
-      return;
-    }
-  }
 
-  if (data.type === 'message' && data.pet_id && data.otherUserId) {
-    router.push({
-      pathname: `/chat/${data.pet_id}`,
-      params: {
-        otherUserId: String(data.otherUserId),
-        name: data.name || '',
-        photo: data.photo || '',
-      },
-    });
-  } else if (data.type === 'match' && data.pet_id) {
-    router.push(`/pet/${data.pet_id}`);
-  }
+    if (data.type === 'message' && data.pet_id && data.otherUserId) {
+      navigate({
+        pathname: `/chat/${data.pet_id}`,
+        params: {
+          otherUserId: String(data.otherUserId),
+          name: data.name || '',
+          photo: data.photo || '',
+        },
+      });
+    } else if (data.type === 'match' && data.pet_id) {
+      navigate(`/pet/${data.pet_id}`);
+    }
+  };
 }
+
+const handleNotificationResponse = createNotificationResponseHandler({
+  getUser: () => store.getState().user.data,
+  alert: Alert.alert,
+  navigate: (arg) => router.push(arg),
+});
 
 export function PushProvider({ children }) {
   const token = useSelector((s) => s.user.token);

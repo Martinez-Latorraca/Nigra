@@ -13,18 +13,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/oauth/'];
-let logoutInFlight = false;
+export const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/oauth/'];
 
-function isTokenError(status, message) {
+export function isTokenError(status, message) {
   if (status === 401) return true;
   if (status !== 403) return false;
   return /token|expir/i.test(message || '');
 }
 
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+// Estado del lockout que evita alerts apilados si varias requests fallan
+// en paralelo con el mismo token expirado. Fábrica con clock inyectable
+// para poder testear sin timers reales.
+export function createAuthErrorHandler({ dispatch, alert, navigate, setTimeoutFn = setTimeout } = {}) {
+  let logoutInFlight = false;
+  return function handleAuthError(error) {
     const status = error?.response?.status;
     const url = error?.config?.url || '';
     const message = error?.response?.data?.error || '';
@@ -32,14 +34,22 @@ api.interceptors.response.use(
 
     if (!isAuthCall && isTokenError(status, message) && !logoutInFlight) {
       logoutInFlight = true;
-      store.dispatch(clearCredentials());
-      Alert.alert('Sesión expirada', 'Iniciá sesión de nuevo para continuar.');
-      router.replace('/login');
-      setTimeout(() => { logoutInFlight = false; }, 1000);
+      dispatch(clearCredentials());
+      alert('Sesión expirada', 'Iniciá sesión de nuevo para continuar.');
+      navigate('/login');
+      setTimeoutFn(() => { logoutInFlight = false; }, 1000);
     }
 
     return Promise.reject(error);
-  }
-);
+  };
+}
+
+const handleAuthError = createAuthErrorHandler({
+  dispatch: store.dispatch,
+  alert: Alert.alert,
+  navigate: (path) => router.replace(path),
+});
+
+api.interceptors.response.use((response) => response, handleAuthError);
 
 export default api;

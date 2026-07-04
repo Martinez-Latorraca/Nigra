@@ -1,5 +1,6 @@
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
+import MimoLogo from './MimoLogo';
 
 function Navbar() {
     const token = useSelector(state => state.user?.token);
@@ -13,8 +14,14 @@ function Navbar() {
 
     return (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 md:px-8 flex justify-between items-center transition-all">
-            <Link to="/" className="text-xl font-semibold tracking-tight text-gray-900 hover:opacity-70 transition-opacity">
-                Mimo.
+            <Link to="/" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                <MimoLogo size={30} color="#FF5C6C" />
+                <span
+                    className="text-2xl leading-none"
+                    style={{ fontFamily: "'Nunito', system-ui, sans-serif", fontWeight: 900, color: '#1A1A2E', letterSpacing: '-0.03em' }}
+                >
+                    mimo
+                </span>
             </Link>
 
             <div className="flex gap-4 items-center">

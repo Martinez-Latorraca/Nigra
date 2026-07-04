@@ -39,8 +39,8 @@ export default function Home() {
 
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={[styles.kicker, { color: c.subtitle }]}>RED DE VIGILANCIA ANIMAL</Text>
-          <Text style={[styles.heroTitle, { color: c.title }]}>Mimo.</Text>
+          <Text style={[styles.kicker, { color: '#FF5C6C' }]}>COMUNIDAD DE VIGILANCIA ANIMAL</Text>
+          <Text style={[styles.heroTitle, { color: c.title }]}>mimo</Text>
           <Text style={[styles.heroSub, { color: c.subtitle }]}>
             La comunidad civil que usa visión computacional para conectar mascotas perdidas con sus familias.
           </Text>

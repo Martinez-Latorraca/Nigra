@@ -22,9 +22,12 @@ function Home() {
             {/* --- HERO SECTION --- */}
             <div className="flex flex-col items-center justify-center pt-32 pb-20 px-6 text-center">
                 <div className="animate-fade-in">
-                    <span className="text-[10px] font-bold text-pet-primary uppercase tracking-[0.3em] mb-4 block">Comunidad de Vigilancia Animal</span>
-                    <h1 className="text-7xl md:text-9xl font-semibold tracking-tighter text-black mb-8">
-                        Mimo.
+                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] mb-4 block" style={{ color: '#FF5C6C' }}>Comunidad de Vigilancia Animal</span>
+                    <h1
+                        className="text-7xl md:text-9xl mb-8 leading-none"
+                        style={{ fontFamily: "'Nunito', system-ui, sans-serif", fontWeight: 900, color: '#1A1A2E', letterSpacing: '-0.03em' }}
+                    >
+                        mimo
                     </h1>
                     <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto leading-tight mb-12">
                         La primera comunidad civil que utiliza visión computacional para conectar mascotas perdidas con sus familias.

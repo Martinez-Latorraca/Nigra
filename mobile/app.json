@@ -31,7 +31,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF5C6C"
+        "backgroundColor": "#00000000"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.nigra.mobile",

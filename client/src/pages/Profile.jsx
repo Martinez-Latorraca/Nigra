@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 // 👇 1. Importamos los hooks de Redux y nuestra acción
 import { useSelector, useDispatch } from 'react-redux';
 import { clearCredentials } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
+import { markNotificationRead } from '../store/notificationsSlice';
 
 function Profile() {
     const navigate = useNavigate();
@@ -18,13 +19,38 @@ function Profile() {
     const user = useSelector(state => state.user.data);
 
     const messages = useSelector(state => state.inbox.messages);
+    const notifList = useSelector(state => state.notifications.list);
     const dispatch = useDispatch();
 
-    const unreadCount = messages ? messages.filter(msg => {
+    // Mergeamos chats y matches en una sola lista ordenada por recency,
+    // igual que el mobile inbox.
+    const items = useMemo(() => {
+        const chats = (messages || []).map(m => ({
+            kind: 'chat',
+            key: `chat-${m.pet_id}-${m.other_user_id}`,
+            sortDate: m.created_at,
+            ...m,
+        }));
+        const matches = (notifList || [])
+            .filter(n => n.type === 'match')
+            .map(n => ({
+                kind: 'match',
+                key: `match-${n.id}`,
+                sortDate: n.created_at,
+                ...n,
+            }));
+        return [...chats, ...matches].sort(
+            (a, b) => new Date(b.sortDate) - new Date(a.sortDate)
+        );
+    }, [messages, notifList]);
+
+    const unreadChatCount = messages ? messages.filter(msg => {
         const isUnread = msg.is_read === false || msg.is_read === 'false' || msg.is_read === 0;
         const isForMe = Number(msg.receiver_id) === Number(user?.id);
         return isUnread && isForMe;
     }).length : 0;
+    const unreadMatchCount = (notifList || []).filter(n => n.type === 'match' && !n.read_at).length;
+    const unreadCount = unreadChatCount + unreadMatchCount;
 
 
     const fetchReports = async (pageNum = 1, append = false) => {
@@ -72,6 +98,12 @@ function Profile() {
             otherUserId: msg.other_user_id,
             otherUserName: msg.other_user_name
         }));
+    };
+
+    const handleOpenMatch = (item) => {
+        if (!item.read_at) dispatch(markNotificationRead(item.id));
+        const petId = item.data?.pet_id;
+        if (petId) navigate(`/pet/${petId}`);
     };
 
     const handleDeleteReport = async (id) => {
@@ -125,60 +157,99 @@ function Profile() {
                         <h2 className="text-2xl font-semibold tracking-tight text-black">Bandeja de entrada.</h2>
                         {/* 👇 5. Usamos el unreadCount de Redux para la etiqueta */}
                         <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest transition-all ${unreadCount > 0 ? 'bg-green-500 text-white animate-pulse' : 'bg-pet-primary text-white'}`}>
-                            {unreadCount > 0 ? `${unreadCount} Nuevos mensajes` : `${messages.length} Chats activos`}
+                            {unreadCount > 0 ? `${unreadCount} Nuevos` : `${items.length} Activos`}
                         </span>
                     </div>
 
                     <div className="space-y-4">
-                        {messages.length === 0 ? (
+                        {items.length === 0 ? (
                             <div className="py-20 text-center">
                                 <p className="text-gray-300 font-medium">No hay actividad reciente.</p>
                             </div>
                         ) : (
-                            messages.map(msg => {
-                                const displayUserName = msg.other_user_name;
+                            items.map(item => {
+                                if (item.kind === 'chat') {
+                                    const isUnread = item.is_read === false || item.is_read === 'false' || item.is_read === 0;
+                                    const isForMe = Number(item.receiver_id) === Number(user?.id);
+                                    const hasUnread = isUnread && isForMe;
 
-                                const isUnread = msg.is_read === false || msg.is_read === 'false' || msg.is_read === 0;
-                                const isForMe = Number(msg.receiver_id) === Number(user?.id);
-                                const hasUnread = isUnread && isForMe;
+                                    return (
+                                        <div
+                                            key={item.key}
+                                            onClick={() => handleOpenChat(item)}
+                                            className="group flex gap-6 items-start p-6 hover:bg-gray-50 rounded-[32px] transition-all border border-transparent hover:border-gray-100 cursor-pointer relative"
+                                        >
+                                            <div className={`w-14 h-14 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden shadow-sm transition-transform duration-500 group-hover:scale-105 ${hasUnread ? 'ring-2 ring-green-500/50' : ''}`}>
+                                                <img src={item.photo_url} className="w-full h-full object-cover" alt="pet" />
+                                            </div>
 
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap mb-1">
+                                                    <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-between items-start gap-1 ' >
+                                                        <span className={`text-[9px] font-bold uppercase tracking-widest ${hasUnread ? 'text-green-600' : 'text-gray-400'}`}>
+                                                            {hasUnread ? 'Nuevo mensaje' : (item.other_user_name || 'Consulta')}
+                                                        </span>
+                                                        <p className={`text-sm leading-relaxed truncate pr-8 ${hasUnread ? 'text-black font-semibold' : 'text-gray-500 font-medium'}`}>
+                                                            {item.sender_id === user.id ? <span className="text-gray-400 font-normal">Tú: </span> : <span className="text-gray-400 font-normal">El/Ella: </span>}
+                                                            {item.content}
+                                                        </p>
+                                                    </div>
+                                                    <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-around items-end text-right gap-1 '>
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                                            {new Date(item.created_at).toLocaleDateString()}
+                                                        </span>
+                                                        {hasUnread && (
+                                                            <div className="z-10">
+                                                                <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
 
+                                            <div className="self-center text-gray-200 group-hover:text-black transition-colors">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // kind === 'match'
+                                const hasUnread = !item.read_at;
+                                const photo = item.data?.photo_url;
                                 return (
                                     <div
-                                        key={`${msg.pet_id}-${msg.other_user_id}`}
-                                        onClick={() => handleOpenChat(msg)}
+                                        key={item.key}
+                                        onClick={() => handleOpenMatch(item)}
                                         className="group flex gap-6 items-start p-6 hover:bg-gray-50 rounded-[32px] transition-all border border-transparent hover:border-gray-100 cursor-pointer relative"
                                     >
-                                        {/* Foto de la Mascota */}
-                                        <div className={`w-14 h-14 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden shadow-sm transition-transform duration-500 group-hover:scale-105 ${hasUnread ? 'ring-2 ring-green-500/50' : ''}`}>
-                                            <img src={msg.photo_url} className="w-full h-full object-cover" alt="pet" />
+                                        <div className={`w-14 h-14 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden shadow-sm transition-transform duration-500 group-hover:scale-105 ${hasUnread ? 'ring-2 ring-blue-500/50' : ''}`}>
+                                            {photo ? <img src={photo} className="w-full h-full object-cover" alt="posible match" /> : null}
                                         </div>
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-wrap mb-1">
-                                                <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-between items-start gap-1 ' >
-                                                    <span className={`text-[9px] font-bold uppercase tracking-widest ${hasUnread ? 'text-green-600' : 'text-gray-400'}`}>
-                                                        {hasUnread ? 'Nuevo mensaje' : (displayUserName || 'Consulta')}
+                                                <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-between items-start gap-1 '>
+                                                    <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">
+                                                        Posible coincidencia
                                                     </span>
                                                     <p className={`text-sm leading-relaxed truncate pr-8 ${hasUnread ? 'text-black font-semibold' : 'text-gray-500 font-medium'}`}>
-                                                        {msg.sender_id === user.id ? <span className="text-gray-400 font-normal">Tú: </span> : <span className="text-gray-400 font-normal">El/Ella: </span>}
-                                                        {msg.content}
+                                                        Reportaron una mascota similar{item.data?.match_name ? ` a ${item.data.match_name}` : ''}. ¿Es la tuya?
                                                     </p>
                                                 </div>
                                                 <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-around items-end text-right gap-1 '>
                                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                                        {new Date(msg.created_at).toLocaleDateString()}
+                                                        {new Date(item.created_at).toLocaleDateString()}
                                                     </span>
                                                     {hasUnread && (
                                                         <div className="z-10">
-                                                            <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"></div>
+                                                            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.6)] animate-pulse"></div>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Flecha sutil al final */}
                                         <div className="self-center text-gray-200 group-hover:text-black transition-colors">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                                         </div>

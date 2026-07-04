@@ -11,6 +11,7 @@ import io from 'socket.io-client';
 import NotificationToast from './components/NotificationToast';
 import { useEffect, useRef, useState } from 'react';
 import { fetchInbox } from './store/inboxSlice';
+import { fetchNotifications, prependNotification } from './store/notificationsSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
 import AdminPanel from './pages/AdminPanel';
@@ -68,10 +69,11 @@ function App() {
     };
   }, [token]);
 
-  // Inbox: se carga cuando tenemos usuario Y socket conectado
+  // Inbox + notifications: se cargan cuando tenemos usuario logueado
   useEffect(() => {
     if (token && user) {
       dispatch(fetchInbox());
+      dispatch(fetchNotifications());
     }
   }, [token, user, dispatch]);
 
@@ -83,10 +85,16 @@ function App() {
       dispatch(fetchInbox());
     };
 
+    const handleNewMatch = (notif) => {
+      dispatch(prependNotification(notif));
+    };
+
     socket.on('new_notification', handleNewNotification);
+    socket.on('new_match_notification', handleNewMatch);
 
     return () => {
       socket.off('new_notification', handleNewNotification);
+      socket.off('new_match_notification', handleNewMatch);
     };
   }, [socket, user?.id, dispatch]);
 

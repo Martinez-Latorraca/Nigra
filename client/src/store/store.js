@@ -13,18 +13,20 @@ import storage from "redux-persist/lib/storage";
 import inboxReducer from "./inboxSlice";
 import userReducer from "./userSlice";
 import chatReducer from "./chatSlice";
+import notificationsReducer from "./notificationsSlice";
 
 const rootReducer = combineReducers({
     inbox: inboxReducer,
     user: userReducer,
     chats: chatReducer,
+    notifications: notificationsReducer,
 });
 
 const persistConfig = {
     key: "root",
     version: 1,
     storage,
-    blacklist: ["chats", "inbox"] // No persistimos chats ni inbox para evitar datos obsoletos,
+    blacklist: ["chats", "inbox", "notifications"] // No persistimos chats, inbox ni notifications para evitar datos obsoletos,
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

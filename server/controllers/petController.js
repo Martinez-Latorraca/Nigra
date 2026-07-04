@@ -306,16 +306,19 @@ export const searchPet = async (req, res) => {
 };
 
 // Marca la mascota como reunida (resolved_at = NOW) o la reabre (NULL).
-// Solo el dueño del reporte puede cambiar el estado.
+// Solo el dueño del reporte puede cambiar el estado. Si el request incluye
+// resolved_with_user_id, se guarda quién fue el finder del reencuentro —
+// esto habilita mostrar el banner de donación en ese chat y un aviso de
+// "caso cerrado" en los otros chats de la misma mascota.
 export const resolvePet = async (req, res) => {
     try {
         const userId = req.user.id;
         const petId = req.params.id;
-        const { resolved } = req.body;
+        const { resolved, resolved_with_user_id } = req.body;
         if (typeof resolved !== 'boolean') {
             return res.status(400).json({ error: 'Falta el campo resolved (boolean)' });
         }
-        const ownerCheck = await pool.query('SELECT user_id FROM pets WHERE id = $1', [petId]);
+        const ownerCheck = await pool.query('SELECT user_id, name FROM pets WHERE id = $1', [petId]);
         if (ownerCheck.rows.length === 0) {
             return res.status(404).json({ error: 'Mascota no encontrada' });
         }
@@ -323,8 +326,39 @@ export const resolvePet = async (req, res) => {
             return res.status(403).json({ error: 'No autorizado' });
         }
         const resolvedAt = resolved ? new Date() : null;
-        await pool.query('UPDATE pets SET resolved_at = $1 WHERE id = $2', [resolvedAt, petId]);
-        res.json({ success: true, resolved_at: resolvedAt });
+        // Solo aceptamos resolved_with_user_id cuando estamos cerrando (no al reabrir).
+        const resolvedWith = resolved && resolved_with_user_id != null
+            ? Number(resolved_with_user_id)
+            : null;
+        await pool.query(
+            'UPDATE pets SET resolved_at = $1, resolved_with_user_id = $2 WHERE id = $3',
+            [resolvedAt, resolvedWith, petId]
+        );
+
+        // Aviso en tiempo real a ambas partes del reencuentro.
+        const io = req.app.locals.io;
+        if (io && resolved) {
+            const payload = {
+                pet_id: Number(petId),
+                pet_name: ownerCheck.rows[0].name,
+                resolved_at: resolvedAt,
+                resolved_with_user_id: resolvedWith,
+                owner_id: userId,
+            };
+            io.to(`user_${userId}`).emit('pet_resolved', payload);
+            if (resolvedWith) {
+                io.to(`user_${resolvedWith}`).emit('pet_resolved', payload);
+            }
+        } else if (io && !resolved) {
+            // Reabrir → avisamos también para que el frontend saque el banner.
+            io.to(`user_${userId}`).emit('pet_reopened', { pet_id: Number(petId) });
+        }
+
+        res.json({
+            success: true,
+            resolved_at: resolvedAt,
+            resolved_with_user_id: resolvedWith,
+        });
     } catch (error) {
         console.error('Error en resolvePet:', error);
         res.status(500).json({ error: 'Error procesando la solicitud' });

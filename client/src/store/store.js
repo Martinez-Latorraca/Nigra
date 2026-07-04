@@ -14,19 +14,21 @@ import inboxReducer from "./inboxSlice";
 import userReducer from "./userSlice";
 import chatReducer from "./chatSlice";
 import notificationsReducer from "./notificationsSlice";
+import donationReducer from "./donationSlice";
 
 const rootReducer = combineReducers({
     inbox: inboxReducer,
     user: userReducer,
     chats: chatReducer,
     notifications: notificationsReducer,
+    donation: donationReducer,
 });
 
 const persistConfig = {
     key: "root",
     version: 1,
     storage,
-    blacklist: ["chats", "inbox", "notifications"] // No persistimos chats, inbox ni notifications para evitar datos obsoletos,
+    blacklist: ["chats", "inbox", "notifications"] // donation SÍ persistimos (queremos que el dismiss sobreviva a recargas)
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

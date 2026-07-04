@@ -2,100 +2,166 @@ import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { closeChat, fetchChatHistory, markChatAsRead, receiveMessage } from '../store/chatSlice';
 import { markAsReadLocal } from '../store/inboxSlice';
+import { resetDismissal, selectDonationVisible } from '../store/donationSlice';
+import DonationBanner from './DonationBanner';
 
 function ChatWidget({ socket }) {
     const [text, setText] = useState('');
+    const [pet, setPet] = useState(null);
+    const [resolving, setResolving] = useState(false);
 
-
-    // 👇 Traemos todo desde Redux
     const { isOpen, activePet, activeChat: messages, loading, chatPage, chatTotalPages } = useSelector(state => state.chats);
     const user = useSelector((state) => state.user?.data);
     const token = useSelector((state) => state.user?.token);
-
+    const donationVisible = useSelector(selectDonationVisible(activePet?.pet_id));
 
     const scrollRef = useRef(null);
     const dispatch = useDispatch();
 
-    // Auto-scroll al último mensaje
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: "smooth" });
-        }
+        if (scrollRef.current) scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    // 1. Escuchar evento de apertura (Simplificado)
+    // Al abrir el chat: historial + join room + fetch del pet para saber owner/resolved.
     useEffect(() => {
-        if (isOpen && activePet) {
-            dispatch(fetchChatHistory({
-                pet_id: activePet.pet_id,
-                otherUserId: activePet.otherUserId
-            }));
-            socket.emit('join_pet_chat', { pet_id: activePet.pet_id });
+        if (!isOpen || !activePet) return;
+        dispatch(fetchChatHistory({
+            pet_id: activePet.pet_id,
+            otherUserId: activePet.otherUserId,
+        }));
+        socket?.emit('join_pet_chat', { pet_id: activePet.pet_id });
 
-        }
+        let active = true;
+        fetch(`${import.meta.env.VITE_API_URL}/api/pets/${activePet.pet_id}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (active && data) setPet(data); })
+            .catch(() => {});
+        return () => { active = false; };
     }, [isOpen, activePet, dispatch, socket, token]);
 
+    // Al cerrar el widget, limpiamos el pet local para no arrastrar estado stale
+    useEffect(() => {
+        if (!isOpen) setPet(null);
+    }, [isOpen]);
 
-
-    // 2. Socket: Recibir mensaje en tiempo real
+    // Sockets: mensajes + resolve/reopen
     useEffect(() => {
         if (!socket) return;
 
         const handleReceiveMessage = (data) => {
-            // 🔥 Solo inyectamos el mensaje si es de este pet
-
-
             dispatch(receiveMessage(data));
-
-            // Si el mensaje es del otro y tenemos el chat abierto, marcamos leído local
             if (data.sender_id !== user?.id) {
                 dispatch(markAsReadLocal(data.pet_id));
             }
-
+        };
+        const handleResolved = (payload) => {
+            if (!activePet || Number(payload.pet_id) !== Number(activePet.pet_id)) return;
+            setPet((prev) => prev ? {
+                ...prev,
+                resolved_at: payload.resolved_at,
+                resolved_with_user_id: payload.resolved_with_user_id,
+            } : prev);
+        };
+        const handleReopened = (payload) => {
+            if (!activePet || Number(payload.pet_id) !== Number(activePet.pet_id)) return;
+            setPet((prev) => prev ? { ...prev, resolved_at: null, resolved_with_user_id: null } : prev);
+            dispatch(resetDismissal(activePet.pet_id));
         };
 
         socket.on('receive_pet_message', handleReceiveMessage);
-        return () => socket.off('receive_pet_message', handleReceiveMessage);
-    }, [socket, user]);
+        socket.on('pet_resolved', handleResolved);
+        socket.on('pet_reopened', handleReopened);
+        return () => {
+            socket.off('receive_pet_message', handleReceiveMessage);
+            socket.off('pet_resolved', handleResolved);
+            socket.off('pet_reopened', handleReopened);
+        };
+    }, [socket, user, activePet, dispatch]);
 
     const handleFocus = () => {
-        dispatch(markAsReadLocal(activePet?.pet_id))
+        dispatch(markAsReadLocal(activePet?.pet_id));
         dispatch(markChatAsRead());
-    }
+    };
 
     const send = (e) => {
         e.preventDefault();
         if (!text.trim() || !activePet) return;
-
-        const payload = {
+        socket.emit('send_pet_message', {
             pet_id: activePet.pet_id,
             sender_id: user.id,
             senderName: user.name,
             content: text,
             receiver_id: activePet.otherUserId,
-            petPhoto: activePet.petPhoto
-        };
-        console.log(payload)
-
-        socket.emit('send_pet_message', payload);
+            petPhoto: activePet.petPhoto,
+        });
         setText('');
+    };
+
+    const isOwner = pet && Number(pet.user_id) === Number(user?.id);
+    const isResolved = pet && pet.resolved_at != null;
+    const iAmPartOfReunion = pet && (
+        (isOwner && Number(pet.resolved_with_user_id) === Number(activePet?.otherUserId)) ||
+        (!isOwner && Number(pet.resolved_with_user_id) === Number(user?.id))
+    );
+    const chatIsClosedElsewhere = isResolved && !iAmPartOfReunion;
+
+    const doResolve = async () => {
+        if (!activePet) return;
+        if (!window.confirm(`¿Cerrar el caso?\n\nVas a marcar${pet?.name ? ` a ${pet.name}` : ''} como reunida. Se le avisa a la otra persona y verán un mensaje de gracias.`)) return;
+        setResolving(true);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${activePet.pet_id}/resolve`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    resolved: true,
+                    resolved_with_user_id: Number(activePet.otherUserId),
+                }),
+            });
+            if (!res.ok) throw new Error('resolve failed');
+            const data = await res.json();
+            setPet((prev) => prev ? {
+                ...prev,
+                resolved_at: data.resolved_at,
+                resolved_with_user_id: data.resolved_with_user_id,
+            } : prev);
+            dispatch(resetDismissal(activePet.pet_id));
+        } catch (e) {
+            alert('No se pudo cerrar el caso. Probá de nuevo.');
+        } finally {
+            setResolving(false);
+        }
     };
 
     if (!isOpen || !activePet) return null;
 
     return (
         <div className="fixed bottom-6 right-6 w-[380px] h-[550px] bg-white rounded-[40px] shadow-2xl flex flex-col border border-gray-100 z-[999] animate-slide-up overflow-hidden">
-            {/* Header (Mismo diseño tuyo) */}
             <div className="p-8 pb-6 border-b border-gray-50 flex flex-col items-center text-center relative bg-white">
                 <button onClick={() => dispatch(closeChat())} className="absolute top-6 right-8 text-gray-300 hover:text-black transition-colors text-lg">✕</button>
                 <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-sm bg-gray-50 mb-3">
                     <img src={activePet.petPhoto} className="w-full h-full object-cover" alt="Pet" />
                 </div>
-                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1">Comunidad Mimo</p>
+                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-1">
+                    {isResolved ? 'Caso cerrado ✓' : 'Comunidad Mimo'}
+                </p>
                 <p className="text-sm font-semibold text-gray-900 leading-tight">Hablando con {activePet.otherUserName}</p>
+                {isOwner && !isResolved ? (
+                    <button
+                        onClick={doResolve}
+                        disabled={resolving}
+                        className="mt-4 text-[10px] font-bold bg-black text-white px-4 py-2 rounded-full uppercase tracking-widest hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                        {resolving ? 'Cerrando…' : 'Cerrar caso'}
+                    </button>
+                ) : null}
             </div>
 
-            {/* Mensajes con estado de carga */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 flex flex-col">
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center text-[10px] font-bold text-gray-300 uppercase tracking-widest">Sincronizando...</div>
@@ -115,11 +181,18 @@ function ChatWidget({ socket }) {
                             </div>
                         </div>
                     ))}
+                    {iAmPartOfReunion && donationVisible ? (
+                        <DonationBanner petId={activePet.pet_id} petName={pet?.name} />
+                    ) : null}
+                    {chatIsClosedElsewhere ? (
+                        <div className="bg-white border border-gray-100 rounded-3xl p-4 text-center text-xs text-gray-500 italic">
+                            Este reporte ya se cerró — el dueño se reunió con otra persona.
+                        </div>
+                    ) : null}
                 </>)}
                 <div ref={scrollRef} />
             </div>
 
-            {/* Input (Mismo diseño tuyo) */}
             <form onSubmit={send} className="p-6 bg-white border-t border-gray-50 flex gap-2">
                 <input
                     value={text}

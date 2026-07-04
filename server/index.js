@@ -21,6 +21,7 @@ import notificationsRoutes from './routes/notificationsRoutes.js';
 import { sendExpoPush } from './utils/push.js';
 import { globalLimiter } from './middlewares/rateLimiter.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
+import { startReminderScheduler } from './lib/resolveReminder.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -279,6 +280,9 @@ async function ensureSchema() {
     try {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
         await pool.query('ALTER TABLE pets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP');
+        // Con quién se reencontró la mascota — permite mostrar el banner de
+        // donación solo en ese chat y un aviso "caso cerrado" en los otros.
+        await pool.query('ALTER TABLE pets ADD COLUMN IF NOT EXISTS resolved_with_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL');
         await pool.query(`
             CREATE TABLE IF NOT EXISTS notifications (
                 id SERIAL PRIMARY KEY,
@@ -302,4 +306,7 @@ server.listen(port, async () => {
     await ensureSchema();
     console.log(`🚀 Servidor listo en http://localhost:${port}`);
     backfillAddresses();
+    // Cron interno: reminder de "cerrá el caso" al dueño 1h después del
+    // último mensaje. En Render free sobrevive mientras no haya cold start.
+    startReminderScheduler({ pool, io, sendExpoPush });
 });

@@ -11,9 +11,11 @@ import {
 } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import userReducer from './userSlice';
+import donationReducer from './donationSlice';
 
 const rootReducer = combineReducers({
   user: userReducer,
+  donation: donationReducer,
 });
 
 const persistConfig = {

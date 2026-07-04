@@ -9,37 +9,40 @@ import {
   StyleSheet,
   Keyboard,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import { useSocket } from '../../src/lib/socket';
+import DonationBanner from '../../src/components/DonationBanner';
+import { resetDismissal, selectDonationVisible } from '../../src/store/donationSlice';
 
 export default function Chat() {
   const { petId, otherUserId, name, photo } = useLocalSearchParams();
   const c = useTheme();
+  const dispatch = useDispatch();
   const me = useSelector((s) => s.user.data);
   const { socket, refreshInbox } = useSocket();
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pet, setPet] = useState(null); // { user_id, resolved_at, resolved_with_user_id, name }
+  const [resolving, setResolving] = useState(false);
   const scrollRef = useRef(null);
   const insets = useSafeAreaInsets();
   const [kbHeight, setKbHeight] = useState(0);
 
-  // Manejo del teclado manual: con edge-to-edge, KeyboardAvoidingView no
-  // levanta el input de forma confiable en Android. Empujamos el contenido
-  // por la altura del teclado.
+  const donationVisible = useSelector(selectDonationVisible(petId));
+
+  // Manejo del teclado manual (edge-to-edge).
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates.height));
     const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
   const belongsHere = useCallback(
@@ -61,32 +64,29 @@ export default function Chat() {
         other_user_id: Number(otherUserId),
       });
       refreshInbox();
-    } catch {
-      // no crítico
-    }
+    } catch { /* no crítico */ }
   }, [petId, otherUserId, refreshInbox]);
 
-  // Historial inicial
+  // Cargamos historial + info del pet en paralelo.
   useEffect(() => {
     let active = true;
-    api
-      .get(`/api/messages/${petId}/${otherUserId}`, { params: { page: 1, limit: 30 } })
-      .then(({ data }) => {
-        if (active) setMessages(Array.isArray(data.messages) ? data.messages : []);
+    Promise.all([
+      api.get(`/api/messages/${petId}/${otherUserId}`, { params: { page: 1, limit: 30 } }),
+      api.get(`/api/pets/${petId}`),
+    ])
+      .then(([msgRes, petRes]) => {
+        if (!active) return;
+        setMessages(Array.isArray(msgRes.data.messages) ? msgRes.data.messages : []);
+        setPet(petRes.data);
       })
       .catch(() => {})
       .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [petId, otherUserId]);
 
-  // Marcar leído al abrir
-  useEffect(() => {
-    markRead();
-  }, [markRead]);
+  useEffect(() => { markRead(); }, [markRead]);
 
-  // Socket: unirse a la sala y escuchar mensajes
+  // Socket: mensajes + eventos de resolve/reopen.
   useEffect(() => {
     if (!socket) return;
     socket.emit('join_pet_chat', { pet_id: petId });
@@ -96,11 +96,30 @@ export default function Chat() {
       addMessage(m);
       if (String(m.sender_id) === String(otherUserId)) markRead();
     };
-    socket.on('receive_pet_message', onReceive);
-    return () => socket.off('receive_pet_message', onReceive);
-  }, [socket, petId, otherUserId, belongsHere, addMessage, markRead]);
+    const onResolved = (payload) => {
+      if (String(payload.pet_id) !== String(petId)) return;
+      setPet((prev) => prev ? {
+        ...prev,
+        resolved_at: payload.resolved_at,
+        resolved_with_user_id: payload.resolved_with_user_id,
+      } : prev);
+    };
+    const onReopened = (payload) => {
+      if (String(payload.pet_id) !== String(petId)) return;
+      setPet((prev) => prev ? { ...prev, resolved_at: null, resolved_with_user_id: null } : prev);
+      dispatch(resetDismissal(petId));
+    };
 
-  // Auto-scroll al final (al recibir mensajes o al abrir el teclado)
+    socket.on('receive_pet_message', onReceive);
+    socket.on('pet_resolved', onResolved);
+    socket.on('pet_reopened', onReopened);
+    return () => {
+      socket.off('receive_pet_message', onReceive);
+      socket.off('pet_resolved', onResolved);
+      socket.off('pet_reopened', onReopened);
+    };
+  }, [socket, petId, otherUserId, belongsHere, addMessage, markRead, dispatch]);
+
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     return () => clearTimeout(t);
@@ -110,13 +129,49 @@ export default function Chat() {
     const content = text.trim();
     if (!content || !socket) return;
     socket.emit('send_pet_message', {
-      pet_id: petId,
-      receiver_id: otherUserId,
-      content,
-      petPhoto: photo,
-      senderName: me?.name,
+      pet_id: petId, receiver_id: otherUserId,
+      content, petPhoto: photo, senderName: me?.name,
     });
     setText('');
+  };
+
+  const isOwner = pet && Number(pet.user_id) === Number(me?.id);
+  const isResolved = pet && pet.resolved_at != null;
+  const iAmPartOfReunion = pet && (
+    (isOwner && String(pet.resolved_with_user_id) === String(otherUserId)) ||
+    (!isOwner && Number(pet.resolved_with_user_id) === Number(me?.id))
+  );
+  const chatIsClosedElsewhere = isResolved && !iAmPartOfReunion;
+
+  const confirmResolve = () => {
+    Alert.alert(
+      '¿Cerrar el caso?',
+      `Vas a marcar${pet?.name ? ` a ${pet.name}` : ''} como reunida. Se le avisa a la otra persona y podrás ver un mensaje de gracias.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Sí, cerrar caso', onPress: doResolve },
+      ]
+    );
+  };
+
+  const doResolve = async () => {
+    setResolving(true);
+    try {
+      const { data } = await api.patch(`/api/pets/${petId}/resolve`, {
+        resolved: true,
+        resolved_with_user_id: Number(otherUserId),
+      });
+      setPet((prev) => prev ? {
+        ...prev,
+        resolved_at: data.resolved_at,
+        resolved_with_user_id: data.resolved_with_user_id,
+      } : prev);
+      dispatch(resetDismissal(petId));
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo cerrar el caso. Probá de nuevo.');
+    } finally {
+      setResolving(false);
+    }
   };
 
   return (
@@ -133,8 +188,22 @@ export default function Chat() {
           <Text style={[styles.title, { color: c.title }]} numberOfLines={1}>
             {name || 'Conversación'}
           </Text>
-          <Text style={[styles.subtitle, { color: c.subtitle }]}>Comunidad Mimo</Text>
+          <Text style={[styles.subtitle, { color: c.subtitle }]}>
+            {isResolved ? 'Caso cerrado ✓' : 'Comunidad Mimo'}
+          </Text>
         </View>
+        {isOwner && !isResolved ? (
+          <Pressable
+            onPress={confirmResolve}
+            disabled={resolving}
+            style={[styles.closeBtn, { backgroundColor: c.primary }, resolving && styles.disabled]}
+            hitSlop={6}
+          >
+            <Text style={[styles.closeBtnText, { color: c.primaryText }]}>
+              {resolving ? '…' : 'Cerrar caso'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -173,6 +242,18 @@ export default function Chat() {
             );
           })
         )}
+
+        {iAmPartOfReunion && donationVisible ? (
+          <DonationBanner petId={petId} petName={pet?.name} />
+        ) : null}
+
+        {chatIsClosedElsewhere ? (
+          <View style={[styles.closedNote, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+            <Text style={[styles.closedNoteText, { color: c.subtitle }]}>
+              Este reporte ya se cerró — el dueño se reunió con otra persona.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View
@@ -219,10 +300,23 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E5E7EB' },
   title: { fontSize: 16, fontWeight: '700' },
   subtitle: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  closeBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  closeBtnText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
   messages: { padding: 16, gap: 10, flexGrow: 1 },
   empty: { textAlign: 'center', marginTop: 60, fontSize: 14 },
   bubbleRow: { flexDirection: 'row' },
   bubble: { maxWidth: '82%', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22 },
+  closedNote: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  closedNoteText: { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

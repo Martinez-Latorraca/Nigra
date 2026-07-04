@@ -32,9 +32,17 @@ vi.mock('cloudinary', () => ({ v2: { config: vi.fn() } }));
 const { default: pool } = await import('../db.js');
 const { default: petRoutes } = await import('../routes/petRoutes.js');
 
-const buildApp = () => {
+// io mock — capturamos las emisiones de pet_resolved / pet_reopened.
+const makeIoMock = () => {
+    const emit = vi.fn();
+    const to = vi.fn(() => ({ emit }));
+    return { to, _emit: emit };
+};
+
+const buildApp = (io = null) => {
     const app = express();
     app.use(express.json());
+    if (io) app.locals.io = io;
     app.use('/api/pets', petRoutes);
     return app;
 };
@@ -142,6 +150,64 @@ describe('Pets', () => {
                 .set('x-test-user', '7')
                 .send({});
             expect(res.status).toBe(400);
+        });
+
+        it('guarda resolved_with_user_id + emite pet_resolved a ambas partes', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Rocky' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
+            const io = makeIoMock();
+            const res = await request(buildApp(io))
+                .patch('/api/pets/1/resolve')
+                .set('x-test-user', '7')
+                .send({ resolved: true, resolved_with_user_id: 42 });
+
+            expect(res.status).toBe(200);
+            expect(res.body.resolved_with_user_id).toBe(42);
+
+            // El UPDATE debe llevar el resolvedWith en el segundo binding
+            const [, updateParams] = pool.query.mock.calls[1];
+            expect(updateParams[1]).toBe(42);
+
+            // Emit a la sala del owner y del finder
+            expect(io.to).toHaveBeenCalledWith('user_7');
+            expect(io.to).toHaveBeenCalledWith('user_42');
+            expect(io._emit).toHaveBeenCalledWith('pet_resolved', expect.objectContaining({
+                pet_id: 1,
+                pet_name: 'Rocky',
+                resolved_with_user_id: 42,
+                owner_id: 7,
+            }));
+        });
+
+        it('sin resolved_with_user_id emite solo al owner (no rompe)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Rocky' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
+            const io = makeIoMock();
+            await request(buildApp(io))
+                .patch('/api/pets/1/resolve')
+                .set('x-test-user', '7')
+                .send({ resolved: true });
+
+            expect(io.to).toHaveBeenCalledWith('user_7');
+            // No emite a otro user_ id
+            expect(io.to).toHaveBeenCalledTimes(1);
+        });
+
+        it('reabrir (resolved=false) emite pet_reopened y limpia resolved_with_user_id', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Rocky' }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
+            const io = makeIoMock();
+            const res = await request(buildApp(io))
+                .patch('/api/pets/1/resolve')
+                .set('x-test-user', '7')
+                .send({ resolved: false, resolved_with_user_id: 42 });
+
+            expect(res.body.resolved_at).toBeNull();
+            expect(res.body.resolved_with_user_id).toBeNull();
+            expect(io._emit).toHaveBeenCalledWith('pet_reopened', { pet_id: 1 });
         });
     });
 

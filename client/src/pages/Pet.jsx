@@ -306,12 +306,9 @@ function Pet() {
                             </button>
 
                             {currentUser?.id === pet.user_id && !pet.resolved_at && (
-                                <button
-                                    onClick={() => handleResolve(true)}
-                                    className="w-full py-5 border-2 border-green-500 text-green-600 hover:bg-green-50 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all active:scale-95 mt-4"
-                                >
-                                    Marcar como reunida ✓
-                                </button>
+                                <p className="text-[10px] text-gray-400 font-medium leading-relaxed text-center mt-4 px-4">
+                                    Para cerrar el caso, abrí el chat con la persona con quien te reencontraste y usá el botón "Cerrar caso" del header.
+                                </p>
                             )}
 
                             {currentUser?.id === pet.user_id && pet.resolved_at && (

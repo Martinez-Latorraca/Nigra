@@ -252,9 +252,9 @@ export default function PetDetail() {
           </View>
 
           {isOwn && !isResolved ? (
-            <Pressable style={styles.resolveBtn} onPress={() => handleResolve(true)}>
-              <Text style={styles.resolveBtnText}>Marcar como reunida ✓</Text>
-            </Pressable>
+            <Text style={[styles.resolveHint, { color: c.subtitle }]}>
+              Para cerrar el caso, abrí el chat con la persona con quien te reencontraste y usá el botón "Cerrar caso" del header.
+            </Text>
           ) : null}
 
           {isOwn && isResolved ? (
@@ -302,15 +302,7 @@ const styles = StyleSheet.create({
   secondaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
   secondaryBtnText: { fontWeight: '600', fontSize: 15 },
   ownNote: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
-  resolveBtn: {
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    marginTop: 32,
-  },
-  resolveBtnText: { color: '#22C55E', fontWeight: '700', fontSize: 15 },
+  resolveHint: { fontSize: 12, textAlign: 'center', fontWeight: '500', marginTop: 32, paddingHorizontal: 16, lineHeight: 18 },
   reopenLink: { alignItems: 'center', paddingVertical: 12, marginTop: 16 },
   reopenLinkText: { fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   deleteBtn: {

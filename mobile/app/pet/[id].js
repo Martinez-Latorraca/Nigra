@@ -251,12 +251,6 @@ export default function PetDetail() {
             </Pressable>
           </View>
 
-          {isOwn && !isResolved ? (
-            <Text style={[styles.resolveHint, { color: c.subtitle }]}>
-              Para cerrar el caso, abrí el chat con la persona con quien te reencontraste y usá el botón "Cerrar caso" del header.
-            </Text>
-          ) : null}
-
           {isOwn && isResolved ? (
             <Pressable onPress={() => handleResolve(false)} style={styles.reopenLink}>
               <Text style={[styles.reopenLinkText, { color: c.subtitle }]}>Reabrir reporte</Text>
@@ -302,7 +296,6 @@ const styles = StyleSheet.create({
   secondaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', borderWidth: 1 },
   secondaryBtnText: { fontWeight: '600', fontSize: 15 },
   ownNote: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
-  resolveHint: { fontSize: 12, textAlign: 'center', fontWeight: '500', marginTop: 32, paddingHorizontal: 16, lineHeight: 18 },
   reopenLink: { alignItems: 'center', paddingVertical: 12, marginTop: 16 },
   reopenLinkText: { fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   deleteBtn: {

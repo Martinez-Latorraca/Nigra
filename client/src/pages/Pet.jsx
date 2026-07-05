@@ -305,12 +305,6 @@ function Pet() {
                                 Compartir
                             </button>
 
-                            {currentUser?.id === pet.user_id && !pet.resolved_at && (
-                                <p className="text-[10px] text-gray-400 font-medium leading-relaxed text-center mt-4 px-4">
-                                    Para cerrar el caso, abrí el chat con la persona con quien te reencontraste y usá el botón "Cerrar caso" del header.
-                                </p>
-                            )}
-
                             {currentUser?.id === pet.user_id && pet.resolved_at && (
                                 <button
                                     onClick={() => handleResolve(false)}

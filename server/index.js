@@ -279,6 +279,13 @@ async function backfillAddresses() {
 async function ensureSchema() {
     try {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT');
+        // Verificado por un provider OAuth (Google/Apple), o por magic link
+        // (a implementar). Bloquea account takeover cross-provider vía email
+        // no-verificado en cuentas locales con password.
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false');
+        // Backfill: cuentas ya linkeadas a un provider quedan verificadas
+        // (Google/Apple ya verificaron el email al momento del linking).
+        await pool.query("UPDATE users SET email_verified = true WHERE provider IS NOT NULL AND email_verified = false");
         await pool.query('ALTER TABLE pets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP');
         // Con quién se reencontró la mascota — permite mostrar el banner de
         // donación solo en ese chat y un aviso "caso cerrado" en los otros.

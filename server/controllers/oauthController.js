@@ -44,8 +44,23 @@ const verifyAppleToken = (identityToken) =>
         );
     });
 
+// Provider trust: Google y Apple exigen email verificado antes de firmar el
+// token (nosotros ya chequeamos email_verified de Google; Apple lo garantiza
+// por diseño). Facebook NO garantiza que el email haya sido re-verificado si
+// el usuario lo cambió. Sin verificación adicional, no linkeamos por email
+// desde Facebook.
+const PROVIDER_VERIFIES_EMAIL = { google: true, apple: true, facebook: false };
+
+class OAuthLinkConflict extends Error {
+    constructor(existingProvider) {
+        super('email_already_registered');
+        this.status = 409;
+        this.existingProvider = existingProvider;
+    }
+}
+
 const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
-    // 1) Already linked: same provider + provider_id.
+    // 1) Fast path: already linked to this exact (provider, provider_id).
     const existing = await pool.query(
         'SELECT id, name, email, role, avatar_url FROM users WHERE provider = $1 AND provider_id = $2',
         [provider, providerId]
@@ -54,23 +69,25 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
         return existing.rows[0];
     }
 
-    // 2) Link by email: an account with this email already exists (e.g. created
-    // with a password or another provider). Providers give us verified emails
-    // (Google checks email_verified before calling this; Apple/Facebook return
-    // the account email), so it's safe to log them into the existing account.
-    if (email) {
+    // 2) Link by email — SOLO si:
+    //    a) el provider actual verifica el email (Google/Apple), Y
+    //    b) el account local también tiene email_verified = true
+    //       (llegó ahí porque un provider verificado lo confirmó antes).
+    // Sin ambos, rechazamos: password-only accounts + logins de proveedores
+    // no-verificados no pueden reclamar cuentas existentes por email.
+    if (email && PROVIDER_VERIFIES_EMAIL[provider]) {
         const byEmail = await pool.query(
-            'SELECT id, name, email, role, avatar_url, provider_id FROM users WHERE email = $1',
+            'SELECT id, name, email, role, avatar_url, provider, provider_id, email_verified FROM users WHERE email = $1',
             [email]
         );
         if (byEmail.rows.length > 0) {
             const user = byEmail.rows[0];
-            // If the account had no linked social identity yet (e.g. a local
-            // password account), attach this provider so the fast path (1) hits
-            // next time. Backfill the avatar only if missing.
+            if (!user.email_verified) {
+                throw new OAuthLinkConflict(user.provider || 'password');
+            }
             if (!user.provider_id) {
                 await pool.query(
-                    'UPDATE users SET provider = $1, provider_id = $2, avatar_url = COALESCE(avatar_url, $3) WHERE id = $4',
+                    'UPDATE users SET provider = $1, provider_id = $2, avatar_url = COALESCE(avatar_url, $3), email_verified = true WHERE id = $4',
                     [provider, providerId, avatarUrl || null, user.id]
                 );
             }
@@ -84,12 +101,13 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
         }
     }
 
-    // 3) New user.
+    // 3) New user. email_verified se setea según el trust del provider.
+    const verified = !!PROVIDER_VERIFIES_EMAIL[provider];
     const inserted = await pool.query(
-        `INSERT INTO users (name, email, provider, provider_id, avatar_url)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO users (name, email, provider, provider_id, avatar_url, email_verified)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, name, email, role, avatar_url`,
-        [name || 'Usuario', email || null, provider, providerId, avatarUrl || null]
+        [name || 'Usuario', email || null, provider, providerId, avatarUrl || null, verified]
     );
     return inserted.rows[0];
 };
@@ -141,6 +159,12 @@ export const loginWithGoogle = async (req, res) => {
         respondWithSession(res, user);
     } catch (error) {
         console.error('Google OAuth error:', error);
+        if (error instanceof OAuthLinkConflict) {
+            return res.status(409).json({
+                error: `Ya existe una cuenta con este email (${error.existingProvider}). Iniciá sesión con ese método y despues linkeá Google desde el perfil.`,
+                existingProvider: error.existingProvider,
+            });
+        }
         res.status(error.status || 401).json({
             error: error.message || 'Token de Google inválido',
         });
@@ -168,6 +192,12 @@ export const loginWithApple = async (req, res) => {
         respondWithSession(res, user);
     } catch (error) {
         console.error('Apple OAuth error:', error);
+        if (error instanceof OAuthLinkConflict) {
+            return res.status(409).json({
+                error: `Ya existe una cuenta con este email (${error.existingProvider}). Iniciá sesión con ese método y despues linkeá Apple desde el perfil.`,
+                existingProvider: error.existingProvider,
+            });
+        }
         res.status(error.status || 401).json({
             error: error.message || 'Token de Apple inválido',
         });
@@ -211,6 +241,12 @@ export const loginWithFacebook = async (req, res) => {
         respondWithSession(res, user);
     } catch (error) {
         console.error('Facebook OAuth error:', error);
+        if (error instanceof OAuthLinkConflict) {
+            return res.status(409).json({
+                error: `Ya existe una cuenta con este email (${error.existingProvider}). Iniciá sesión con ese método y despues linkeá Facebook desde el perfil.`,
+                existingProvider: error.existingProvider,
+            });
+        }
         res.status(error.status || 401).json({
             error: error.message || 'Token de Facebook inválido',
         });

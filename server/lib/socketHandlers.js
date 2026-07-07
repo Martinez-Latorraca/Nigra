@@ -3,14 +3,68 @@
 // (pool de Postgres, instancia de socket.io, sendExpoPush, y el socket del
 // cliente que disparó el evento).
 
+const MAX_CONTENT_LENGTH = 1000;
+
+// Devuelve { ok: true, pet_id, receiver_id, content } o { ok: false, reason }.
+// Chequea tipos, longitud del content, y bloquea self-DM.
+function validateMessagePayload(data, senderId) {
+    const petIdRaw = data?.pet_id;
+    const receiverIdRaw = data?.receiver_id;
+    const contentRaw = data?.content;
+
+    const pet_id = Number(petIdRaw);
+    const receiver_id = Number(receiverIdRaw);
+    if (!Number.isInteger(pet_id) || pet_id <= 0) return { ok: false, reason: 'invalid_pet_id' };
+    if (!Number.isInteger(receiver_id) || receiver_id <= 0) return { ok: false, reason: 'invalid_receiver_id' };
+    if (receiver_id === Number(senderId)) return { ok: false, reason: 'self_message' };
+
+    if (typeof contentRaw !== 'string') return { ok: false, reason: 'invalid_content' };
+    const content = contentRaw.trim();
+    if (!content) return { ok: false, reason: 'empty_content' };
+    if (content.length > MAX_CONTENT_LENGTH) return { ok: false, reason: 'content_too_long' };
+
+    return { ok: true, pet_id, receiver_id, content };
+}
+
+// Regla del feature: en un chat sobre una mascota, sender o receiver debe ser
+// el dueño del reporte. Sin eso, un user autenticado podría DMar a cualquier
+// otro user sobre cualquier pet, spam + phishing.
+async function verifyChatRelationship(pool, { pet_id, sender_id, receiver_id }) {
+    const { rows } = await pool.query('SELECT user_id FROM pets WHERE id = $1', [pet_id]);
+    if (rows.length === 0) return { ok: false, reason: 'pet_not_found' };
+    const ownerId = Number(rows[0].user_id);
+    if (ownerId !== Number(sender_id) && ownerId !== Number(receiver_id)) {
+        return { ok: false, reason: 'not_related_to_pet' };
+    }
+    return { ok: true };
+}
+
+// Buscamos senderName en la DB en vez de confiar en lo que mande el cliente
+// (payload spoofable → push notification con títulos maliciosos).
+async function loadSenderProfile(pool, senderId) {
+    const { rows } = await pool.query('SELECT name FROM users WHERE id = $1', [senderId]);
+    return rows[0] || null;
+}
+
 export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, data }) {
-    const { pet_id, receiver_id, content, petPhoto, senderName } = data || {};
     const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
 
-    if (!pet_id || !receiver_id || !content || !String(content).trim()) {
-        socket.emit('error_notification', 'Faltan datos para enviar el mensaje');
-        return { ok: false, reason: 'missing_data' };
+    const validated = validateMessagePayload(data, sender_id);
+    if (!validated.ok) {
+        socket.emit('error_notification', 'Datos del mensaje inválidos');
+        return { ok: false, reason: validated.reason };
     }
+    const { pet_id, receiver_id, content } = validated;
+    const petPhoto = typeof data?.petPhoto === 'string' ? data.petPhoto : null;
+
+    const relation = await verifyChatRelationship(pool, { pet_id, sender_id, receiver_id });
+    if (!relation.ok) {
+        socket.emit('error_notification', 'No podés enviar mensajes sobre esta mascota');
+        return { ok: false, reason: relation.reason };
+    }
+
+    const senderProfile = await loadSenderProfile(pool, sender_id);
+    const senderName = senderProfile?.name || 'Alguien';
 
     try {
         // A. Guardar en DB.
@@ -27,7 +81,9 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
         // C. Enviar también al emisor (para pestañas duplicadas).
         socket.emit('receive_pet_message', newMessage);
 
-        // D. Notificación global para refrescar el inbox.
+        // D. Notificación global para refrescar el inbox. senderName y petPhoto
+        // salen de la DB / del payload respectivamente pero después de la
+        // relación validada — no se pueden usar para spoofar identidad.
         io.to(`user_${receiver_id}`).emit('new_notification', {
             pet_id,
             petPhoto,
@@ -42,7 +98,7 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
                 const pushToken = rows[0]?.push_token;
                 if (!pushToken) return;
                 sendExpoPush(pushToken, {
-                    title: senderName || 'Mensaje nuevo',
+                    title: senderName,
                     body: content.length > 120 ? content.slice(0, 117) + '…' : content,
                     data: {
                         type: 'message',
@@ -65,8 +121,11 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
 }
 
 export function handleJoinPetChat({ socket, data }) {
-    const { pet_id } = data || {};
-    if (!pet_id) return { ok: false, reason: 'missing_pet_id' };
+    const pet_id = Number(data?.pet_id);
+    if (!Number.isInteger(pet_id) || pet_id <= 0) return { ok: false, reason: 'invalid_pet_id' };
     socket.join(`pet_chat_${pet_id}`);
     return { ok: true };
 }
+
+// Exportados para tests unitarios directos.
+export { validateMessagePayload, verifyChatRelationship, MAX_CONTENT_LENGTH };

@@ -37,7 +37,6 @@
       "package": "com.nigra.mobile",
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA"
@@ -86,7 +85,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Mimo necesita la cámara para tomar la foto de la mascota."
+          "cameraPermission": "Mimo necesita la cámara para tomar la foto de la mascota.",
+          "recordAudioAndroid": false
         }
       ]
     ],

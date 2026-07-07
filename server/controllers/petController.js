@@ -103,12 +103,16 @@ export const getPetById = async (req, res) => {
     const id = req.params.pet_id;
 
     try {
+        // No devolvemos p.embedding (vector 1280 floats): ~30KB por respuesta
+        // sin uso en el cliente. Lista explícita en lugar de p.*.
         const query = `
-            SELECT 
-                p.*, 
-                u.name AS reporter_name -- 👈 Traemos el nombre del que la reportó
+            SELECT
+                p.id, p.description, p.status, p.contact_info, p.photo_url,
+                p.type, p.color, p.user_id, p.lat, p.lng, p.name, p.extra_photos,
+                p.address, p.resolved_at, p.resolved_with_user_id, p.created_at,
+                u.name AS reporter_name
             FROM pets p
-            JOIN users u ON p.user_id = u.id -- 👈 Unimos con la tabla de usuarios
+            JOIN users u ON p.user_id = u.id
             WHERE p.id = $1;
         `;
         const result = await pool.query(query, [id]);

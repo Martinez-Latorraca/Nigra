@@ -88,7 +88,8 @@
           "cameraPermission": "Mimo necesita la cámara para tomar la foto de la mascota.",
           "recordAudioAndroid": false
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "router": {},

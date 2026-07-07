@@ -117,7 +117,7 @@ export function PushProvider({ children }) {
         console.warn('📲 Push: no se obtuvo expo push token');
         return;
       }
-      console.log('📲 Push token obtenido:', expoToken.slice(0, 30) + '…');
+      console.log('📲 Push token obtenido (registrando en el backend)');
       api
         .post('/api/users/push-token', { token: expoToken })
         .then(() => console.log('📲 Push token registrado en el backend'))

@@ -19,12 +19,24 @@ import adminRoutes from './routes/adminRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
 import { sendExpoPush } from './utils/push.js';
-import { globalLimiter } from './middlewares/rateLimiter.js';
+import { globalLimiter, geocodeLimiter } from './middlewares/rateLimiter.js';
+import { authenticateToken } from './middlewares/auth.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
 import { startReminderScheduler } from './lib/resolveReminder.js';
 
+// Fail fast si falta el secreto de firmar JWTs. Sin este check el server
+// arrancaba "funcionando" con jwt.sign(payload, undefined) → firma con la
+// string "undefined", vulnerable a que cualquiera firme tokens del server.
+if (!process.env.JWT_SECRET) {
+    console.error('FATAL: JWT_SECRET no está configurado en el entorno.');
+    process.exit(1);
+}
+
 const app = express();
 const port = process.env.PORT || 3000;
+// URL base usada en meta tags OG y JSON-LD. Antes se armaba con req.get('host')
+// permitiendo host header injection (envenenamiento de tarjetas de share).
+const BASE_URL = process.env.BASE_URL || 'https://nigra-server.onrender.com';
 
 // Render (y otros PaaS) ponen un proxy delante: confiamos en 1 salto
 // para que express-rate-limit identifique al cliente por su IP real.
@@ -56,7 +68,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.get('/sitemap.xml', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, created_at FROM pets ORDER BY created_at DESC');
-        const baseUrl = 'https://nigra-server.onrender.com';
+        const baseUrl = BASE_URL;
 
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -96,8 +108,7 @@ app.get('/pet/:id', async (req, res) => {
         const petName = pet.name || 'una mascota';
         const petType = translateType(pet.type) || 'mascota';
         const petColor = translateColor(pet.color);
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const ogUrl = esc(`${protocol}://${req.get('host')}/pet/${id}`);
+        const ogUrl = esc(`${BASE_URL}/pet/${id}`);
         const title = pet.status === 'lost'
             ? esc(`🔍 ¡Ayudanos a encontrar a ${petName}!`)
             : esc(`🐾 ¡Una mascota fue encontrado/a!`);
@@ -114,7 +125,7 @@ app.get('/pet/:id', async (req, res) => {
             "name": pet.name || 'Mascota',
             "description": pet.description || desc,
             "image": ogImage,
-            "url": `${protocol}://${req.get('host')}/pet/${id}`,
+            "url": `${BASE_URL}/pet/${id}`,
             "datePosted": pet.created_at,
             "category": petType,
             "color": petColor || undefined
@@ -136,8 +147,9 @@ app.get('/pet/:id', async (req, res) => {
     }
 });
 
-// Búsqueda de direcciones (proxy a Google Geocoding; la key queda en el server)
-app.get('/api/geo/search', async (req, res) => {
+// Búsqueda de direcciones (proxy a Google Geocoding; la key queda en el server).
+// Auth + rate limit dedicado: cada request cuesta plata en la cuota de Google.
+app.get('/api/geo/search', authenticateToken, geocodeLimiter, async (req, res) => {
     const results = await searchAddress(req.query.q || '');
     res.json(results);
 });

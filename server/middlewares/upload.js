@@ -2,6 +2,10 @@ import multer from 'multer';
 
 const storage = multer.memoryStorage();
 
+// No aceptamos image/svg+xml: SVGs pueden llevar <script>. No los renderizamos
+// como HTML hoy pero cualquier futura path que use dangerouslySetInnerHTML o
+// similar sería XSS. Rechazar en el borde es más barato que auditar todos los
+// usos.
 const allowedTypes = [
     'image/jpeg',
     'image/png',
@@ -12,7 +16,6 @@ const allowedTypes = [
     'image/heic',
     'image/heif',
     'image/avif',
-    'image/svg+xml',
 ];
 
 export const upload = multer({

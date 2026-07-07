@@ -315,7 +315,7 @@ function Pet() {
                             )}
 
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
-                                Sistema de Mensajería Encriptado Comunidad Mimo
+                                Sistema de Mensajería Privada Comunidad Mimo
                             </p>
                         </div>
                     </div>

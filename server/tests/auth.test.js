@@ -9,6 +9,15 @@ vi.mock('../middlewares/rateLimiter.js', () => ({
     searchLimiter: (req, res, next) => next(),
     reportLimiter: (req, res, next) => next(),
     globalLimiter: (req, res, next) => next(),
+    geocodeLimiter: (req, res, next) => next(),
+}));
+vi.mock('../middlewares/auth.js', () => ({
+    authenticateToken: (req, res, next) => {
+        const uid = req.headers['x-test-user'];
+        if (!uid) return res.status(401).json({ error: 'sin auth' });
+        req.user = { id: Number(uid) };
+        next();
+    },
 }));
 // OAuth controllers tienen dependencias externas (google-auth-library, jwks-rsa)
 // que no nos interesa testear acá. Las mockeamos como no-ops.
@@ -87,6 +96,71 @@ describe('Auth', () => {
                 .post('/api/auth/login')
                 .send({ email: 't@t.com', password: 'wrong-pass1' });
             expect(res.status).toBe(401);
+        });
+    });
+
+    describe('DELETE /api/auth/me (deleteAccount)', () => {
+        it('requiere auth', async () => {
+            const res = await request(buildApp()).delete('/api/auth/me').send({});
+            expect(res.status).toBe(401);
+        });
+
+        it('cuenta con password local: 400 si no viene password', async () => {
+            const hash = await bcrypt.hash('mypass', 10);
+            pool.query.mockResolvedValueOnce({ rows: [{ password: hash }] });
+            const res = await request(buildApp())
+                .delete('/api/auth/me')
+                .set('x-test-user', '7')
+                .send({});
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/contrase/i);
+        });
+
+        it('cuenta con password local: 401 si password no coincide', async () => {
+            const hash = await bcrypt.hash('correct-pass', 10);
+            pool.query.mockResolvedValueOnce({ rows: [{ password: hash }] });
+            const res = await request(buildApp())
+                .delete('/api/auth/me')
+                .set('x-test-user', '7')
+                .send({ password: 'wrong' });
+            expect(res.status).toBe(401);
+            expect(res.body.error).toMatch(/incorrecta/i);
+        });
+
+        it('cuenta con password local: borra si el password coincide', async () => {
+            const hash = await bcrypt.hash('mypass', 10);
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ password: hash }] })     // SELECT password
+                .mockResolvedValueOnce({ rowCount: 3 })                    // DELETE messages
+                .mockResolvedValueOnce({ rowCount: 1 })                    // DELETE pets
+                .mockResolvedValueOnce({ rows: [{ id: 7 }] });             // DELETE user
+            const res = await request(buildApp())
+                .delete('/api/auth/me')
+                .set('x-test-user', '7')
+                .send({ password: 'mypass' });
+            expect(res.status).toBe(200);
+        });
+
+        it('cuenta OAuth (sin password): borra directamente sin pedir password', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ password: null }] })     // OAuth-only
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rowCount: 0 })
+                .mockResolvedValueOnce({ rows: [{ id: 7 }] });
+            const res = await request(buildApp())
+                .delete('/api/auth/me')
+                .set('x-test-user', '7')
+                .send({});
+            expect(res.status).toBe(200);
+        });
+
+        it('404 si el user no existe', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .delete('/api/auth/me')
+                .set('x-test-user', '999')
+                .send({ password: 'x' });
+            expect(res.status).toBe(404);
         });
     });
 });

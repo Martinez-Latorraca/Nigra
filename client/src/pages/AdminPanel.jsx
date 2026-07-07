@@ -28,6 +28,10 @@ function AdminPanel() {
         }
     }, [token, user, navigate]);
 
+    // Guard duro: no renderizamos el panel hasta confirmar que somos admin.
+    // Evita el flash de la UI + los fetch de admin corriendo antes del redirect.
+    if (!token || user?.role !== 'admin') return null;
+
     const authHeaders = useCallback(() => ({
         Authorization: `Bearer ${token}`
     }), [token]);

@@ -58,6 +58,26 @@ export const login = async (req, res) => {
 export const deleteAccount = async (req, res) => {
     try {
         const user_id = req.user.id;
+        const { password } = req.body || {};
+
+        // Re-verificamos la identidad además del JWT: un token robado no debería
+        // ser suficiente para borrar toda la cuenta. Si es cuenta con password
+        // local, exigimos password. Si es OAuth-only (sin password), el JWT es
+        // el único auth disponible — pendiente: pedir re-auth con el provider.
+        const { rows } = await pool.query('SELECT password FROM users WHERE id = $1', [user_id]);
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        const hasLocalPassword = !!rows[0].password;
+        if (hasLocalPassword) {
+            if (typeof password !== 'string' || !password) {
+                return res.status(400).json({ error: 'Necesitás confirmar tu contraseña para eliminar la cuenta.' });
+            }
+            const ok = await bcrypt.compare(password, rows[0].password);
+            if (!ok) {
+                return res.status(401).json({ error: 'Contraseña incorrecta.' });
+            }
+        }
 
         // 1. Borramos sus mensajes (enviados y recibidos)
         await pool.query('DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1', [user_id]);

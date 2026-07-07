@@ -6,7 +6,6 @@ export const globalLimiter = rateLimit({
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path.startsWith('/admin'),
     message: { error: 'Demasiadas solicitudes. Intentá de nuevo en unos minutos.' },
 });
 
@@ -35,4 +34,14 @@ export const reportLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Demasiados reportes. Intentá de nuevo en unos minutos.' },
+});
+
+// Geocoding proxy: llama a Google Geocoding API que cobra por request. 30 per 15
+// min per IP para evitar que un atacante queme la cuota.
+export const geocodeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiadas búsquedas de dirección. Probá en unos minutos.' },
 });

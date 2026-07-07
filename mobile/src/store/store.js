@@ -10,11 +10,20 @@ import {
   REGISTER,
 } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from './secureStorage';
 import userReducer from './userSlice';
 import donationReducer from './donationSlice';
 
+// user slice → SecureStore (JWT + data del user).
+// El resto → AsyncStorage (donation dismiss, etc., no sensible).
+const userPersistConfig = {
+  key: 'user',
+  version: 1,
+  storage: secureStorage,
+};
+
 const rootReducer = combineReducers({
-  user: userReducer,
+  user: persistReducer(userPersistConfig, userReducer),
   donation: donationReducer,
 });
 
@@ -22,6 +31,7 @@ const persistConfig = {
   key: 'root',
   version: 1,
   storage: AsyncStorage,
+  blacklist: ['user'], // user tiene su propio persistor con SecureStore
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -313,6 +313,15 @@ async function ensureSchema() {
             )
         `);
         await pool.query('CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC)');
+
+        // RLS habilitado sin policies. Nuestro server se conecta con el role
+        // `postgres` de Supabase, que tiene BYPASSRLS — nuestras queries siguen
+        // funcionando. Bloquea a los roles anon y authenticated que usa la
+        // PostgREST auto-expuesta por Supabase (evita que alguien con la anon
+        // key haga SELECT * FROM users sin auth).
+        for (const table of ['users', 'pets', 'messages', 'notifications']) {
+            await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
+        }
     } catch (error) {
         console.error('Error en ensureSchema:', error.message);
     }

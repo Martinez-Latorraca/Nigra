@@ -329,6 +329,18 @@ async function ensureSchema() {
         `);
         await pool.query('CREATE INDEX IF NOT EXISTS password_resets_hash_idx ON password_resets(token_hash)');
 
+        // Alertas de mascotas cerca del user. Guardamos la última ubicación
+        // conocida (compartida por el mobile con permiso) + opt-in explícito
+        // notify_nearby que se activa desde settings.
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_lat DOUBLE PRECISION');
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_lng DOUBLE PRECISION');
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_at TIMESTAMP');
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_nearby BOOLEAN NOT NULL DEFAULT false');
+        // Índice para la query de "users cerca" (usa la fórmula de haversine sobre
+        // last_lat/lng, así que un índice básico por presencia de ubicación ayuda
+        // a que la scan sea más chica).
+        await pool.query('CREATE INDEX IF NOT EXISTS users_nearby_alerts_idx ON users(notify_nearby) WHERE notify_nearby = true AND last_lat IS NOT NULL AND last_lng IS NOT NULL');
+
         // RLS habilitado sin policies. Nuestro server se conecta con el role
         // `postgres` de Supabase, que tiene BYPASSRLS — nuestras queries siguen
         // funcionando. Bloquea a los roles anon y authenticated que usa la

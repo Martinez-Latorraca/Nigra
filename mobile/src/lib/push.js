@@ -7,6 +7,7 @@ import { useSelector } from 'react-redux';
 import { router } from 'expo-router';
 import api from './api';
 import { store } from '../store/store';
+import { updateLocationIfPermitted } from './location';
 
 // Foreground: mostrar el banner + reproducir sonido si la app está abierta.
 Notifications.setNotificationHandler({
@@ -92,7 +93,7 @@ export function createNotificationResponseHandler({ getUser, alert, navigate } =
           photo: data.photo || '',
         },
       });
-    } else if (data.type === 'match' && data.pet_id) {
+    } else if ((data.type === 'match' || data.type === 'nearby_lost' || data.type === 'nearby_found') && data.pet_id) {
       navigate(`/pet/${data.pet_id}`);
     }
   };
@@ -123,6 +124,10 @@ export function PushProvider({ children }) {
         .then(() => console.log('📲 Push token registrado en el backend'))
         .catch((e) => console.warn('📲 Push token POST falló:', e?.message));
     });
+    // Aprovechamos el ciclo del token para actualizar la última ubicación
+    // conocida — la usa el server para mandar alertas de mascotas cerca
+    // (feature opt-in vía notify_nearby). Fire-and-forget, silencioso.
+    updateLocationIfPermitted().catch(() => {});
     return () => {
       cancelled = true;
     };

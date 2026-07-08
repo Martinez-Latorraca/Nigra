@@ -17,10 +17,11 @@ vi.mock('expo-notifications', () => ({
 vi.mock('expo-device', () => ({ isDevice: true }));
 vi.mock('expo-constants', () => ({ default: { expoConfig: { extra: { eas: { projectId: 'p' } } } } }));
 vi.mock('expo-router', () => ({ router: { push: vi.fn() } }));
-vi.mock('./api', () => ({ default: { post: vi.fn() } }));
+vi.mock('./api', () => ({ default: { post: vi.fn(), patch: vi.fn() } }));
 vi.mock('../store/store', () => ({
     store: { getState: () => ({ user: { data: null } }) },
 }));
+vi.mock('./location', () => ({ updateLocationIfPermitted: vi.fn(() => Promise.resolve({ skipped: true })) }));
 
 const { createNotificationResponseHandler } = await import('./push');
 
@@ -104,6 +105,16 @@ describe('createNotificationResponseHandler', () => {
         it('type=match: navega a /pet/:pet_id (string simple)', () => {
             handle(makeResponse({ type: 'match', pet_id: 42, receiver_id: 7 }));
             expect(deps.navigate).toHaveBeenCalledWith('/pet/42');
+        });
+
+        it('type=nearby_lost: navega a /pet/:pet_id', () => {
+            handle(makeResponse({ type: 'nearby_lost', pet_id: 42, receiver_id: 7 }));
+            expect(deps.navigate).toHaveBeenCalledWith('/pet/42');
+        });
+
+        it('type=nearby_found: navega a /pet/:pet_id', () => {
+            handle(makeResponse({ type: 'nearby_found', pet_id: 55, receiver_id: 7 }));
+            expect(deps.navigate).toHaveBeenCalledWith('/pet/55');
         });
 
         it('type desconocido: no navega', () => {

@@ -14,6 +14,8 @@ function Profile() {
     const [reportsTotalPages, setReportsTotalPages] = useState(1);
     const [reportsTotal, setReportsTotal] = useState(0);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [notifyNearby, setNotifyNearby] = useState(false);
+    const [savingToggle, setSavingToggle] = useState(false);
 
     const token = useSelector(state => state.user.token);
     const user = useSelector(state => state.user.data);
@@ -78,6 +80,35 @@ function Profile() {
         } finally {
             setLoading(false);
             setLoadingMore(false);
+        }
+    };
+
+    // Hidratamos el estado del toggle de alertas cerca desde el server.
+    useEffect(() => {
+        if (!token) return;
+        fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setNotifyNearby(!!data.notify_nearby); })
+            .catch(() => {});
+    }, [token]);
+
+    const handleToggleNotify = async () => {
+        const next = !notifyNearby;
+        setNotifyNearby(next); // optimistic
+        setSavingToggle(true);
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/notify-nearby`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: next }),
+            });
+            if (!res.ok) throw new Error();
+        } catch {
+            setNotifyNearby(!next); // rollback
+        } finally {
+            setSavingToggle(false);
         }
     };
 
@@ -278,6 +309,23 @@ function Profile() {
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-sm font-semibold text-gray-900 tracking-tight">Comunidad Mimo Activa</span>
                         </div>
+                    </div>
+
+                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-900 tracking-tight mb-1">Alertas de mascotas cerca</p>
+                            <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                                Te avisamos cuando reporten una mascota perdida o encontrada a menos de 5 km tuyo.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleToggleNotify}
+                            disabled={savingToggle}
+                            aria-pressed={notifyNearby}
+                            className={`shrink-0 relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${notifyNearby ? 'bg-pet-primary' : 'bg-gray-200'} disabled:opacity-50`}
+                        >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${notifyNearby ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
                     </div>
                 </div>
 

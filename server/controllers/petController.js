@@ -4,6 +4,96 @@ import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
 import { sendExpoPush } from '../utils/push.js';
 
+const NEARBY_ALERT_RADIUS_KM = 5;
+
+// Alerta a users que optaron in (notify_nearby=true) y compartieron ubicación
+// en los últimos 30 días, cuyas coordenadas caen dentro de un radio del reporte.
+// Filtra al reporter y a users sin push_token. Anti-dupe vía notifications:
+// si ya existe una notif tipo nearby_* del mismo pet para el user, skip.
+// Fire-and-forget desde reportPet.
+export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, reporterId }) {
+    if (newPet.lat == null || newPet.lng == null) return;
+    if (!['lost', 'found'].includes(newPet.status)) return;
+    try {
+        const notifType = newPet.status === 'lost' ? 'nearby_lost' : 'nearby_found';
+        const sql = `
+            SELECT u.id, u.name, u.push_token
+            FROM users u
+            WHERE u.notify_nearby = true
+              AND u.push_token IS NOT NULL
+              AND u.last_lat IS NOT NULL
+              AND u.last_lng IS NOT NULL
+              AND u.last_location_at > NOW() - INTERVAL '30 days'
+              AND u.id <> $3
+              AND (6371 * acos(cos(radians($1)) * cos(radians(u.last_lat)) * cos(radians(u.last_lng) - radians($2)) + sin(radians($1)) * sin(radians(u.last_lat)))) <= $4
+            LIMIT 100
+        `;
+        const { rows: candidates } = await pool.query(sql, [
+            newPet.lat, newPet.lng, reporterId, NEARBY_ALERT_RADIUS_KM,
+        ]);
+        for (const u of candidates) {
+            // Dedupe: si ya le mandamos alerta de este pet, skip.
+            const exists = await pool.query(
+                `SELECT 1 FROM notifications
+                 WHERE user_id = $1 AND type = $2 AND (data->>'pet_id')::int = $3`,
+                [u.id, notifType, newPet.id]
+            );
+            if (exists.rows.length > 0) continue;
+
+            const notifData = {
+                pet_id: newPet.id,
+                pet_status: newPet.status,
+                pet_type: newPet.type,
+                photo_url: newPet.photo_url,
+                name: newPet.name,
+                address: newPet.address,
+            };
+            let inserted = null;
+            try {
+                const ins = await pool.query(
+                    `INSERT INTO notifications (user_id, type, data)
+                     VALUES ($1, $2, $3::jsonb)
+                     RETURNING id, user_id, type, data, read_at, created_at`,
+                    [u.id, notifType, JSON.stringify(notifData)]
+                );
+                inserted = ins.rows[0];
+            } catch (e) {
+                console.error('nearby notification insert error:', e.message);
+                continue;
+            }
+            if (io && inserted) {
+                io.to(`user_${u.id}`).emit('new_match_notification', inserted);
+            }
+            const petLabel = newPet.name ? ` (${newPet.name})` : '';
+            const areaSuffix = newPet.address ? ` en ${newPet.address}` : ' cerca tuyo';
+            const title = newPet.status === 'lost'
+                ? '🐾 Mascota perdida cerca tuyo'
+                : '🐾 Encontraron una mascota cerca tuyo';
+            const body = newPet.status === 'lost'
+                ? `Reportaron${petLabel} perdido/a${areaSuffix}. Tap para ver.`
+                : `Alguien encontró un/a mascota${petLabel}${areaSuffix}. ¿La conocés?`;
+            try {
+                sendExpoPush(u.push_token, {
+                    title,
+                    body,
+                    data: {
+                        type: notifType,
+                        pet_id: newPet.id,
+                        receiver_id: u.id,
+                    },
+                });
+            } catch (e) {
+                console.error('nearby push error:', e?.message);
+            }
+        }
+        if (candidates.length > 0) {
+            console.log(`🔔 nearby alerts: ${candidates.length} user(s) notificados para pet ${newPet.id}`);
+        }
+    } catch (error) {
+        console.error('notifyNearbyUsers error:', error.message);
+    }
+}
+
 // Busca matches del nuevo reporte en el pool opuesto y avisa por push a los
 // dueños de las candidatas. Async + fire-and-forget desde reportPet: no
 // bloqueamos la respuesta al reportero. Usa el embedding ya generado (sin TTA)
@@ -220,6 +310,15 @@ export const reportPet = async (req, res) => {
             lng: lngNum,
             reporterId: user_id,
             io: req.app.locals.io,
+        });
+
+        // Fire-and-forget: alertas geográficas a users que optaron in y están cerca.
+        notifyNearbyUsers({
+            pool,
+            io: req.app.locals.io,
+            sendExpoPush,
+            newPet: { ...result.rows[0], lat: latNum, lng: lngNum, type, status },
+            reporterId: user_id,
         });
 
     } catch (error) {

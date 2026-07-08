@@ -7,11 +7,13 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSelector } from 'react-redux';
 import api from '../src/lib/api';
+import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme } from '../src/lib/theme';
 import MenuButton from '../src/components/MenuButton';
 
@@ -25,6 +27,8 @@ export default function Profile() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [notifyNearby, setNotifyNearby] = useState(false);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   const fetchReports = useCallback(async (pageNum = 1, append = false) => {
     if (pageNum === 1) setLoading(true);
@@ -48,6 +52,31 @@ export default function Profile() {
   useEffect(() => {
     fetchReports();
   }, [fetchReports]);
+
+  // Hidratamos el estado del toggle desde el server (fuente de verdad).
+  useEffect(() => {
+    api.get('/api/users/me')
+      .then(({ data }) => setNotifyNearby(!!data?.notify_nearby))
+      .catch(() => {});
+  }, []);
+
+  const handleToggleNotify = async (next) => {
+    setNotifyNearby(next); // optimistic
+    setSavingToggle(true);
+    try {
+      await api.patch('/api/users/notify-nearby', { enabled: next });
+      if (next) {
+        // Al activar, aprovechamos para pushear la ubicación actual al server
+        // — así las alertas empiezan a funcionar sin esperar al próximo ciclo
+        // del push provider.
+        updateLocationIfPermitted().catch(() => {});
+      }
+    } catch {
+      setNotifyNearby(!next); // rollback
+    } finally {
+      setSavingToggle(false);
+    }
+  };
 
   const renderItem = ({ item }) => {
     const isLost = item.status === 'lost';
@@ -100,6 +129,21 @@ export default function Profile() {
         >
           <Text style={[styles.newBtnText, { color: c.primary }]}>Nuevo reporte</Text>
         </Pressable>
+      </View>
+
+      <View style={[styles.settingsCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text style={[styles.settingTitle, { color: c.title }]}>Alertas de mascotas cerca</Text>
+          <Text style={[styles.settingBody, { color: c.subtitle }]}>
+            Te avisamos cuando reporten una mascota perdida o encontrada a menos de 5km tuyo.
+          </Text>
+        </View>
+        <Switch
+          value={notifyNearby}
+          onValueChange={handleToggleNotify}
+          disabled={savingToggle}
+          trackColor={{ false: '#E5E7EB', true: c.primary }}
+        />
       </View>
 
       <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text>
@@ -166,6 +210,16 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 48, fontWeight: '700', letterSpacing: -1 },
   newBtn: { borderRadius: 999, paddingHorizontal: 20, paddingVertical: 12 },
   newBtnText: { fontWeight: '700', fontSize: 13 },
+  settingsCard: {
+    marginTop: 20,
+    padding: 20,
+    borderRadius: 24,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingTitle: { fontSize: 15, fontWeight: '700' },
+  settingBody: { fontSize: 12, marginTop: 4, lineHeight: 17 },
   sectionTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginTop: 28, marginBottom: 4 },
   card: {
     flexDirection: 'row',

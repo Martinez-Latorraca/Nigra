@@ -39,7 +39,7 @@ export async function reverseGeocode(lat, lng) {
       `&format=json&zoom=16&addressdetails=1&accept-language=es`;
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mimo/1.0 (https://nigra-server.onrender.com)' },
+      headers: { 'User-Agent': 'Mimo/1.0 (https://mimo.uy)' },
     });
     if (!res.ok) return null;
 

@@ -9,4 +9,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: VITE_API_URL
-        value: https://nigra-server.onrender.com
+        value: https://mimo.uy
+      - key: BASE_URL
+        value: https://mimo.uy

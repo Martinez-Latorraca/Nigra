@@ -1,60 +1,50 @@
-// Envío de emails transaccionales via Gmail SMTP + nodemailer.
+// Envío de emails transaccionales via Brevo API HTTP.
+// Render bloquea SMTP saliente (25/465/587) en su infraestructura, así que
+// no podemos usar nodemailer contra Gmail o el SMTP relay de Brevo — hay
+// que ir por la API REST v3 de Brevo (HTTPS, no bloqueada).
 //
 // Env vars requeridas en producción:
-//   SMTP_USER — cuenta de Gmail (ej: somos.mimo.app@gmail.com)
-//   SMTP_PASS — App Password (16 chars) generado en Google Account con 2FA.
-// BASE_URL se usa para armar el link de reset. Fallback: https://nigra-server.onrender.com.
+//   SMTP_PASS      — clave xkeysib-... generada en app.brevo.com → Claves API.
+//                    (El nombre "SMTP_PASS" es histórico del intento previo con
+//                    Gmail SMTP; ahora guarda la API key de Brevo).
+//   MAIL_FROM      — email del remitente (default: somos.mimo.app@gmail.com).
+//                    Debe estar verificado como sender en Brevo o el envío falla.
+//   BASE_URL       — para armar el link de reset (default: onrender).
 //
-// En test/dev sin SMTP configurado, sendResetEmail devuelve { skipped: true }
-// sin tirar error, para que los tests no dependan de red.
-
-import nodemailer from 'nodemailer';
+// En test/dev sin SMTP_PASS, sendResetEmail devuelve { skipped: true } sin
+// tirar error, para que los tests no dependan de red.
 
 const BASE_URL = process.env.BASE_URL || 'https://nigra-server.onrender.com';
-const FROM = 'Mimo <somos.mimo.app@gmail.com>';
+const MAIL_FROM_EMAIL = process.env.MAIL_FROM || 'somos.mimo.app@gmail.com';
+const MAIL_FROM_NAME = 'Mimo';
 
-let cachedTransporter = null;
-
-function getTransporter() {
-    if (cachedTransporter) return cachedTransporter;
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
-    cachedTransporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-        },
-    });
-    return cachedTransporter;
-}
-
-// Sólo para tests: permite inyectar un transporter fake y evitar la red.
-export function _setTransporterForTest(fake) {
-    cachedTransporter = fake;
+// Sólo para tests: permite inyectar un fetch fake.
+let injectedFetch = null;
+export function _setFetchForTest(fake) {
+    injectedFetch = fake;
 }
 
 export async function sendResetEmail({ to, token, name }) {
-    const transporter = getTransporter();
-    if (!transporter) {
-        console.warn('Mailer: SMTP_USER/SMTP_PASS no configurados, skip envío.');
+    if (!process.env.SMTP_PASS) {
+        console.warn('📧 Mailer: SMTP_PASS (Brevo API key) no configurado, skip envío.');
         return { skipped: true };
     }
 
     const link = `${BASE_URL}/reset-password?token=${encodeURIComponent(token)}`;
     const greeting = name ? `Hola ${name},` : 'Hola,';
 
-    const info = await transporter.sendMail({
-        from: FROM,
-        to,
+    const payload = {
+        sender: { name: MAIL_FROM_NAME, email: MAIL_FROM_EMAIL },
+        to: [{ email: to, name: name || undefined }],
         subject: 'Recuperá tu contraseña — Mimo',
-        text:
+        textContent:
             `${greeting}\n\n` +
             `Alguien pidió restablecer la contraseña de tu cuenta en Mimo.\n\n` +
             `Abrí este link para elegir una nueva contraseña (válido por 1 hora):\n` +
             `${link}\n\n` +
             `Si no fuiste vos, ignorá este mensaje. Tu contraseña actual sigue siendo la misma.\n\n` +
             `— El equipo de Mimo`,
-        html: `
+        htmlContent: `
             <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1a1a1a; line-height: 1.5;">
                 <h1 style="font-size: 22px; font-weight: 600; margin: 0 0 8px 0; color: #FF5C6C;">mimo</h1>
                 <p style="margin: 16px 0;">${greeting}</p>
@@ -71,7 +61,26 @@ export async function sendResetEmail({ to, token, name }) {
                 <p style="margin: 32px 0 0 0; font-size: 12px; color: #9ca3af;">— El equipo de Mimo</p>
             </div>
         `,
+    };
+
+    const doFetch = injectedFetch || fetch;
+    console.log(`📧 Mailer: enviando reset a ${to} via Brevo...`);
+    const res = await doFetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'api-key': process.env.SMTP_PASS,
+        },
+        body: JSON.stringify(payload),
     });
 
-    return { skipped: false, messageId: info.messageId };
+    if (!res.ok) {
+        const errorBody = await res.text().catch(() => '<unreadable>');
+        throw new Error(`Brevo API ${res.status}: ${errorBody}`);
+    }
+
+    const data = await res.json();
+    console.log(`📧 Mailer: enviado a ${to}. messageId=${data.messageId}`);
+    return { skipped: false, messageId: data.messageId };
 }

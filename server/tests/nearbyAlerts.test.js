@@ -62,12 +62,14 @@ describe('notifyNearbyUsers', () => {
 
         await notifyNearbyUsers({ ...deps, newPet: basePet, reporterId: 1 });
 
-        // 1) La query de candidatos usa haversine con radio 5km y filtra por opt-in + fresh location + no reporter
+        // 1) La query de candidatos usa haversine con radio 5km y filtra por opt-in + fresh location + no reporter.
+        // NO filtra por push_token — la notification se genera igual para users web-only.
         const [selectSql, selectParams] = deps.pool.query.mock.calls[0];
         expect(selectSql).toMatch(/notify_nearby = true/);
         expect(selectSql).toMatch(/last_location_at > NOW\(\) - INTERVAL '30 days'/);
         expect(selectSql).toMatch(/u\.id <> \$3/);
         expect(selectSql).toMatch(/6371 \* acos/); // haversine
+        expect(selectSql).not.toMatch(/push_token IS NOT NULL/);
         expect(selectParams).toEqual([basePet.lat, basePet.lng, 1, 5]); // radio 5km
 
         // 2) INSERT notification con type nearby_lost + payload correcto
@@ -125,6 +127,21 @@ describe('notifyNearbyUsers', () => {
         expect(deps.pool.query).toHaveBeenCalledTimes(2);
         expect(deps.sendExpoPush).not.toHaveBeenCalled();
         expect(deps.io._emit).not.toHaveBeenCalled();
+    });
+
+    it('user sin push_token igual recibe la notification en el inbox (fix: web-only users)', async () => {
+        deps.pool.query
+            .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Ana', push_token: null }] })  // sin push_token
+            .mockResolvedValueOnce({ rows: [] })                                          // dedupe
+            .mockResolvedValueOnce({ rows: [{ id: 100 }] });                              // insert notif
+
+        await notifyNearbyUsers({ ...deps, newPet: basePet, reporterId: 1 });
+
+        // Notification insertada + socket emit ok
+        expect(deps.pool.query).toHaveBeenCalledTimes(3);
+        expect(deps.io.to).toHaveBeenCalledWith('user_7');
+        // Pero NO se dispara el push (no hay token)
+        expect(deps.sendExpoPush).not.toHaveBeenCalled();
     });
 
     it('procesa múltiples candidatos en la misma corrida', async () => {

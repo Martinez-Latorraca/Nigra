@@ -16,11 +16,13 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
     if (!['lost', 'found'].includes(newPet.status)) return;
     try {
         const notifType = newPet.status === 'lost' ? 'nearby_lost' : 'nearby_found';
+        // El WHERE NO filtra por push_token: users sin token igual reciben la
+        // notification en su inbox (útil para users web-only). Sólo el push
+        // real se gate más abajo por presencia de push_token.
         const sql = `
             SELECT u.id, u.name, u.push_token
             FROM users u
             WHERE u.notify_nearby = true
-              AND u.push_token IS NOT NULL
               AND u.last_lat IS NOT NULL
               AND u.last_lng IS NOT NULL
               AND u.last_location_at > NOW() - INTERVAL '30 days'
@@ -72,18 +74,20 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
             const body = newPet.status === 'lost'
                 ? `Reportaron${petLabel} perdido/a${areaSuffix}. Tap para ver.`
                 : `Alguien encontró un/a mascota${petLabel}${areaSuffix}. ¿La conocés?`;
-            try {
-                sendExpoPush(u.push_token, {
-                    title,
-                    body,
-                    data: {
-                        type: notifType,
-                        pet_id: newPet.id,
-                        receiver_id: u.id,
-                    },
-                });
-            } catch (e) {
-                console.error('nearby push error:', e?.message);
+            if (u.push_token) {
+                try {
+                    sendExpoPush(u.push_token, {
+                        title,
+                        body,
+                        data: {
+                            type: notifType,
+                            pet_id: newPet.id,
+                            receiver_id: u.id,
+                        },
+                    });
+                } catch (e) {
+                    console.error('nearby push error:', e?.message);
+                }
             }
         }
         if (candidates.length > 0) {

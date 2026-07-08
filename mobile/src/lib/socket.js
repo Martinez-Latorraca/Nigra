@@ -77,6 +77,10 @@ export function SocketProvider({ children }) {
         return [notif, ...prev];
       });
     });
+    // Al cerrarse/reabrirse un caso, el server marcó los messages como leídos
+    // (o los reactivó). Refrescamos el inbox para que la campanita se apague.
+    s.on('pet_resolved', () => refreshInbox());
+    s.on('pet_reopened', () => refreshInbox());
     refreshInbox();
     refreshNotifications();
 

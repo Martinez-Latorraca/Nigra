@@ -339,6 +339,18 @@ export const resolvePet = async (req, res) => {
             [resolvedAt, resolvedWith, petId]
         );
 
+        // Al cerrar el caso, marcamos como leídos TODOS los mensajes pendientes
+        // sobre esta mascota (para todos los chats abiertos, incluidos los que
+        // el dueño no cerró). El caso terminó → no hay acción pendiente en el
+        // inbox. Sin esto, la campanita con "N sin leer" quedaba encendida
+        // para siempre después de cerrar.
+        if (resolved) {
+            await pool.query(
+                'UPDATE messages SET is_read = true WHERE pet_id = $1 AND is_read = false',
+                [petId]
+            );
+        }
+
         // Aviso en tiempo real a ambas partes del reencuentro.
         const io = req.app.locals.io;
         if (io && resolved) {

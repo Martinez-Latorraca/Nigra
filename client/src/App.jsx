@@ -91,12 +91,23 @@ function App() {
       dispatch(prependNotification(notif));
     };
 
+    // Al cerrarse/reabrirse un caso el server ya marcó los messages como
+    // leídos (o los reactivó). Refrescamos el inbox para que el badge de
+    // no-leídos se sincronice.
+    const handlePetResolvedOrReopened = () => {
+      dispatch(fetchInbox());
+    };
+
     socket.on('new_notification', handleNewNotification);
     socket.on('new_match_notification', handleNewMatch);
+    socket.on('pet_resolved', handlePetResolvedOrReopened);
+    socket.on('pet_reopened', handlePetResolvedOrReopened);
 
     return () => {
       socket.off('new_notification', handleNewNotification);
       socket.off('new_match_notification', handleNewMatch);
+      socket.off('pet_resolved', handlePetResolvedOrReopened);
+      socket.off('pet_reopened', handlePetResolvedOrReopened);
     };
   }, [socket, user?.id, dispatch]);
 

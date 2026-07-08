@@ -104,14 +104,48 @@ describe('Pets', () => {
     describe('PATCH /api/pets/:id/resolve', () => {
         it('marca como reunida (dueño)', async () => {
             pool.query
-                .mockResolvedValueOnce({ rows: [{ user_id: 7 }] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+                .mockResolvedValueOnce({ rows: [{ user_id: 7 }] })   // SELECT owner
+                .mockResolvedValueOnce({ rowCount: 1 })              // UPDATE pets
+                .mockResolvedValueOnce({ rowCount: 0 });             // UPDATE messages (mark read)
             const res = await request(buildApp())
                 .patch('/api/pets/1/resolve')
                 .set('x-test-user', '7')
                 .send({ resolved: true });
             expect(res.status).toBe(200);
             expect(res.body.resolved_at).toBeTruthy();
+        });
+
+        it('marca como leídos los mensajes pendientes del pet (fix de campanita fantasma)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ user_id: 7 }] })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 3 });
+            await request(buildApp())
+                .patch('/api/pets/5/resolve')
+                .set('x-test-user', '7')
+                .send({ resolved: true });
+
+            // Verifica que se haya disparado el UPDATE messages con is_read=true
+            const messagesCall = pool.query.mock.calls.find(([sql]) =>
+                /UPDATE messages SET is_read = true/i.test(sql)
+            );
+            expect(messagesCall).toBeDefined();
+            expect(messagesCall[1]).toEqual(['5']); // pet_id llega como string desde req.params
+        });
+
+        it('reabrir (resolved=false) NO toca los messages (no volvemos a marcarlos como no-leídos)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ user_id: 7 }] })
+                .mockResolvedValueOnce({ rowCount: 1 });
+            await request(buildApp())
+                .patch('/api/pets/5/resolve')
+                .set('x-test-user', '7')
+                .send({ resolved: false });
+
+            const messagesCall = pool.query.mock.calls.find(([sql]) =>
+                /UPDATE messages SET is_read/i.test(sql)
+            );
+            expect(messagesCall).toBeUndefined();
         });
 
         it('reabre el reporte (resolved=false)', async () => {
@@ -155,7 +189,8 @@ describe('Pets', () => {
         it('guarda resolved_with_user_id + emite pet_resolved a ambas partes', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Rocky' }] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 0 }); // UPDATE messages mark read
             const io = makeIoMock();
             const res = await request(buildApp(io))
                 .patch('/api/pets/1/resolve')
@@ -165,7 +200,7 @@ describe('Pets', () => {
             expect(res.status).toBe(200);
             expect(res.body.resolved_with_user_id).toBe(42);
 
-            // El UPDATE debe llevar el resolvedWith en el segundo binding
+            // El UPDATE de pets debe llevar el resolvedWith en el segundo binding
             const [, updateParams] = pool.query.mock.calls[1];
             expect(updateParams[1]).toBe(42);
 
@@ -183,7 +218,8 @@ describe('Pets', () => {
         it('sin resolved_with_user_id emite solo al owner (no rompe)', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [{ user_id: 7, name: 'Rocky' }] })
-                .mockResolvedValueOnce({ rowCount: 1 });
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 0 }); // UPDATE messages mark read
             const io = makeIoMock();
             await request(buildApp(io))
                 .patch('/api/pets/1/resolve')

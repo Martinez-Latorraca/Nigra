@@ -44,3 +44,21 @@ export const facebookLoginSchema = Joi.object({
     accessToken: Joi.string().required()
         .messages({ 'string.empty': 'accessToken es requerido' }),
 });
+
+export const forgotPasswordSchema = Joi.object({
+    email: Joi.string().trim().email().required()
+        .messages({
+            'string.empty': 'El email es requerido',
+            'string.email': 'El email no es válido',
+        }),
+});
+
+export const resetPasswordSchema = Joi.object({
+    token: Joi.string().trim().length(64).hex().required()
+        .messages({ 'string.empty': 'Token requerido' }),
+    password: Joi.string().min(6).max(128).required()
+        .messages({
+            'string.empty': 'La contraseña es requerida',
+            'string.min': 'La contraseña debe tener al menos 6 caracteres',
+        }),
+});

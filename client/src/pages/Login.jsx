@@ -99,6 +99,12 @@ function Login() {
                     >
                         {loading ? 'Verificando...' : 'Iniciar Sesión'}
                     </button>
+
+                    <div className="text-center -mt-2">
+                        <Link to="/forgot-password" className="text-xs font-semibold text-gray-400 hover:text-black transition-colors">
+                            ¿Olvidaste tu contraseña?
+                        </Link>
+                    </div>
                 </form>
 
                 <SocialAuth />
@@ -112,7 +118,7 @@ function Login() {
             </div>
 
             <div className="mt-8 text-[10px] text-gray-300 font-bold tracking-[0.2em] uppercase">
-                Seguridad Encriptada Mimo
+                Comunidad Mimo
             </div>
         </div>
     );

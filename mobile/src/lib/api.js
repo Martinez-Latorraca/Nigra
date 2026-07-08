@@ -13,7 +13,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const AUTH_ENDPOINTS = ['/api/auth/login', '/api/auth/register', '/api/oauth/'];
+export const AUTH_ENDPOINTS = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/oauth/',
+];
 
 export function isTokenError(status, message) {
   if (status === 401) return true;

@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 vi.mock('../db.js', () => ({ default: { query: vi.fn() } }));
+// Mailer: mockeamos el envío para no depender de red/SMTP.
+vi.mock('../lib/mailer.js', () => ({
+    sendResetEmail: vi.fn(() => Promise.resolve({ skipped: true })),
+}));
 vi.mock('../middlewares/rateLimiter.js', () => ({
     authLimiter: (req, res, next) => next(),
     searchLimiter: (req, res, next) => next(),
@@ -29,6 +34,7 @@ vi.mock('../controllers/oauthController.js', () => ({
 
 const { default: pool } = await import('../db.js');
 const { default: authRoutes } = await import('../routes/authRoutes.js');
+const { sendResetEmail } = await import('../lib/mailer.js');
 
 const buildApp = () => {
     const app = express();
@@ -161,6 +167,121 @@ describe('Auth', () => {
                 .set('x-test-user', '999')
                 .send({ password: 'x' });
             expect(res.status).toBe(404);
+        });
+    });
+
+    describe('POST /api/auth/forgot-password', () => {
+        beforeEach(() => {
+            sendResetEmail.mockClear();
+        });
+
+        it('400 si el email es inválido (schema)', async () => {
+            const res = await request(buildApp())
+                .post('/api/auth/forgot-password')
+                .send({ email: 'not-an-email' });
+            expect(res.status).toBe(400);
+        });
+
+        it('user no existe: devuelve 200 sin mandar mail (no leakea existencia)', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/auth/forgot-password')
+                .send({ email: 'nobody@x.com' });
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(sendResetEmail).not.toHaveBeenCalled();
+        });
+
+        it('user OAuth-only (sin password): devuelve 200 sin mandar mail', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 7, name: 'Ana', password: null }] });
+            const res = await request(buildApp())
+                .post('/api/auth/forgot-password')
+                .send({ email: 'ana@x.com' });
+            expect(res.status).toBe(200);
+            expect(sendResetEmail).not.toHaveBeenCalled();
+        });
+
+        it('user con password local: inserta token + manda mail', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Ana', password: 'hash' }] })  // SELECT user
+                .mockResolvedValueOnce({ rows: [] });                                          // INSERT reset
+            const res = await request(buildApp())
+                .post('/api/auth/forgot-password')
+                .send({ email: 'ana@x.com' });
+            expect(res.status).toBe(200);
+
+            // Insert con user_id + tokenHash (SHA-256 hex de 64 chars) + expires futuro
+            const [sql, params] = pool.query.mock.calls[1];
+            expect(sql).toMatch(/INSERT INTO password_resets/i);
+            expect(params[0]).toBe(7);
+            expect(params[1]).toMatch(/^[0-9a-f]{64}$/);
+            expect(new Date(params[2]).getTime()).toBeGreaterThan(Date.now());
+
+            // Mail disparado con el TOKEN CRUDO (no el hash) — se resuelve
+            // fire-and-forget, esperamos un microtask.
+            await new Promise((r) => setImmediate(r));
+            expect(sendResetEmail).toHaveBeenCalledWith(expect.objectContaining({
+                to: 'ana@x.com',
+                name: 'Ana',
+                token: expect.stringMatching(/^[0-9a-f]{64}$/),
+            }));
+            // El token que va al mail NO es el hash guardado en DB
+            const insertedHash = params[1];
+            const emailedToken = sendResetEmail.mock.calls[0][0].token;
+            expect(emailedToken).not.toBe(insertedHash);
+        });
+    });
+
+    describe('POST /api/auth/reset-password', () => {
+        const validToken = 'a'.repeat(64);
+
+        it('400 si el token no matchea el formato (schema)', async () => {
+            const res = await request(buildApp())
+                .post('/api/auth/reset-password')
+                .send({ token: 'nope', password: 'newpass1' });
+            expect(res.status).toBe(400);
+        });
+
+        it('400 si el password es muy corto (schema)', async () => {
+            const res = await request(buildApp())
+                .post('/api/auth/reset-password')
+                .send({ token: validToken, password: 'ab' });
+            expect(res.status).toBe(400);
+        });
+
+        it('400 si el token no existe, expiró o ya se usó', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/auth/reset-password')
+                .send({ token: validToken, password: 'nueva-pass' });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/expir|v[aá]lid/i);
+        });
+
+        it('happy path: actualiza password + marca token used + invalida otros pendientes', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 42, user_id: 7 }] })       // SELECT reset
+                .mockResolvedValueOnce({ rowCount: 1 })                          // UPDATE users
+                .mockResolvedValueOnce({ rowCount: 1 })                          // UPDATE reset used
+                .mockResolvedValueOnce({ rowCount: 0 });                         // UPDATE otros pendientes
+            const res = await request(buildApp())
+                .post('/api/auth/reset-password')
+                .send({ token: validToken, password: 'nueva-pass' });
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+
+            // El SELECT busca por token_hash (sha256 hex), no por el token crudo
+            const [selectSql, selectParams] = pool.query.mock.calls[0];
+            expect(selectSql).toMatch(/token_hash/);
+            const expectedHash = crypto.createHash('sha256').update(validToken).digest('hex');
+            expect(selectParams[0]).toBe(expectedHash);
+
+            // El password guardado es un hash bcrypt, no el password crudo
+            const [updateSql, updateParams] = pool.query.mock.calls[1];
+            expect(updateSql).toMatch(/UPDATE users SET password/i);
+            expect(updateParams[0]).not.toBe('nueva-pass');
+            const isValid = await bcrypt.compare('nueva-pass', updateParams[0]);
+            expect(isValid).toBe(true);
         });
     });
 });

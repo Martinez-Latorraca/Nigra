@@ -1,8 +1,13 @@
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
+import { sendResetEmail } from '../lib/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const RESET_TOKEN_TTL_MIN = 60; // 1 hora
+
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 export const register = async (req, res) => {
     try {
@@ -96,5 +101,81 @@ export const deleteAccount = async (req, res) => {
     } catch (error) {
         console.error('Error al eliminar cuenta:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
+    }
+};
+
+// Solicitar recuperación de contraseña. Devuelve 200 siempre para no filtrar
+// si un email existe o no en la base (attacker enumeration). El envío del
+// mail solo se dispara si el user existe Y tiene password local — las
+// cuentas OAuth-only se ignoran silenciosamente.
+export const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const { rows } = await pool.query(
+            'SELECT id, name, password FROM users WHERE email = $1',
+            [email]
+        );
+        const user = rows[0];
+
+        if (user && user.password) {
+            const rawToken = crypto.randomBytes(32).toString('hex'); // 64 chars
+            const tokenHash = hashToken(rawToken);
+            const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000);
+
+            await pool.query(
+                `INSERT INTO password_resets (user_id, token_hash, expires_at)
+                 VALUES ($1, $2, $3)`,
+                [user.id, tokenHash, expiresAt]
+            );
+
+            // Fire-and-forget para no bloquear la respuesta si el SMTP está lento.
+            sendResetEmail({ to: email, token: rawToken, name: user.name })
+                .catch((e) => console.error('sendResetEmail error:', e?.message));
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('forgotPassword error:', error);
+        // Igual devolvemos 200 para no filtrar diferencias de comportamiento.
+        res.json({ success: true });
+    }
+};
+
+// Consume un token de reset y actualiza la contraseña. Token single-use:
+// marcamos used_at para invalidarlo aunque el request tire error después.
+export const resetPassword = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+        const tokenHash = hashToken(token);
+
+        const { rows } = await pool.query(
+            `SELECT id, user_id FROM password_resets
+             WHERE token_hash = $1
+               AND used_at IS NULL
+               AND expires_at > NOW()`,
+            [tokenHash]
+        );
+        if (rows.length === 0) {
+            return res.status(400).json({ error: 'El link ya expiró o no es válido. Pedí uno nuevo.' });
+        }
+        const resetRow = rows[0];
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        await pool.query('UPDATE users SET password = $1 WHERE id = $2', [passwordHash, resetRow.user_id]);
+        await pool.query('UPDATE password_resets SET used_at = NOW() WHERE id = $1', [resetRow.id]);
+        // Invalidamos también cualquier otro token pendiente del mismo user.
+        await pool.query(
+            `UPDATE password_resets SET used_at = NOW()
+             WHERE user_id = $1 AND used_at IS NULL`,
+            [resetRow.user_id]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('resetPassword error:', error);
+        res.status(500).json({ error: 'No se pudo actualizar la contraseña' });
     }
 };

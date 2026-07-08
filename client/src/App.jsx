@@ -3,6 +3,8 @@ import Home from './pages/Home';
 import Find from './pages/Find';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
 import ChatWidget from './components/ChatWidget';
@@ -112,6 +114,8 @@ function App() {
           <Route path="/pet/:id" element={<Pet socket={socket} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminPanel />} />
         </Routes>
         <ChatWidget socket={socket} />

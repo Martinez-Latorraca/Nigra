@@ -39,10 +39,12 @@ describe('isTokenError', () => {
 });
 
 describe('AUTH_ENDPOINTS', () => {
-    it('incluye login/register/oauth', () => {
+    it('incluye login/register/forgot/reset/oauth (todos skipean auto-logout)', () => {
         expect(AUTH_ENDPOINTS).toEqual([
             '/api/auth/login',
             '/api/auth/register',
+            '/api/auth/forgot-password',
+            '/api/auth/reset-password',
             '/api/oauth/',
         ]);
     });

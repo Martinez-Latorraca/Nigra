@@ -314,12 +314,27 @@ async function ensureSchema() {
         `);
         await pool.query('CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC)');
 
+        // Tokens de reset de contraseña. Guardamos SOLO el hash — el token
+        // en texto plano viaja al mail y nunca queda en la DB. Single-use
+        // (used_at) + expiración (1h a nivel controller).
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash TEXT NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                used_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query('CREATE INDEX IF NOT EXISTS password_resets_hash_idx ON password_resets(token_hash)');
+
         // RLS habilitado sin policies. Nuestro server se conecta con el role
         // `postgres` de Supabase, que tiene BYPASSRLS — nuestras queries siguen
         // funcionando. Bloquea a los roles anon y authenticated que usa la
         // PostgREST auto-expuesta por Supabase (evita que alguien con la anon
         // key haga SELECT * FROM users sin auth).
-        for (const table of ['users', 'pets', 'messages', 'notifications']) {
+        for (const table of ['users', 'pets', 'messages', 'notifications', 'password_resets']) {
             await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
         }
     } catch (error) {

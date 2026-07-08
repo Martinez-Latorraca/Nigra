@@ -125,6 +125,10 @@ export default function Login() {
         )}
       </Pressable>
 
+      <Link href="/forgot-password" style={[styles.forgotLink, { color: c.subtitle }]}>
+        ¿Olvidaste tu contraseña?
+      </Link>
+
       {anySocialConfigured && (
         <View style={styles.divider}>
           <View style={[styles.dividerLine, { backgroundColor: c.divider }]} />
@@ -200,4 +204,5 @@ const styles = StyleSheet.create({
   dividerText: { fontSize: 12, paddingHorizontal: 12, fontWeight: '500' },
   footerText: { fontSize: 14, fontWeight: '500' },
   footerLink: { fontWeight: '700' },
+  forgotLink: { fontSize: 12, fontWeight: '600', textAlign: 'center', marginTop: 12 },
 });

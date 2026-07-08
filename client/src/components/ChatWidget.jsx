@@ -198,10 +198,14 @@ function ChatWidget({ socket }) {
                     value={text}
                     onChange={e => setText(e.target.value)}
                     onFocus={handleFocus}
-                    placeholder="Escribe un mensaje..."
-                    className="flex-1 bg-gray-100 border-none rounded-full px-6 py-3 text-sm focus:ring-1 focus:ring-black outline-none font-sans"
+                    placeholder={isResolved ? 'Caso cerrado — no se pueden enviar mensajes' : 'Escribe un mensaje...'}
+                    disabled={isResolved}
+                    className={`flex-1 bg-gray-100 border-none rounded-full px-6 py-3 text-sm focus:ring-1 focus:ring-black outline-none font-sans ${isResolved ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
-                <button type="submit" className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+                <button
+                    type="submit"
+                    disabled={isResolved}
+                    className={`w-12 h-12 bg-black text-white rounded-full flex items-center justify-center ${isResolved ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95 transition-all'}`}>
                     →
                 </button>
             </form>

@@ -267,17 +267,18 @@ export default function Chat() {
         ]}
       >
         <TextInput
-          style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
+          style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }, isResolved && styles.disabled]}
           value={text}
           onChangeText={setText}
-          placeholder="Escribí un mensaje…"
+          placeholder={isResolved ? 'Caso cerrado — no se pueden enviar mensajes' : 'Escribí un mensaje…'}
           placeholderTextColor={c.label}
+          editable={!isResolved}
           multiline
         />
         <Pressable
-          style={[styles.sendBtn, { backgroundColor: c.primary }, !text.trim() && styles.disabled]}
+          style={[styles.sendBtn, { backgroundColor: c.primary }, (!text.trim() || isResolved) && styles.disabled]}
           onPress={send}
-          disabled={!text.trim()}
+          disabled={!text.trim() || isResolved}
         >
           <Text style={[styles.sendText, { color: c.primaryText }]}>→</Text>
         </Pressable>

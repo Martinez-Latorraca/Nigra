@@ -25,10 +25,10 @@ const makeIo = () => {
 // 4) SELECT push_token (push lookup, fire-and-forget)
 const mockHappyPath = (pool, { ownerId = 7, senderName = 'Ana', savedMessage, pushToken } = {}) => {
     pool.query
-        .mockResolvedValueOnce({ rows: [{ user_id: ownerId }] })            // verifyChatRelationship
-        .mockResolvedValueOnce({ rows: [{ name: senderName }] })            // loadSenderProfile
-        .mockResolvedValueOnce({ rows: [savedMessage] })                    // INSERT
-        .mockResolvedValueOnce({ rows: [{ push_token: pushToken }] });      // SELECT push_token
+        .mockResolvedValueOnce({ rows: [{ user_id: ownerId, resolved_at: null }] })  // verifyChatRelationship
+        .mockResolvedValueOnce({ rows: [{ name: senderName }] })                     // loadSenderProfile
+        .mockResolvedValueOnce({ rows: [savedMessage] })                             // INSERT
+        .mockResolvedValueOnce({ rows: [{ push_token: pushToken }] });               // SELECT push_token
 };
 
 describe('validateMessagePayload', () => {
@@ -149,7 +149,7 @@ describe('handleSendPetMessage', () => {
         });
 
         it('rechaza si ni sender ni receiver son el dueño de la mascota', async () => {
-            pool.query.mockResolvedValueOnce({ rows: [{ user_id: 99 }] });
+            pool.query.mockResolvedValueOnce({ rows: [{ user_id: 99, resolved_at: null }] });
             const result = await handleSendPetMessage({
                 pool, io, sendExpoPush, socket,
                 data: { pet_id: 1, receiver_id: 2, content: 'hola' },
@@ -157,6 +157,23 @@ describe('handleSendPetMessage', () => {
             expect(result.ok).toBe(false);
             expect(result.reason).toBe('not_related_to_pet');
             // No hace el INSERT porque cortó antes
+            expect(pool.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('rechaza si el caso ya está cerrado (pet.resolved_at != null)', async () => {
+            pool.query.mockResolvedValueOnce({
+                rows: [{ user_id: 7, resolved_at: '2026-07-08T00:00:00Z' }],
+            });
+            const result = await handleSendPetMessage({
+                pool, io, sendExpoPush, socket,
+                data: { pet_id: 1, receiver_id: 2, content: 'hola' },
+            });
+            expect(result.ok).toBe(false);
+            expect(result.reason).toBe('case_closed');
+            expect(socket.emit).toHaveBeenCalledWith(
+                'error_notification',
+                expect.stringMatching(/cerrado/i)
+            );
             expect(pool.query).toHaveBeenCalledTimes(1);
         });
 
@@ -291,9 +308,9 @@ describe('handleSendPetMessage', () => {
     describe('error handling', () => {
         it('emite error_notification y devuelve db_error si falla el INSERT', async () => {
             pool.query
-                .mockResolvedValueOnce({ rows: [{ user_id: 7 }] })     // verifyChatRelationship OK
-                .mockResolvedValueOnce({ rows: [{ name: 'Ana' }] })    // loadSenderProfile OK
-                .mockRejectedValueOnce(new Error('db down'));          // INSERT falla
+                .mockResolvedValueOnce({ rows: [{ user_id: 7, resolved_at: null }] })  // verifyChatRelationship OK
+                .mockResolvedValueOnce({ rows: [{ name: 'Ana' }] })                    // loadSenderProfile OK
+                .mockRejectedValueOnce(new Error('db down'));                          // INSERT falla
 
             const result = await handleSendPetMessage({
                 pool, io, sendExpoPush, socket,

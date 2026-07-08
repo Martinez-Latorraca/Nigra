@@ -28,13 +28,21 @@ function validateMessagePayload(data, senderId) {
 
 // Regla del feature: en un chat sobre una mascota, sender o receiver debe ser
 // el dueño del reporte. Sin eso, un user autenticado podría DMar a cualquier
-// otro user sobre cualquier pet, spam + phishing.
+// otro user sobre cualquier pet, spam + phishing. También bloqueamos el envío
+// si el caso ya está resuelto — el owner recuperó a su mascota y no necesita
+// seguir recibiendo mensajes. Se puede reabrir el reporte si fue por error.
 async function verifyChatRelationship(pool, { pet_id, sender_id, receiver_id }) {
-    const { rows } = await pool.query('SELECT user_id FROM pets WHERE id = $1', [pet_id]);
+    const { rows } = await pool.query(
+        'SELECT user_id, resolved_at FROM pets WHERE id = $1',
+        [pet_id]
+    );
     if (rows.length === 0) return { ok: false, reason: 'pet_not_found' };
     const ownerId = Number(rows[0].user_id);
     if (ownerId !== Number(sender_id) && ownerId !== Number(receiver_id)) {
         return { ok: false, reason: 'not_related_to_pet' };
+    }
+    if (rows[0].resolved_at) {
+        return { ok: false, reason: 'case_closed' };
     }
     return { ok: true };
 }
@@ -59,7 +67,10 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
 
     const relation = await verifyChatRelationship(pool, { pet_id, sender_id, receiver_id });
     if (!relation.ok) {
-        socket.emit('error_notification', 'No podés enviar mensajes sobre esta mascota');
+        const msg = relation.reason === 'case_closed'
+            ? 'El caso está cerrado — no se pueden enviar más mensajes'
+            : 'No podés enviar mensajes sobre esta mascota';
+        socket.emit('error_notification', msg);
         return { ok: false, reason: relation.reason };
     }
 

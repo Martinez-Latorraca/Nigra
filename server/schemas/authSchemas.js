@@ -53,6 +53,10 @@ export const forgotPasswordSchema = Joi.object({
         }),
 });
 
+export const linkGoogleSchema = googleLoginSchema;
+export const linkAppleSchema = appleLoginSchema;
+export const linkFacebookSchema = facebookLoginSchema;
+
 export const resetPasswordSchema = Joi.object({
     token: Joi.string().trim().length(64).hex().required()
         .messages({ 'string.empty': 'Token requerido' }),

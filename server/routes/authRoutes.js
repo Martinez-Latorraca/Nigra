@@ -1,6 +1,15 @@
 import express from 'express';
 import { register, login, deleteAccount, forgotPassword, resetPassword } from '../controllers/authController.js';
-import { loginWithGoogle, loginWithApple, loginWithFacebook } from '../controllers/oauthController.js';
+import {
+    loginWithGoogle,
+    loginWithApple,
+    loginWithFacebook,
+    linkGoogle,
+    linkApple,
+    linkFacebook,
+    listOAuthLinks,
+    unlinkOAuthProvider,
+} from '../controllers/oauthController.js';
 import { authenticateToken } from '../middlewares/auth.js';
 import { authLimiter } from '../middlewares/rateLimiter.js';
 import validate from '../middlewares/validate.js';
@@ -10,6 +19,9 @@ import {
     googleLoginSchema,
     appleLoginSchema,
     facebookLoginSchema,
+    linkGoogleSchema,
+    linkAppleSchema,
+    linkFacebookSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
 } from '../schemas/authSchemas.js';
@@ -24,5 +36,12 @@ router.post('/facebook', authLimiter, validate(facebookLoginSchema), loginWithFa
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), resetPassword);
 router.delete('/me', authenticateToken, deleteAccount);
+
+// OAuth link/unlink desde el perfil (requiere JWT).
+router.get('/links', authenticateToken, listOAuthLinks);
+router.post('/link/google', authenticateToken, validate(linkGoogleSchema), linkGoogle);
+router.post('/link/apple', authenticateToken, validate(linkAppleSchema), linkApple);
+router.post('/link/facebook', authenticateToken, validate(linkFacebookSchema), linkFacebook);
+router.delete('/link/:provider', authenticateToken, unlinkOAuthProvider);
 
 export default router;

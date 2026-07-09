@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { clearCredentials } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
+import LinkedAccounts from '../components/LinkedAccounts';
 
 function Profile() {
     const navigate = useNavigate();
@@ -310,6 +311,8 @@ function Profile() {
                             <span className="text-sm font-semibold text-gray-900 tracking-tight">Comunidad Mimo Activa</span>
                         </div>
                     </div>
+
+                    <LinkedAccounts />
 
                     <div className="bg-white rounded-[40px] p-8 border border-gray-100 flex items-start justify-between gap-4">
                         <div className="flex-1">

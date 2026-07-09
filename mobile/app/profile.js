@@ -16,6 +16,7 @@ import api from '../src/lib/api';
 import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme } from '../src/lib/theme';
 import MenuButton from '../src/components/MenuButton';
+import LinkedAccounts from '../src/components/LinkedAccounts';
 
 export default function Profile() {
   const c = useTheme();
@@ -145,6 +146,8 @@ export default function Profile() {
           trackColor={{ false: '#E5E7EB', true: c.primary }}
         />
       </View>
+
+      <LinkedAccounts c={c} />
 
       <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text>
     </View>

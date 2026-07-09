@@ -30,6 +30,11 @@ vi.mock('../controllers/oauthController.js', () => ({
     loginWithGoogle: (req, res) => res.json({ stub: true }),
     loginWithApple: (req, res) => res.json({ stub: true }),
     loginWithFacebook: (req, res) => res.json({ stub: true }),
+    linkGoogle: (req, res) => res.json({ stub: true }),
+    linkApple: (req, res) => res.json({ stub: true }),
+    linkFacebook: (req, res) => res.json({ stub: true }),
+    listOAuthLinks: (req, res) => res.json({ stub: true }),
+    unlinkOAuthProvider: (req, res) => res.json({ stub: true }),
 }));
 
 const { default: pool } = await import('../db.js');

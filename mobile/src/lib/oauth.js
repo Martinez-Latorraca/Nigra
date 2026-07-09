@@ -17,6 +17,26 @@ export async function exchangeFacebookToken(accessToken) {
   return data;
 }
 
+export async function fetchOAuthLinks() {
+  const { data } = await api.get('/api/auth/links');
+  return data;
+}
+
+export async function linkGoogleToAccount(idToken) {
+  const { data } = await api.post('/api/auth/link/google', { idToken });
+  return data;
+}
+
+export async function linkFacebookToAccount(accessToken) {
+  const { data } = await api.post('/api/auth/link/facebook', { accessToken });
+  return data;
+}
+
+export async function unlinkOAuthProvider(provider) {
+  const { data } = await api.delete(`/api/auth/link/${provider}`);
+  return data;
+}
+
 export function formatAppleFullName(fullName) {
   if (!fullName) return undefined;
   const parts = [fullName.givenName, fullName.familyName].filter(Boolean);

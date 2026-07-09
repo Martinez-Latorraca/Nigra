@@ -75,14 +75,14 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
     //       (llegó ahí porque un provider verificado lo confirmó antes).
     // Sin ambos, rechazamos: password-only accounts + logins de proveedores
     // no-verificados no pueden reclamar cuentas existentes por email.
-    if (email && PROVIDER_VERIFIES_EMAIL[provider]) {
+    if (email) {
         const byEmail = await pool.query(
             'SELECT id, name, email, role, avatar_url, provider, provider_id, email_verified FROM users WHERE email = $1',
             [email]
         );
         if (byEmail.rows.length > 0) {
             const user = byEmail.rows[0];
-            if (!user.email_verified) {
+            if (!PROVIDER_VERIFIES_EMAIL[provider] || !user.email_verified) {
                 throw new OAuthLinkConflict(user.provider || 'password');
             }
             if (!user.provider_id) {

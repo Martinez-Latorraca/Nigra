@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:769083324849:android:285f805ceeebc753b7e590",
+        "mobilesdk_app_id": "1:769083324849:android:213ebbff73918c03b7e590",
         "android_client_info": {
-          "package_name": "com.nigra.mobile"
+          "package_name": "com.mimo.app"
         }
       },
       "oauth_client": [],

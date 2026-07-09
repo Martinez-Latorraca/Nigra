@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Mimo",
-    "slug": "Nigra-mobile",
-    "scheme": "nigra",
+    "slug": "mimo-app",
+    "scheme": "mimo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.nigra.mobile",
+      "bundleIdentifier": "com.mimo.app",
       "infoPlist": {
         "SKAdNetworkItems": [
           {
@@ -34,7 +34,7 @@
         "backgroundColor": "#00000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.nigra.mobile",
+      "package": "com.mimo.app",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_COARSE_LOCATION",

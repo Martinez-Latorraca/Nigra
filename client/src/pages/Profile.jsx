@@ -159,6 +159,11 @@ function Profile() {
         </div>
     );
 
+    // Si el user hizo logout desde este mismo Profile, el estado de Redux se
+    // limpia ANTES de que el navigate('/') tenga efecto; sin este guard el
+    // render intermedio revienta con "Cannot read properties of null".
+    if (!user) return null;
+
     return (
         <div className="min-h-screen bg-[#F5F5F7] pb-20 font-sans text-gray-900 flex flex-col items-center">
 

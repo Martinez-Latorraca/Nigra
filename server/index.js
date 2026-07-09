@@ -36,7 +36,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 // URL base usada en meta tags OG y JSON-LD. Antes se armaba con req.get('host')
 // permitiendo host header injection (envenenamiento de tarjetas de share).
-const BASE_URL = process.env.BASE_URL || 'https://nigra-server.onrender.com';
+const BASE_URL = process.env.BASE_URL || 'https://mimo.uy';
 
 // Render (y otros PaaS) ponen un proxy delante: confiamos en 1 salto
 // para que express-rate-limit identifique al cliente por su IP real.

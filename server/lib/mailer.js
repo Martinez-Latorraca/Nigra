@@ -14,8 +14,8 @@
 // En test/dev sin SMTP_PASS, sendResetEmail devuelve { skipped: true } sin
 // tirar error, para que los tests no dependan de red.
 
-const BASE_URL = process.env.BASE_URL || 'https://nigra-server.onrender.com';
-const MAIL_FROM_EMAIL = process.env.MAIL_FROM || 'somos.mimo.app@gmail.com';
+const BASE_URL = process.env.BASE_URL || 'https://mimo.uy';
+const MAIL_FROM_EMAIL = process.env.MAIL_FROM || 'no-reply@mimo.uy';
 const MAIL_FROM_NAME = 'Mimo';
 
 // Sólo para tests: permite inyectar un fetch fake.

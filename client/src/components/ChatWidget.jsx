@@ -9,6 +9,7 @@ function ChatWidget({ socket }) {
     const [text, setText] = useState('');
     const [pet, setPet] = useState(null);
     const [resolving, setResolving] = useState(false);
+    const [sendError, setSendError] = useState('');
 
     const { isOpen, activePet, activeChat: messages, loading, chatPage, chatTotalPages } = useSelector(state => state.chats);
     const user = useSelector((state) => state.user?.data);
@@ -70,13 +71,20 @@ function ChatWidget({ socket }) {
             dispatch(resetDismissal(activePet.pet_id));
         };
 
+        const handleError = (msg) => {
+            setSendError(typeof msg === 'string' ? msg : 'Error al enviar el mensaje');
+            setTimeout(() => setSendError(''), 4000);
+        };
+
         socket.on('receive_pet_message', handleReceiveMessage);
         socket.on('pet_resolved', handleResolved);
         socket.on('pet_reopened', handleReopened);
+        socket.on('error_notification', handleError);
         return () => {
             socket.off('receive_pet_message', handleReceiveMessage);
             socket.off('pet_resolved', handleResolved);
             socket.off('pet_reopened', handleReopened);
+            socket.off('error_notification', handleError);
         };
     }, [socket, user, activePet, dispatch]);
 
@@ -88,6 +96,10 @@ function ChatWidget({ socket }) {
     const send = (e) => {
         e.preventDefault();
         if (!text.trim() || !activePet) return;
+        if (!socket || !user) {
+            setSendError('No hay conexión al chat. Recargá la página.');
+            return;
+        }
         socket.emit('send_pet_message', {
             pet_id: activePet.pet_id,
             sender_id: user.id,
@@ -175,8 +187,8 @@ function ChatWidget({ socket }) {
                         </button>
                     )}
                     {messages?.map((m, i) => (
-                        <div key={i} className={`flex flex-col ${m.sender_id === user.id ? 'items-end' : 'items-start'}`}>
-                            <div className={`p-4 rounded-3xl text-sm max-w-[85%] ${m.sender_id === user.id ? 'bg-black text-white' : 'bg-white shadow-sm border border-gray-100'}`}>
+                        <div key={i} className={`flex flex-col ${m.sender_id === user?.id ? 'items-end' : 'items-start'}`}>
+                            <div className={`p-4 rounded-3xl text-sm max-w-[85%] ${m.sender_id === user?.id ? 'bg-black text-white' : 'bg-white shadow-sm border border-gray-100'}`}>
                                 {m.content}
                             </div>
                         </div>
@@ -193,6 +205,11 @@ function ChatWidget({ socket }) {
                 <div ref={scrollRef} />
             </div>
 
+            {sendError ? (
+                <div className="px-6 pt-2 pb-1 bg-white text-[11px] text-red-500 font-semibold text-center">
+                    {sendError}
+                </div>
+            ) : null}
             <form onSubmit={send} className="p-6 bg-white border-t border-gray-50 flex gap-2">
                 <input
                     value={text}

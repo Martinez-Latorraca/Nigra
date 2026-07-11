@@ -36,6 +36,15 @@ export const reportLimiter = rateLimit({
     message: { error: 'Demasiados reportes. Intentá de nuevo en unos minutos.' },
 });
 
+// Waitlist landing: 5 registros por IP por hora. Anti-spam del formulario público.
+export const waitlistLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados registros desde esta IP. Probá en una hora.' },
+});
+
 // Geocoding proxy: llama a Google Geocoding API que cobra por request. 30 per 15
 // min per IP para evitar que un atacante queme la cuota.
 export const geocodeLimiter = rateLimit({

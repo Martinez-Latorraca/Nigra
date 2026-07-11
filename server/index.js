@@ -14,6 +14,7 @@ import { reverseGeocode, searchAddress } from './utils/geocode.js';
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
 import petRoutes from './routes/petRoutes.js';
+import waitlistRoutes from './routes/waitlistRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
@@ -58,6 +59,7 @@ app.use(express.static(buildPath));
 
 // 3. RUTAS DE LA API (Siempre van ARRIBA del SEO y el Catch-all)
 app.use('/api/auth', authRoutes);
+app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);

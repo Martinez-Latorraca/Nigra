@@ -24,7 +24,7 @@ function AdminPanel() {
 
     useEffect(() => {
         if (!token || user?.role !== 'admin') {
-            navigate('/');
+            navigate('/app');
         }
     }, [token, user, navigate]);
 

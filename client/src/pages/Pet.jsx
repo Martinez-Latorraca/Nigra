@@ -164,7 +164,7 @@ function Pet() {
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center font-sans p-6 text-center">
             <h1 className="text-6xl font-semibold text-black mb-4">404.</h1>
             <p className="text-gray-500 mb-10">{error || 'No pudimos encontrar esta mascota.'}</p>
-            <Link to="/" className="px-8 py-3 bg-black text-white rounded-full font-semibold">Volver al inicio</Link>
+            <Link to="/app" className="px-8 py-3 bg-black text-white rounded-full font-semibold">Volver al inicio</Link>
         </div>
     );
 

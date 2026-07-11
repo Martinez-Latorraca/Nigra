@@ -15,6 +15,7 @@ vi.mock('../middlewares/rateLimiter.js', () => ({
     reportLimiter: (req, res, next) => next(),
     globalLimiter: (req, res, next) => next(),
     geocodeLimiter: (req, res, next) => next(),
+    waitlistLimiter: (req, res, next) => next(),
 }));
 vi.mock('../middlewares/auth.js', () => ({
     authenticateToken: (req, res, next) => {

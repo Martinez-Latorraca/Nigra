@@ -172,7 +172,7 @@ function Find() {
         <div className="min-h-screen bg-[#F5F5F7] p-6 font-sans text-gray-900 flex flex-col items-center">
             <div className="w-full max-w-2xl mb-8 flex justify-between items-center px-2">
                 {step === 'form' ? (
-                    <Link to="/" className="text-sm font-medium text-pet-link hover:text-pet-accent transition-colors">
+                    <Link to="/app" className="text-sm font-medium text-pet-link hover:text-pet-accent transition-colors">
                         Volver al inicio
                     </Link>
                 ) : (

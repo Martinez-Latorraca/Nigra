@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
+import Landing from './pages/Landing';
 import Find from './pages/Find';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,6 +24,9 @@ function App() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user?.data);
   const token = useSelector((state) => state.user?.token);
+  const location = useLocation();
+  // La landing es standalone: sin navbar, sin chat widget, sin toasts.
+  const isLanding = location.pathname === '/';
 
 
 
@@ -114,10 +118,11 @@ function App() {
   return (
     <div className="min-h-screen bg-pet-light font-sans flex flex-col">
       <ScrollToTop />
-      <Navbar />
+      {!isLanding && <Navbar />}
       <main className="flex-1 flex flex-col">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/app" element={<Home />} />
           <Route path='/pets' element={<PetList />} />
           <Route path="/profile" element={<Profile socket={socket} />} />
           <Route path="/buscar" element={<Find />} />
@@ -129,8 +134,8 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminPanel />} />
         </Routes>
-        <ChatWidget socket={socket} />
-        <NotificationToast socket={socket} />
+        {!isLanding && <ChatWidget socket={socket} />}
+        {!isLanding && <NotificationToast socket={socket} />}
       </main>
     </div>
   );

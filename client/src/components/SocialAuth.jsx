@@ -38,7 +38,7 @@ export default function SocialAuth() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
             dispatch(setCredentials({ user: data.user, token: data.token }));
-            navigate('/');
+            navigate('/app');
         } catch (e) {
             setError(e.message);
         }

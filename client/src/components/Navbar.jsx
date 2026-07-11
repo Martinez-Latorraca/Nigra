@@ -14,7 +14,7 @@ function Navbar() {
 
     return (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 md:px-8 flex justify-between items-center transition-all">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+            <Link to="/app" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
                 <MimoLogo size={30} color="#FF5C6C" />
                 <span
                     className="text-2xl leading-none"

@@ -53,6 +53,20 @@ export const forgotPasswordSchema = Joi.object({
         }),
 });
 
+export const waitlistSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(80).required()
+        .messages({
+            'string.empty': 'El nombre es requerido',
+            'string.min': 'El nombre debe tener al menos 2 caracteres',
+        }),
+    email: Joi.string().trim().email().max(150).required()
+        .messages({
+            'string.empty': 'El email es requerido',
+            'string.email': 'El email no es válido',
+        }),
+    city: Joi.string().trim().max(80).allow('', null).optional(),
+});
+
 export const linkGoogleSchema = googleLoginSchema;
 export const linkAppleSchema = appleLoginSchema;
 export const linkFacebookSchema = facebookLoginSchema;

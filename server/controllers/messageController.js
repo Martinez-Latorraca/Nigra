@@ -33,9 +33,14 @@ export const getMyMessages = async (req, res) => {
     try {
         const user_id = req.user.id; // El ID viene del token (middleware)
 
+        // Cuando el pet fue reportado por una vet (registered_by_vet_id), y el
+        // "otro" del chat es justamente el owner de esa vet, el frontend
+        // muestra el nombre de la vet en vez del nombre personal del owner.
+        // Así el user siente que está hablando con "Veterinaria X" y no con
+        // "Juan Pérez" (el user detrás).
         const query = `
             SELECT DISTINCT ON (
-                m.pet_id, 
+                m.pet_id,
                 CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END
             )
                 m.pet_id,
@@ -47,19 +52,29 @@ export const getMyMessages = async (req, res) => {
                 p.photo_url,
                 p.description,
                 p.user_id as reporter_id,
+                p.registered_by_vet_id,
                 u_sender.name AS sender_name,
                 u_receiver.name AS receiver_name,
-                -- 🔥 Helpers para el frontend: identifican al "otro" automáticamente
+                v.name AS vet_name,
+                v.slug AS vet_slug,
+                v.logo_url AS vet_logo_url,
+                v.verified_at AS vet_verified_at,
                 CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END AS other_user_id,
-                CASE WHEN m.sender_id = $1 THEN u_receiver.name ELSE u_sender.name END AS other_user_name
+                CASE
+                    WHEN v.id IS NOT NULL
+                         AND (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END) = p.user_id
+                    THEN v.name
+                    ELSE (CASE WHEN m.sender_id = $1 THEN u_receiver.name ELSE u_sender.name END)
+                END AS other_user_name
             FROM messages m
             JOIN pets p ON m.pet_id = p.id
             JOIN users u_sender ON m.sender_id = u_sender.id
             JOIN users u_receiver ON m.receiver_id = u_receiver.id
+            LEFT JOIN vets v ON v.id = p.registered_by_vet_id
             WHERE m.sender_id = $1 OR m.receiver_id = $1
-            ORDER BY 
-                m.pet_id, 
-                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END, 
+            ORDER BY
+                m.pet_id,
+                CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END,
                 m.created_at DESC;
         `;
 

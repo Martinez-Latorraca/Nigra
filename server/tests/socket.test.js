@@ -21,12 +21,20 @@ const makeIo = () => {
 // Mock pool que sale de la query correcta según el orden esperado:
 // 1) SELECT user_id FROM pets (relación)
 // 2) SELECT name FROM users (senderProfile)
-// 3) INSERT INTO messages (save)
-// 4) SELECT push_token (push lookup, fire-and-forget)
-const mockHappyPath = (pool, { ownerId = 7, senderName = 'Ana', savedMessage, pushToken } = {}) => {
+// 3) SELECT v.name FROM pets JOIN vets (resolveSenderDisplayName — vet override)
+// 4) INSERT INTO messages (save)
+// 5) SELECT push_token (push lookup, fire-and-forget)
+const mockHappyPath = (pool, {
+    ownerId = 7,
+    senderName = 'Ana',
+    vetSenderName = null,
+    savedMessage,
+    pushToken,
+} = {}) => {
     pool.query
         .mockResolvedValueOnce({ rows: [{ user_id: ownerId, resolved_at: null }] })  // verifyChatRelationship
         .mockResolvedValueOnce({ rows: [{ name: senderName }] })                     // loadSenderProfile
+        .mockResolvedValueOnce({ rows: vetSenderName ? [{ name: vetSenderName }] : [] })  // resolveSenderDisplayName
         .mockResolvedValueOnce({ rows: [savedMessage] })                             // INSERT
         .mockResolvedValueOnce({ rows: [{ push_token: pushToken }] });               // SELECT push_token
 };
@@ -257,8 +265,10 @@ describe('handleSendPetMessage', () => {
             expect(result.ok).toBe(true);
             expect(result.message.id).toBe(99);
 
-            // El sender_id es el del socket (no del payload) — security invariant
-            expect(pool.query.mock.calls[2][1]).toEqual([1, 7, 2, 'hola']);
+            // El sender_id es el del socket (no del payload) — security invariant.
+            // La query en index 3 es el INSERT (0=relación, 1=user name,
+            // 2=vet name override, 3=INSERT).
+            expect(pool.query.mock.calls[3][1]).toEqual([1, 7, 2, 'hola']);
 
             expect(io.to).toHaveBeenCalledWith('user_2');
             expect(io._emit).toHaveBeenCalledWith('receive_pet_message', savedMessage);
@@ -305,11 +315,59 @@ describe('handleSendPetMessage', () => {
         });
     });
 
+    describe('vet override del senderName', () => {
+        it('cuando el sender es owner de la vet que reportó el pet, el push usa el nombre de la vet', async () => {
+            mockHappyPath(pool, {
+                ownerId: 7,
+                senderName: 'Juan Pérez', // nombre personal
+                vetSenderName: 'Veterinaria Amigo', // vet override
+                savedMessage: { id: 99, sender_id: 7, receiver_id: 2, pet_id: 1, content: 'hola' },
+                pushToken: 'T',
+            });
+
+            await handleSendPetMessage({
+                pool, io, sendExpoPush, socket,
+                data: { pet_id: 1, receiver_id: 2, content: 'hola' },
+            });
+
+            await new Promise((r) => setImmediate(r));
+
+            // El push llega con el nombre de la vet, no del user personal
+            expect(sendExpoPush).toHaveBeenCalledWith('T', expect.objectContaining({
+                title: 'Veterinaria Amigo',
+            }));
+            expect(io._emit).toHaveBeenCalledWith('new_notification', expect.objectContaining({
+                senderName: 'Veterinaria Amigo',
+            }));
+        });
+
+        it('cuando el sender NO es owner de vet (o el pet no es de vet), usa el nombre del user', async () => {
+            mockHappyPath(pool, {
+                ownerId: 7,
+                senderName: 'Juan Pérez',
+                vetSenderName: null, // no matchea la vet
+                savedMessage: { id: 99, sender_id: 7, receiver_id: 2, pet_id: 1, content: 'hola' },
+                pushToken: 'T',
+            });
+
+            await handleSendPetMessage({
+                pool, io, sendExpoPush, socket,
+                data: { pet_id: 1, receiver_id: 2, content: 'hola' },
+            });
+
+            await new Promise((r) => setImmediate(r));
+            expect(sendExpoPush).toHaveBeenCalledWith('T', expect.objectContaining({
+                title: 'Juan Pérez',
+            }));
+        });
+    });
+
     describe('error handling', () => {
         it('emite error_notification y devuelve db_error si falla el INSERT', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [{ user_id: 7, resolved_at: null }] })  // verifyChatRelationship OK
                 .mockResolvedValueOnce({ rows: [{ name: 'Ana' }] })                    // loadSenderProfile OK
+                .mockResolvedValueOnce({ rows: [] })                                   // resolveSenderDisplayName (sin vet override)
                 .mockRejectedValueOnce(new Error('db down'));                          // INSERT falla
 
             const result = await handleSendPetMessage({

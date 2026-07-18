@@ -54,6 +54,21 @@ async function loadSenderProfile(pool, senderId) {
     return rows[0] || null;
 }
 
+// Cuando el pet fue publicado por una vet Y el sender es el owner de esa
+// vet, el nombre que ve el receiver del mensaje es el de la vet, no el
+// del user personal. Le da coherencia al chat: el user contactó a la vet
+// desde el pet, entonces cuando le responden, ve "Veterinaria X" no "Juan".
+async function resolveSenderDisplayName(pool, { senderId, petId, fallback }) {
+    const { rows } = await pool.query(
+        `SELECT v.name
+         FROM pets p
+         JOIN vets v ON v.id = p.registered_by_vet_id
+         WHERE p.id = $1 AND v.owner_user_id = $2 AND v.approved = TRUE`,
+        [petId, senderId]
+    );
+    return rows[0]?.name || fallback;
+}
+
 export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, data }) {
     const sender_id = socket.userId; // Seguridad: usamos el ID del token, no el del payload
 
@@ -75,7 +90,11 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
     }
 
     const senderProfile = await loadSenderProfile(pool, sender_id);
-    const senderName = senderProfile?.name || 'Alguien';
+    const senderName = await resolveSenderDisplayName(pool, {
+        senderId: sender_id,
+        petId: pet_id,
+        fallback: senderProfile?.name || 'Alguien',
+    });
 
     try {
         // A. Guardar en DB.

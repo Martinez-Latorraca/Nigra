@@ -20,6 +20,7 @@ import PetList from './pages/PetList';
 import AdminPanel from './pages/AdminPanel';
 import Vets from './pages/Vets';
 import VetProfile from './pages/VetProfile';
+import VetDashboard from './pages/VetDashboard';
 import { ScrollToTop } from './helpers/ScrollToTop';
 
 function App() {
@@ -136,6 +137,7 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/vets" element={<Vets />} />
+          <Route path="/vets/dashboard" element={<VetDashboard />} />
           <Route path="/vets/:slug" element={<VetProfile />} />
         </Routes>
         {!isLanding && <ChatWidget socket={socket} />}

@@ -200,6 +200,65 @@ describe('Vets', () => {
         });
     });
 
+    describe('GET /api/vets/me/dashboard', () => {
+        it('devuelve vet + stats + últimos pets + últimas alertas', async () => {
+            pool.query
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 5, name: 'Vet Amigo', slug: 'vet-amigo', plan: 'sponsor_pro',
+                        verified_at: '2026-01-01', approved: true,
+                        receives_lost: true, receives_found: true, alert_radius_km: 15,
+                        logo_url: null,
+                    }],
+                }) // SELECT vet
+                .mockResolvedValueOnce({
+                    rows: [{ total_pets: '3', resolved_pets: '1', total_alerts: '10', unread_alerts: '2' }],
+                }) // stats
+                .mockResolvedValueOnce({ rows: [{ id: 100 }, { id: 101 }] }) // recent_pets
+                .mockResolvedValueOnce({ rows: [{ id: 200, type: 'nearby_vet_lost' }] }); // recent_alerts
+
+            const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
+            expect(res.status).toBe(200);
+            expect(res.body.vet.name).toBe('Vet Amigo');
+            expect(res.body.vet.is_sponsor).toBe(true);
+            expect(res.body.stats).toEqual({
+                total_pets: 3, resolved_pets: 1, total_alerts: 10, unread_alerts: 2,
+            });
+            expect(res.body.recent_pets).toHaveLength(2);
+            expect(res.body.recent_alerts).toHaveLength(1);
+        });
+
+        it('is_sponsor=false para ally (verified_at null)', async () => {
+            pool.query
+                .mockResolvedValueOnce({
+                    rows: [{
+                        id: 5, name: 'Vet Ally', slug: 'x', plan: 'ally',
+                        verified_at: null, approved: true,
+                        receives_lost: false, receives_found: false, alert_radius_km: 5,
+                        logo_url: null,
+                    }],
+                })
+                .mockResolvedValueOnce({ rows: [{ total_pets: '0', resolved_pets: '0', total_alerts: '0', unread_alerts: '0' }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
+            expect(res.status).toBe(200);
+            expect(res.body.vet.is_sponsor).toBe(false);
+        });
+
+        it('404 si el user no tiene vet', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
+            expect(res.status).toBe(404);
+        });
+
+        it('401 sin auth', async () => {
+            const res = await request(buildApp()).get('/api/vets/me/dashboard');
+            expect(res.status).toBe(401);
+        });
+    });
+
     describe('PATCH /api/vets/me/alerts', () => {
         it('actualiza receives_lost/receives_found + radio ally hasta 5km', async () => {
             pool.query

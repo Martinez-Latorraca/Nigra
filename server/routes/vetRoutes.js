@@ -4,6 +4,7 @@ import {
     getMyVet,
     updateMyVet,
     updateMyVetAlerts,
+    getMyVetDashboard,
     deleteMyVet,
     listVets,
     nearbyVets,
@@ -35,6 +36,7 @@ router.patch('/admin/:id/approve', authenticateToken, requireAdmin, setVetApprov
 // Owner: /me antes de /:slug para no colisionar.
 router.post('/', authenticateToken, validate(createVetSchema), createVet);
 router.get('/me', authenticateToken, getMyVet);
+router.get('/me/dashboard', authenticateToken, getMyVetDashboard);
 router.patch('/me', authenticateToken, validate(updateVetSchema), updateMyVet);
 router.patch('/me/alerts', authenticateToken, validate(updateVetAlertsSchema), updateMyVetAlerts);
 router.delete('/me', authenticateToken, deleteMyVet);

@@ -14,6 +14,7 @@ import { reverseGeocode, searchAddress } from './utils/geocode.js';
 // Importar rutas
 import authRoutes from './routes/authRoutes.js';
 import petRoutes from './routes/petRoutes.js';
+import vetRoutes from './routes/vetRoutes.js';
 import waitlistRoutes from './routes/waitlistRoutes.js';
 import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
@@ -61,6 +62,7 @@ app.use(express.static(buildPath));
 app.use('/api/auth', authRoutes);
 app.use('/api/waitlist', waitlistRoutes);
 app.use('/api/pets', petRoutes);
+app.use('/api/vets', vetRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', usersRoutes);

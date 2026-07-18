@@ -6,7 +6,14 @@ const validate = (schema, source = 'body') => (req, res, next) => {
         return res.status(400).json({ error: messages.join('. ') });
     }
 
-    req[source] = value;
+    // Express 5: req.query es getter-only, no se puede reasignar. Muto el
+    // objeto en su lugar para body/query/params.
+    if (req[source] && typeof req[source] === 'object') {
+        for (const key of Object.keys(req[source])) delete req[source][key];
+        Object.assign(req[source], value);
+    } else {
+        req[source] = value;
+    }
     next();
 };
 

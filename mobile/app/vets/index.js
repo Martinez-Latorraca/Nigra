@@ -136,6 +136,18 @@ export default function VetsList() {
         activamente con la comunidad.
       </Text>
 
+      <Pressable
+        onPress={() => router.push('/vets/register')}
+        style={styles.registerCta}
+      >
+        <Text style={styles.registerCtaIcon}>🏥</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.registerCtaTitle}>Registrá tu veterinaria</Text>
+          <Text style={styles.registerCtaSub}>Sumate a la red y publicá mascotas encontradas.</Text>
+        </View>
+        <Text style={styles.registerCtaArrow}>›</Text>
+      </Pressable>
+
       <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
         <TextInput
           value={city}
@@ -254,4 +266,17 @@ const styles = StyleSheet.create({
   empty: { textAlign: 'center', fontSize: 14, marginTop: 40 },
   moreBtn: { borderRadius: 999, paddingVertical: 14, alignItems: 'center', borderWidth: 1, marginTop: 12 },
   moreBtnText: { fontWeight: '700', fontSize: 13 },
+  registerCta: {
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 20,
+    backgroundColor: '#1A1A2E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  registerCtaIcon: { fontSize: 22 },
+  registerCtaTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  registerCtaSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
+  registerCtaArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 22, fontWeight: '300' },
 });

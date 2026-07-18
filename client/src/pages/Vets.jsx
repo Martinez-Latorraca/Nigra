@@ -128,13 +128,21 @@ export default function Vets() {
                     <h1 className="text-5xl font-semibold tracking-tighter text-black md:text-7xl">
                         Veterinarias<br className="hidden md:block" /> aliadas.
                     </h1>
-                    <p className="max-w-md text-sm leading-relaxed text-gray-500">
-                        Encontrá una veterinaria cerca tuyo. Las marcadas como{' '}
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#FFB830]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#C98800]">
-                            ⭐ Socio Mimo
-                        </span>{' '}
-                        colaboran activamente con la comunidad.
-                    </p>
+                    <div className="flex flex-col items-start gap-4 md:items-end">
+                        <p className="max-w-md text-sm leading-relaxed text-gray-500">
+                            Encontrá una veterinaria cerca tuyo. Las marcadas como{' '}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FFB830]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#C98800]">
+                                ⭐ Socio Mimo
+                            </span>{' '}
+                            colaboran activamente con la comunidad.
+                        </p>
+                        <Link
+                            to="/vets/register"
+                            className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-gray-800 active:scale-95"
+                        >
+                            🏥 Registrá tu vet
+                        </Link>
+                    </div>
                 </div>
 
                 <form

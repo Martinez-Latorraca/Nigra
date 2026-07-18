@@ -18,6 +18,8 @@ import { fetchNotifications, prependNotification } from './store/notificationsSl
 import { useDispatch, useSelector } from 'react-redux';
 import PetList from './pages/PetList';
 import AdminPanel from './pages/AdminPanel';
+import Vets from './pages/Vets';
+import VetProfile from './pages/VetProfile';
 import { ScrollToTop } from './helpers/ScrollToTop';
 
 function App() {
@@ -133,6 +135,8 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/vets" element={<Vets />} />
+          <Route path="/vets/:slug" element={<VetProfile />} />
         </Routes>
         {!isLanding && <ChatWidget socket={socket} />}
         {!isLanding && <NotificationToast socket={socket} />}

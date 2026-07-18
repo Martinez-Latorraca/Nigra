@@ -21,6 +21,8 @@ function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [notVerified, setNotVerified] = useState(false);
+    const [resendMsg, setResendMsg] = useState('');
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
 
@@ -31,6 +33,8 @@ function Login() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        setNotVerified(false);
+        setResendMsg('');
         setLoading(true);
 
         try {
@@ -43,20 +47,35 @@ function Login() {
             const data = await response.json();
 
             if (response.ok) {
-                dispatch(setCredentials({
-                    user: data.user,
-                    token: data.token
-                }));
-            } else {
-                throw new Error(data.error || 'Credenciales incorrectas');
+                dispatch(setCredentials({ user: data.user, token: data.token }));
+                navigate(redirectTo || '/app');
+                return;
             }
 
-            navigate(redirectTo || '/app');
-
+            if (response.status === 403 && data.code === 'email_not_verified') {
+                setNotVerified(true);
+                setError('');
+                return;
+            }
+            throw new Error(data.error || 'Credenciales incorrectas');
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const resendVerification = async () => {
+        setResendMsg('Enviando…');
+        try {
+            await fetch(`${import.meta.env.VITE_API_URL}/api/auth/resend-verification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            setResendMsg('Listo — revisá tu email.');
+        } catch {
+            setResendMsg('No se pudo reenviar. Probá de nuevo.');
         }
     };
 
@@ -104,6 +123,22 @@ function Login() {
                     {error && (
                         <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold text-center animate-shake">
                             {error}
+                        </div>
+                    )}
+
+                    {notVerified && (
+                        <div className="p-5 bg-amber-50 rounded-2xl text-xs text-amber-800 flex flex-col gap-3">
+                            <div className="font-semibold">
+                                📬 Tenés que verificar tu email antes de iniciar sesión.
+                            </div>
+                            <button
+                                type="button"
+                                onClick={resendVerification}
+                                className="rounded-full bg-black text-white font-semibold py-2.5 px-4 hover:bg-gray-800 transition-all"
+                            >
+                                Reenviar mail de verificación
+                            </button>
+                            {resendMsg ? <div className="text-center">{resendMsg}</div> : null}
                         </div>
                     )}
 

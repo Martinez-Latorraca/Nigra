@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Text, TextInput, Pressable, View, StyleSheet, ActivityIndicator } from 'react-native';
-import { useDispatch } from 'react-redux';
 import { router, Link } from 'expo-router';
 import api from '../src/lib/api';
-import { setCredentials } from '../src/store/userSlice';
 import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
 
 const ACCOUNT_TYPES = [
@@ -22,32 +20,65 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function Register() {
-  const dispatch = useDispatch();
   const c = useAuthColors();
   const [accountType, setAccountType] = useState('user');
+  const [registered, setRegistered] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const canSubmit = name.trim() && email.trim() && password.length >= 6;
+  const canSubmit =
+    name.trim() && email.trim() && password.length >= 6 && password === passwordConfirm;
 
   const handleRegister = async () => {
     setError('');
+    if (password !== passwordConfirm) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
     setLoading(true);
     try {
       await api.post('/api/auth/register', { name, email, password });
-      // Auto-login después de crear la cuenta.
-      const { data } = await api.post('/api/auth/login', { email, password });
-      dispatch(setCredentials({ user: data.user, token: data.token }));
-      router.replace(accountType === 'vet' ? '/vets/register' : '/home');
+      setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear la cuenta');
     } finally {
       setLoading(false);
     }
   };
+
+  const resendVerification = async () => {
+    try {
+      await api.post('/api/auth/resend-verification', { email });
+    } catch {
+      // silencioso — el server siempre devuelve 200
+    }
+  };
+
+  if (registered) {
+    return (
+      <AuthScreen
+        title="Revisá tu email"
+        subtitle={`Te mandamos un link a ${email} para confirmar tu cuenta. Después de tocarlo, iniciá sesión.`}
+      >
+        <Pressable
+          style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
+          onPress={() => router.replace('/login')}
+        >
+          <Text style={[styles.buttonText, { color: c.primaryText }]}>Ir al login</Text>
+        </Pressable>
+        <Pressable style={{ marginTop: 12 }} onPress={resendVerification}>
+          <Text style={[styles.footerText, { color: c.subtitle, textAlign: 'center' }]}>
+            ¿No te llegó?{' '}
+            <Text style={[styles.footerLink, { color: c.title }]}>Reenviar mail</Text>
+          </Text>
+        </Pressable>
+      </AuthScreen>
+    );
+  }
 
   return (
     <AuthScreen
@@ -122,11 +153,6 @@ export default function Register() {
         autoComplete="email"
         editable={!loading}
       />
-      {accountType === 'vet' ? (
-        <Text style={[styles.hint, { color: c.subtitle }]}>
-          Con este mail vas a iniciar sesión y va a aparecer como contacto de la vet.
-        </Text>
-      ) : null}
 
       <Text style={[styles.label, { color: c.label }]}>Contraseña</Text>
       <TextInput
@@ -139,6 +165,25 @@ export default function Register() {
         autoComplete="password-new"
         editable={!loading}
       />
+
+      <Text style={[styles.label, { color: c.label }]}>Repetir contraseña</Text>
+      <TextInput
+        style={[
+          styles.input,
+          { backgroundColor: c.inputBg, color: c.inputText },
+          passwordConfirm && password !== passwordConfirm ? styles.inputError : null,
+        ]}
+        value={passwordConfirm}
+        onChangeText={setPasswordConfirm}
+        placeholder="Escribí la contraseña de nuevo"
+        placeholderTextColor={c.label}
+        secureTextEntry
+        autoComplete="password-new"
+        editable={!loading}
+      />
+      {passwordConfirm && password !== passwordConfirm ? (
+        <Text style={[styles.hint, { color: '#EF4444' }]}>Las contraseñas no coinciden.</Text>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -172,6 +217,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   input: { borderRadius: 16, padding: 16, fontSize: 16 },
+  inputError: { borderWidth: 1, borderColor: '#EF4444' },
   hint: { fontSize: 11, marginTop: 6, lineHeight: 15 },
   typeCard: {
     flexDirection: 'row',

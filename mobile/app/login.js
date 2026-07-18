@@ -35,6 +35,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [notVerified, setNotVerified] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const [loadingProvider, setLoadingProvider] = useState(null);
 
   const busy = loadingProvider !== null;
@@ -56,15 +58,33 @@ export default function Login() {
 
   const handleEmailLogin = async () => {
     setError('');
+    setNotVerified(false);
+    setResendMsg('');
     setLoadingProvider('email');
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       dispatch(setCredentials({ user: data.user, token: data.token }));
       router.replace('/home');
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo iniciar sesión');
+      const status = err.response?.status;
+      const code = err.response?.data?.code;
+      if (status === 403 && code === 'email_not_verified') {
+        setNotVerified(true);
+      } else {
+        setError(err.response?.data?.error || 'No se pudo iniciar sesión');
+      }
     } finally {
       setLoadingProvider(null);
+    }
+  };
+
+  const resendVerification = async () => {
+    setResendMsg('Enviando…');
+    try {
+      await api.post('/api/auth/resend-verification', { email });
+      setResendMsg('Listo — revisá tu email.');
+    } catch {
+      setResendMsg('No se pudo reenviar. Probá de nuevo.');
     }
   };
 
@@ -108,6 +128,23 @@ export default function Login() {
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {notVerified ? (
+        <View style={styles.notVerified}>
+          <Text style={styles.notVerifiedTitle}>
+            📬 Verificá tu email antes de iniciar sesión.
+          </Text>
+          <Pressable
+            onPress={resendVerification}
+            style={[styles.button, { backgroundColor: '#1A1A2E', marginTop: 10 }]}
+          >
+            <Text style={[styles.buttonText, { color: '#fff' }]}>
+              Reenviar mail de verificación
+            </Text>
+          </Pressable>
+          {resendMsg ? <Text style={styles.notVerifiedMsg}>{resendMsg}</Text> : null}
+        </View>
+      ) : null}
 
       <Pressable
         style={[
@@ -189,6 +226,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  notVerified: {
+    backgroundColor: '#FFF7ED',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 12,
+  },
+  notVerifiedTitle: { color: '#9A3412', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  notVerifiedMsg: { color: '#9A3412', fontSize: 12, textAlign: 'center', marginTop: 8 },
   button: {
     borderRadius: 999,
     padding: 16,

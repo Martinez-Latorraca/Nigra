@@ -8,6 +8,7 @@ vi.mock('../db.js', () => ({ default: { query: vi.fn() } }));
 // Mailer: mockeamos el envío para no depender de red/SMTP.
 vi.mock('../lib/mailer.js', () => ({
     sendResetEmail: vi.fn(() => Promise.resolve({ skipped: true })),
+    sendVerificationEmail: vi.fn(() => Promise.resolve({ skipped: true })),
 }));
 vi.mock('../middlewares/rateLimiter.js', () => ({
     authLimiter: (req, res, next) => next(),
@@ -40,7 +41,7 @@ vi.mock('../controllers/oauthController.js', () => ({
 
 const { default: pool } = await import('../db.js');
 const { default: authRoutes } = await import('../routes/authRoutes.js');
-const { sendResetEmail } = await import('../lib/mailer.js');
+const { sendResetEmail, sendVerificationEmail } = await import('../lib/mailer.js');
 
 const buildApp = () => {
     const app = express();
@@ -55,16 +56,23 @@ describe('Auth', () => {
     });
 
     describe('POST /api/auth/register', () => {
-        it('registra un usuario nuevo', async () => {
+        it('registra un usuario nuevo con email_verified=false + dispara mail de verificación', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [] }) // check email no existe
-                .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user' }] });
+                .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user' }] }) // INSERT user
+                .mockResolvedValueOnce({ rows: [] }) // UPDATE verificaciones previas (none)
+                .mockResolvedValueOnce({ rows: [] }); // INSERT nuevo token
             const res = await request(buildApp())
                 .post('/api/auth/register')
                 .send({ name: 'Test', email: 't@t.com', password: 'password123' });
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
             expect(res.body.user.email).toBe('t@t.com');
+            expect(res.body.requires_verification).toBe(true);
+            // INSERT users con email_verified = FALSE
+            expect(pool.query.mock.calls[1][0]).toMatch(/email_verified/);
+            expect(pool.query.mock.calls[1][0]).toMatch(/FALSE/);
+            expect(sendVerificationEmail).toHaveBeenCalled();
         });
 
         it('rechaza email duplicado con 400', async () => {
@@ -78,10 +86,10 @@ describe('Auth', () => {
     });
 
     describe('POST /api/auth/login', () => {
-        it('login con credenciales válidas devuelve token + user', async () => {
+        it('login con credenciales válidas y email verificado devuelve token + user', async () => {
             const hash = await bcrypt.hash('password123', 10);
             pool.query.mockResolvedValueOnce({
-                rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user', password: hash }],
+                rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user', password: hash, email_verified: true }],
             });
             const res = await request(buildApp())
                 .post('/api/auth/login')
@@ -89,8 +97,19 @@ describe('Auth', () => {
             expect(res.status).toBe(200);
             expect(typeof res.body.token).toBe('string');
             expect(res.body.user.email).toBe('t@t.com');
-            // El password NUNCA debe volver al cliente
             expect(res.body.user.password).toBeUndefined();
+        });
+
+        it('email no verificado devuelve 403 con code=email_not_verified', async () => {
+            const hash = await bcrypt.hash('password123', 10);
+            pool.query.mockResolvedValueOnce({
+                rows: [{ id: 1, email: 't@t.com', password: hash, email_verified: false }],
+            });
+            const res = await request(buildApp())
+                .post('/api/auth/login')
+                .send({ email: 't@t.com', password: 'password123' });
+            expect(res.status).toBe(403);
+            expect(res.body.code).toBe('email_not_verified');
         });
 
         it('email inexistente devuelve 401', async () => {
@@ -103,11 +122,68 @@ describe('Auth', () => {
 
         it('password incorrecto devuelve 401', async () => {
             const hash = await bcrypt.hash('correct1', 10);
-            pool.query.mockResolvedValueOnce({ rows: [{ id: 1, password: hash }] });
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 1, password: hash, email_verified: true }] });
             const res = await request(buildApp())
                 .post('/api/auth/login')
                 .send({ email: 't@t.com', password: 'wrong-pass1' });
             expect(res.status).toBe(401);
+        });
+    });
+
+    describe('POST /api/auth/verify-email', () => {
+        const VALID_TOKEN = 'a'.repeat(64);
+        it('consume token válido y marca email_verified', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 3, user_id: 5 }] })
+                .mockResolvedValueOnce({ rows: [] }) // UPDATE users
+                .mockResolvedValueOnce({ rows: [] }); // UPDATE verifications used_at
+            const res = await request(buildApp())
+                .post('/api/auth/verify-email')
+                .send({ token: VALID_TOKEN });
+            expect(res.status).toBe(200);
+            expect(pool.query.mock.calls[1][0]).toMatch(/UPDATE users SET email_verified = TRUE/);
+        });
+
+        it('token expirado/inexistente devuelve 400', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/auth/verify-email')
+                .send({ token: VALID_TOKEN });
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe('POST /api/auth/resend-verification', () => {
+        it('siempre devuelve 200 para no filtrar existencia', async () => {
+            sendVerificationEmail.mockClear();
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/auth/resend-verification')
+                .send({ email: 'random@x.com' });
+            expect(res.status).toBe(200);
+            expect(sendVerificationEmail).not.toHaveBeenCalled();
+        });
+
+        it('reenvía mail si user existe y no está verificado', async () => {
+            sendVerificationEmail.mockClear();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Ana', email_verified: false }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/auth/resend-verification')
+                .send({ email: 'ana@x.com' });
+            expect(res.status).toBe(200);
+            expect(sendVerificationEmail).toHaveBeenCalled();
+        });
+
+        it('no reenvía si user ya está verificado', async () => {
+            sendVerificationEmail.mockClear();
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 5, email_verified: true }] });
+            await request(buildApp())
+                .post('/api/auth/resend-verification')
+                .send({ email: 'ana@x.com' });
+            expect(sendVerificationEmail).not.toHaveBeenCalled();
         });
     });
 

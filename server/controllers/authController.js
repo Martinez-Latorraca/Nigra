@@ -2,12 +2,31 @@ import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
-import { sendResetEmail } from '../lib/mailer.js';
+import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RESET_TOKEN_TTL_MIN = 60; // 1 hora
+const VERIFY_TOKEN_TTL_HOURS = 48;
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+const insertVerificationToken = async (userId) => {
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + VERIFY_TOKEN_TTL_HOURS * 60 * 60 * 1000);
+    // Invalidamos cualquier token pendiente previo del user antes de crear el nuevo.
+    await pool.query(
+        `UPDATE email_verifications SET used_at = NOW()
+         WHERE user_id = $1 AND used_at IS NULL`,
+        [userId]
+    );
+    await pool.query(
+        `INSERT INTO email_verifications (user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [userId, tokenHash, expiresAt]
+    );
+    return rawToken;
+};
 
 export const register = async (req, res) => {
     try {
@@ -21,15 +40,95 @@ export const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        // email_verified queda en FALSE (default de la columna). El user
+        // no puede loguearse hasta confirmar el email.
         const newUser = await pool.query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, role',
+            `INSERT INTO users (name, email, password, email_verified)
+             VALUES ($1, $2, $3, FALSE)
+             RETURNING id, name, email, role`,
             [name, email, passwordHash]
         );
+        const user = newUser.rows[0];
 
-        res.json({ success: true, user: newUser.rows[0] });
+        // Fire-and-forget: generamos token + enviamos mail. Si el mailer no
+        // está configurado (dev), skippea sin romper el register.
+        try {
+            const token = await insertVerificationToken(user.id);
+            sendVerificationEmail({ to: email, token, name })
+                .catch((e) => console.error('sendVerificationEmail error:', e?.message));
+        } catch (e) {
+            console.error('verification token insert error:', e?.message);
+        }
+
+        res.json({ success: true, user, requires_verification: true });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error al registrar usuario' });
+    }
+};
+
+// Consume el token de verificación y activa el user.
+export const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.body;
+        const tokenHash = hashToken(token);
+
+        const { rows } = await pool.query(
+            `SELECT id, user_id FROM email_verifications
+             WHERE token_hash = $1
+               AND used_at IS NULL
+               AND expires_at > NOW()`,
+            [tokenHash]
+        );
+        if (rows.length === 0) {
+            return res.status(400).json({
+                error: 'El link ya expiró o no es válido. Pedí uno nuevo.',
+            });
+        }
+        const verifyRow = rows[0];
+
+        await pool.query(
+            'UPDATE users SET email_verified = TRUE WHERE id = $1',
+            [verifyRow.user_id]
+        );
+        await pool.query(
+            'UPDATE email_verifications SET used_at = NOW() WHERE id = $1',
+            [verifyRow.id]
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('verifyEmail error:', error);
+        res.status(500).json({ error: 'No se pudo verificar el email.' });
+    }
+};
+
+// Reenvía el mail de verificación. Devuelve 200 siempre (no revela si el
+// email existe o no) — pero solo dispara el envío si corresponde.
+export const resendVerification = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        const { rows } = await pool.query(
+            'SELECT id, name, email_verified FROM users WHERE email = $1',
+            [email]
+        );
+        const user = rows[0];
+
+        if (user && !user.email_verified) {
+            try {
+                const token = await insertVerificationToken(user.id);
+                sendVerificationEmail({ to: email, token, name: user.name })
+                    .catch((e) => console.error('resend sendVerificationEmail error:', e?.message));
+            } catch (e) {
+                console.error('resend token insert error:', e?.message);
+            }
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('resendVerification error:', error);
+        res.json({ success: true });
     }
 };
 
@@ -45,6 +144,16 @@ export const login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.rows[0].password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
+        }
+
+        // Gate por verificación de email. OAuth-only users no pasan por acá
+        // (login vive en oauthController), pero por si acaso: email_verified
+        // se setea true al crearse por OAuth verificado (Google/Apple).
+        if (!user.rows[0].email_verified) {
+            return res.status(403).json({
+                error: 'Verificá tu email antes de iniciar sesión.',
+                code: 'email_not_verified',
+            });
         }
 
         const token = jwt.sign({ id: user.rows[0].id }, JWT_SECRET, { expiresIn: '7d' });

@@ -45,6 +45,19 @@ export const facebookLoginSchema = Joi.object({
         .messages({ 'string.empty': 'accessToken es requerido' }),
 });
 
+export const verifyEmailSchema = Joi.object({
+    token: Joi.string().trim().length(64).hex().required()
+        .messages({ 'string.empty': 'Token requerido' }),
+});
+
+export const resendVerificationSchema = Joi.object({
+    email: Joi.string().trim().email().required()
+        .messages({
+            'string.empty': 'El email es requerido',
+            'string.email': 'El email no es válido',
+        }),
+});
+
 export const forgotPasswordSchema = Joi.object({
     email: Joi.string().trim().email().required()
         .messages({

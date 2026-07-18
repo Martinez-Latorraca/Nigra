@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
 import ChatWidget from './components/ChatWidget';
@@ -136,6 +137,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/vets" element={<Vets />} />
           <Route path="/vets/register" element={<VetRegister />} />

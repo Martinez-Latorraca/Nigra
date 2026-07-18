@@ -22,14 +22,20 @@ function Register() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [passwordConfirm, setPasswordConfirm] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [registered, setRegistered] = useState(false);
 
     const navigate = useNavigate();
 
     const handleRegister = async (e) => {
         e.preventDefault();
         setError('');
+        if (password !== passwordConfirm) {
+            setError('Las contraseñas no coinciden.');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -45,17 +51,45 @@ function Register() {
                 throw new Error(data.error || 'Error al crear la cuenta');
             }
 
-            // Tras crear el user, mandamos a login. Si eligió "vet", después de
-            // autenticarse va directo al form de registro de vet. Sino va al app.
-            const redirectParam =
-                accountType === 'vet' ? '?redirect=/vets/register' : '';
-            navigate(`/login${redirectParam}`);
+            // El user quedó con email_verified=false. Le mostramos una pantalla
+            // que le pide revisar su email antes de iniciar sesión.
+            setRegistered(true);
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
     };
+
+    if (registered) {
+        const loginRedirect = accountType === 'vet' ? '/login?redirect=/vets/register' : '/login';
+        return (
+            <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
+                <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
+                    <div className="text-5xl mb-4">📬</div>
+                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">
+                        Revisá tu email.
+                    </h2>
+                    <p className="text-gray-500 leading-relaxed mb-8">
+                        Te mandamos un link a <strong className="text-gray-700">{email}</strong> para
+                        confirmar tu cuenta. Después de tocarlo vas a poder iniciar sesión.
+                    </p>
+                    <Link
+                        to={loginRedirect}
+                        className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all shadow-sm"
+                    >
+                        Ir al login
+                    </Link>
+                    <p className="text-[11px] text-gray-400 mt-6">
+                        ¿No te llegó?{' '}
+                        <Link to="/verify-email" className="font-semibold text-gray-600 hover:text-black">
+                            Reenviar mail
+                        </Link>
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
@@ -137,11 +171,6 @@ function Register() {
                             className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
                             placeholder="nombre@ejemplo.com"
                         />
-                        {accountType === 'vet' ? (
-                            <p className="text-[11px] text-gray-400 mt-2 px-1">
-                                Con este mail vas a iniciar sesión y va a aparecer como contacto de la vet en el directorio.
-                            </p>
-                        ) : null}
                     </div>
 
                     <div>
@@ -155,6 +184,26 @@ function Register() {
                             className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
                             placeholder="Mínimo 6 caracteres"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Repetir contraseña</label>
+                        <input
+                            type="password"
+                            value={passwordConfirm}
+                            onChange={(e) => setPasswordConfirm(e.target.value)}
+                            required
+                            minLength="6"
+                            className={`w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border transition-all duration-300 font-medium focus:bg-white focus:ring-4 focus:ring-gray-100 outline-none ${
+                                passwordConfirm && password !== passwordConfirm
+                                    ? 'border-red-300 focus:border-red-400'
+                                    : 'border-transparent focus:border-gray-200'
+                            }`}
+                            placeholder="Escribí la contraseña de nuevo"
+                        />
+                        {passwordConfirm && password !== passwordConfirm ? (
+                            <p className="text-[11px] text-red-500 mt-2 px-1 font-semibold">Las contraseñas no coinciden.</p>
+                        ) : null}
                     </div>
 
                     {error && (

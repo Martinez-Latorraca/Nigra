@@ -84,3 +84,66 @@ export async function sendResetEmail({ to, token, name }) {
     console.log(`📧 Mailer: enviado a ${to}. messageId=${data.messageId}`);
     return { skipped: false, messageId: data.messageId };
 }
+
+// Mail de verificación de email al registrarse. Similar a sendResetEmail,
+// mismo transporte (Brevo API HTTP). El link lleva al front, que hace POST
+// al endpoint de verify con el token.
+export async function sendVerificationEmail({ to, token, name }) {
+    if (!process.env.SMTP_PASS) {
+        console.warn('📧 Mailer: SMTP_PASS no configurado, skip verificación.');
+        return { skipped: true };
+    }
+
+    const link = `${BASE_URL}/verify-email?token=${encodeURIComponent(token)}`;
+    const greeting = name ? `Hola ${name},` : 'Hola,';
+
+    const payload = {
+        sender: { name: MAIL_FROM_NAME, email: MAIL_FROM_EMAIL },
+        to: [{ email: to, name: name || undefined }],
+        subject: 'Verificá tu email — Mimo',
+        textContent:
+            `${greeting}\n\n` +
+            `Bienvenido/a a Mimo. Confirmá tu email para activar tu cuenta:\n\n` +
+            `${link}\n\n` +
+            `Este link es válido por 48 horas. Si no te registraste en Mimo, ignorá este mensaje.\n\n` +
+            `— El equipo de Mimo`,
+        htmlContent: `
+            <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; color: #1a1a1a; line-height: 1.5;">
+                <h1 style="font-size: 22px; font-weight: 600; margin: 0 0 8px 0; color: #FF5C6C;">mimo</h1>
+                <p style="margin: 16px 0;">${greeting}</p>
+                <p style="margin: 16px 0;">¡Bienvenido/a a Mimo! Confirmá tu email para activar tu cuenta.</p>
+                <p style="margin: 24px 0;">
+                    <a href="${link}"
+                       style="display: inline-block; padding: 12px 24px; background: #FF5C6C; color: #fff; text-decoration: none; border-radius: 999px; font-weight: 600;">
+                       Confirmar email
+                    </a>
+                </p>
+                <p style="margin: 16px 0; font-size: 14px; color: #6b7280;">
+                    El link es válido por 48 horas. Si no te registraste, ignorá este mensaje.
+                </p>
+                <p style="margin: 32px 0 0 0; font-size: 12px; color: #9ca3af;">— El equipo de Mimo</p>
+            </div>
+        `,
+    };
+
+    const doFetch = injectedFetch || fetch;
+    console.log(`📧 Mailer: enviando verificación a ${to} via Brevo...`);
+    const res = await doFetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'api-key': process.env.SMTP_PASS,
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const errorBody = await res.text().catch(() => '<unreadable>');
+        throw new Error(`Brevo API ${res.status}: ${errorBody}`);
+    }
+
+    const data = await res.json();
+    console.log(`📧 Mailer: enviado a ${to}. messageId=${data.messageId}`);
+    return { skipped: false, messageId: data.messageId };
+}

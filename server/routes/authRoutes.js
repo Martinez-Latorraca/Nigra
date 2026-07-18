@@ -1,5 +1,8 @@
 import express from 'express';
-import { register, login, deleteAccount, forgotPassword, resetPassword } from '../controllers/authController.js';
+import {
+    register, login, deleteAccount, forgotPassword, resetPassword,
+    verifyEmail, resendVerification,
+} from '../controllers/authController.js';
 import {
     loginWithGoogle,
     loginWithApple,
@@ -24,6 +27,8 @@ import {
     linkFacebookSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
+    verifyEmailSchema,
+    resendVerificationSchema,
 } from '../schemas/authSchemas.js';
 
 const router = express.Router();
@@ -35,6 +40,8 @@ router.post('/apple', authLimiter, validate(appleLoginSchema), loginWithApple);
 router.post('/facebook', authLimiter, validate(facebookLoginSchema), loginWithFacebook);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), resetPassword);
+router.post('/verify-email', authLimiter, validate(verifyEmailSchema), verifyEmail);
+router.post('/resend-verification', authLimiter, validate(resendVerificationSchema), resendVerification);
 router.delete('/me', authenticateToken, deleteAccount);
 
 // OAuth link/unlink desde el perfil (requiere JWT).

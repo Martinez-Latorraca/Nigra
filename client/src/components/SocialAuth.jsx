@@ -53,7 +53,13 @@ export default function SocialAuth() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
             dispatch(setCredentials({ user: data.user, token: data.token }));
-            navigate(redirectTo || '/app');
+            if (redirectTo) {
+                navigate(redirectTo);
+            } else if (data.user?.has_vet && !data.user.vet_approved) {
+                navigate('/vets/dashboard');
+            } else {
+                navigate('/app');
+            }
         } catch (e) {
             setError(e.message);
         }

@@ -41,7 +41,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await api.post('/api/auth/register', { name, email, password });
+      await api.post('/api/auth/register', { name, email, password, account_type: accountType });
       setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear la cuenta');

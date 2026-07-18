@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
+import { slugify, ensureUniqueVetSlug } from '../utils/slug.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RESET_TOKEN_TTL_MIN = 60; // 1 hora
@@ -30,7 +31,8 @@ const insertVerificationToken = async (userId) => {
 
 export const register = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, account_type } = req.body;
+        const isVet = account_type === 'vet';
 
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (userCheck.rows.length > 0) {
@@ -40,8 +42,6 @@ export const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // email_verified queda en FALSE (default de la columna). El user
-        // no puede loguearse hasta confirmar el email.
         const newUser = await pool.query(
             `INSERT INTO users (name, email, password, email_verified)
              VALUES ($1, $2, $3, FALSE)
@@ -50,8 +50,24 @@ export const register = async (req, res) => {
         );
         const user = newUser.rows[0];
 
-        // Fire-and-forget: generamos token + enviamos mail. Si el mailer no
-        // está configurado (dev), skippea sin romper el register.
+        // Si registró como vet, creamos también la row en vets con datos
+        // mínimos. El user completará el resto desde el dashboard tras
+        // verificar email + login. approved=false hasta que un admin la
+        // apruebe desde el AdminPanel.
+        if (isVet) {
+            try {
+                const slug = await ensureUniqueVetSlug(pool, slugify(name));
+                await pool.query(
+                    `INSERT INTO vets (slug, name, owner_user_id, email, approved)
+                     VALUES ($1, $2, $3, $4, FALSE)`,
+                    [slug, name, user.id, email]
+                );
+            } catch (e) {
+                console.error('vet auto-create error:', e?.message);
+            }
+        }
+
+        // Fire-and-forget: mail de verificación.
         try {
             const token = await insertVerificationToken(user.id);
             sendVerificationEmail({ to: email, token, name })
@@ -136,32 +152,46 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        // JOIN a vets para decidir el redirect post-login desde el frontend.
+        // has_vet + vet_approved permite al cliente redirigir a /vets/dashboard
+        // vs /app sin llamadas extra.
+        const user = await pool.query(
+            `SELECT u.*, v.id AS vet_id, v.approved AS vet_approved
+             FROM users u
+             LEFT JOIN vets v ON v.owner_user_id = u.id
+             WHERE u.email = $1`,
+            [email]
+        );
         if (user.rows.length === 0) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        const validPassword = await bcrypt.compare(password, user.rows[0].password);
+        const row = user.rows[0];
+        const validPassword = await bcrypt.compare(password, row.password);
         if (!validPassword) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        // Gate por verificación de email. OAuth-only users no pasan por acá
-        // (login vive en oauthController), pero por si acaso: email_verified
-        // se setea true al crearse por OAuth verificado (Google/Apple).
-        if (!user.rows[0].email_verified) {
+        if (!row.email_verified) {
             return res.status(403).json({
                 error: 'Verificá tu email antes de iniciar sesión.',
                 code: 'email_not_verified',
             });
         }
 
-        const token = jwt.sign({ id: user.rows[0].id }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: row.id }, JWT_SECRET, { expiresIn: '7d' });
 
         res.json({
             success: true,
             token,
-            user: { id: user.rows[0].id, name: user.rows[0].name, email: user.rows[0].email, role: user.rows[0].role }
+            user: {
+                id: row.id,
+                name: row.name,
+                email: row.email,
+                role: row.role,
+                has_vet: !!row.vet_id,
+                vet_approved: !!row.vet_approved,
+            },
         });
     } catch (error) {
         console.error(error);

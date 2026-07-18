@@ -42,7 +42,7 @@ function Register() {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password }),
+                body: JSON.stringify({ name, email, password, account_type: accountType }),
             });
 
             const data = await response.json();
@@ -62,7 +62,6 @@ function Register() {
     };
 
     if (registered) {
-        const loginRedirect = accountType === 'vet' ? '/login?redirect=/vets/register' : '/login';
         return (
             <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
                 <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
@@ -75,7 +74,7 @@ function Register() {
                         confirmar tu cuenta. Después de tocarlo vas a poder iniciar sesión.
                     </p>
                     <Link
-                        to={loginRedirect}
+                        to="/login"
                         className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all shadow-sm"
                     >
                         Ir al login

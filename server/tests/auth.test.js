@@ -75,6 +75,25 @@ describe('Auth', () => {
             expect(sendVerificationEmail).toHaveBeenCalled();
         });
 
+        it('con account_type=vet crea además una row en vets con approved=false', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] }) // email libre
+                .mockResolvedValueOnce({ rows: [{ id: 20, name: 'Vet Amigo', email: 'v@x.com', role: 'user' }] }) // INSERT user
+                .mockResolvedValueOnce({ rows: [] }) // slug único
+                .mockResolvedValueOnce({ rows: [] }) // INSERT vet
+                .mockResolvedValueOnce({ rows: [] }) // UPDATE verificaciones previas
+                .mockResolvedValueOnce({ rows: [] }); // INSERT nuevo token
+            const res = await request(buildApp())
+                .post('/api/auth/register')
+                .send({ name: 'Vet Amigo', email: 'v@x.com', password: 'testpass123', account_type: 'vet' });
+            expect(res.status).toBe(200);
+            // El INSERT a vets debe usar approved=FALSE y owner_user_id del user recién creado.
+            const vetInsertCall = pool.query.mock.calls.find((c) => /INSERT INTO vets/.test(c[0]));
+            expect(vetInsertCall).toBeDefined();
+            expect(vetInsertCall[1][2]).toBe(20); // owner_user_id
+            expect(vetInsertCall[0]).toMatch(/approved/);
+        });
+
         it('rechaza email duplicado con 400', async () => {
             pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
             const res = await request(buildApp())
@@ -89,7 +108,7 @@ describe('Auth', () => {
         it('login con credenciales válidas y email verificado devuelve token + user', async () => {
             const hash = await bcrypt.hash('password123', 10);
             pool.query.mockResolvedValueOnce({
-                rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user', password: hash, email_verified: true }],
+                rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user', password: hash, email_verified: true, vet_id: null, vet_approved: null }],
             });
             const res = await request(buildApp())
                 .post('/api/auth/login')
@@ -98,6 +117,19 @@ describe('Auth', () => {
             expect(typeof res.body.token).toBe('string');
             expect(res.body.user.email).toBe('t@t.com');
             expect(res.body.user.password).toBeUndefined();
+        });
+
+        it('devuelve has_vet=true y vet_approved cuando el user es owner de vet', async () => {
+            const hash = await bcrypt.hash('password123', 10);
+            pool.query.mockResolvedValueOnce({
+                rows: [{ id: 20, name: 'Vet', email: 'v@x.com', role: 'user', password: hash, email_verified: true, vet_id: 3, vet_approved: false }],
+            });
+            const res = await request(buildApp())
+                .post('/api/auth/login')
+                .send({ email: 'v@x.com', password: 'password123' });
+            expect(res.status).toBe(200);
+            expect(res.body.user.has_vet).toBe(true);
+            expect(res.body.user.vet_approved).toBe(false);
         });
 
         it('email no verificado devuelve 403 con code=email_not_verified', async () => {

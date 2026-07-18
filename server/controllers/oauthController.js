@@ -218,8 +218,24 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
     return user;
 };
 
-const respondWithSession = (res, user) => {
+const respondWithSession = async (res, user) => {
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    // Chequeamos si el user es owner de una vet — el frontend usa has_vet
+    // + vet_approved para decidir el redirect post-login.
+    let hasVet = false;
+    let vetApproved = false;
+    try {
+        const { rows } = await pool.query(
+            'SELECT approved FROM vets WHERE owner_user_id = $1',
+            [user.id]
+        );
+        if (rows.length > 0) {
+            hasVet = true;
+            vetApproved = !!rows[0].approved;
+        }
+    } catch (e) {
+        console.error('respondWithSession vet check error:', e?.message);
+    }
     res.json({
         success: true,
         token,
@@ -229,6 +245,8 @@ const respondWithSession = (res, user) => {
             email: user.email,
             role: user.role,
             avatar_url: user.avatar_url,
+            has_vet: hasVet,
+            vet_approved: vetApproved,
         },
     });
 };
@@ -257,7 +275,7 @@ export const loginWithGoogle = async (req, res) => {
     try {
         const info = await verifyGoogle(req.body.idToken);
         const user = await findOrCreateOAuthUser(info);
-        respondWithSession(res, user);
+        await respondWithSession(res, user);
     } catch (error) {
         handleOAuthError(res, error, 'Google');
     }
@@ -267,7 +285,7 @@ export const loginWithApple = async (req, res) => {
     try {
         const info = await verifyApple(req.body.identityToken, req.body.fullName);
         const user = await findOrCreateOAuthUser(info);
-        respondWithSession(res, user);
+        await respondWithSession(res, user);
     } catch (error) {
         handleOAuthError(res, error, 'Apple');
     }
@@ -277,7 +295,7 @@ export const loginWithFacebook = async (req, res) => {
     try {
         const info = await verifyFacebook(req.body.accessToken);
         const user = await findOrCreateOAuthUser(info);
-        respondWithSession(res, user);
+        await respondWithSession(res, user);
     } catch (error) {
         handleOAuthError(res, error, 'Facebook');
     }

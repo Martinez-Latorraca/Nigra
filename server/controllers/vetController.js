@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { slugify, ensureUniqueVetSlug } from '../utils/slug.js';
 
 const PUBLIC_COLUMNS = `
     id, slug, name, email, phone, whatsapp, website, instagram,
@@ -6,29 +7,7 @@ const PUBLIC_COLUMNS = `
     hours, services, plan, verified_at, created_at
 `;
 
-// Slugify básico: normaliza acentos, minúsculas, alfanumérico + guiones.
-// Si el slug ya existe, agrega -2, -3, ... hasta encontrar uno libre.
-const slugify = (raw) => {
-    return String(raw)
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 80);
-};
-
-const ensureUniqueSlug = async (base) => {
-    let slug = base || 'vet';
-    let n = 1;
-    while (true) {
-        const candidate = n === 1 ? slug : `${slug}-${n}`;
-        const { rows } = await pool.query('SELECT 1 FROM vets WHERE slug = $1', [candidate]);
-        if (rows.length === 0) return candidate;
-        n += 1;
-        if (n > 999) throw new Error('cannot find unique slug');
-    }
-};
+const ensureUniqueSlug = (base) => ensureUniqueVetSlug(pool, base);
 
 // POST /api/vets — auto-registro del user actual como owner. 409 si ya tiene una.
 // Si el body no trae email, usamos el email del user (login) como contacto

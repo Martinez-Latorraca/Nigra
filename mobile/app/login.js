@@ -44,7 +44,11 @@ export default function Login() {
   const handleSocialSuccess = (data) => {
     dispatch(setCredentials({ user: data.user, token: data.token }));
     setLoadingProvider(null);
-    router.replace('/home');
+    if (data.user?.has_vet && !data.user.vet_approved) {
+      router.replace('/vets/dashboard');
+    } else {
+      router.replace('/home');
+    }
   };
   const handleSocialError = (msg) => {
     setError(msg);
@@ -64,7 +68,11 @@ export default function Login() {
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       dispatch(setCredentials({ user: data.user, token: data.token }));
-      router.replace('/home');
+      if (data.user?.has_vet && !data.user.vet_approved) {
+        router.replace('/vets/dashboard');
+      } else {
+        router.replace('/home');
+      }
     } catch (err) {
       const status = err.response?.status;
       const code = err.response?.data?.code;

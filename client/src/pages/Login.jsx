@@ -48,7 +48,13 @@ function Login() {
 
             if (response.ok) {
                 dispatch(setCredentials({ user: data.user, token: data.token }));
-                navigate(redirectTo || '/app');
+                if (redirectTo) {
+                    navigate(redirectTo);
+                } else if (data.user?.has_vet && !data.user.vet_approved) {
+                    navigate('/vets/dashboard');
+                } else {
+                    navigate('/app');
+                }
                 return;
             }
 

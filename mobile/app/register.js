@@ -124,7 +124,7 @@ export default function Register() {
       />
       {accountType === 'vet' ? (
         <Text style={[styles.hint, { color: c.subtitle }]}>
-          Este es tu login personal. El email institucional de la vet lo agregás en el siguiente paso.
+          Con este mail vas a iniciar sesión y va a aparecer como contacto de la vet.
         </Text>
       ) : null}
 

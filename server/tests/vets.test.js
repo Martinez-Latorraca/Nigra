@@ -47,11 +47,12 @@ describe('Vets', () => {
     });
 
     describe('POST /api/vets (auto-registro)', () => {
-        it('crea una vet nueva para el user autenticado', async () => {
+        it('crea una vet nueva para el user autenticado con email del user como fallback', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [] }) // no tiene vet
+                .mockResolvedValueOnce({ rows: [{ email: 'contacto@vetamigo.com' }] }) // user email fallback
                 .mockResolvedValueOnce({ rows: [] }) // slug único
-                .mockResolvedValueOnce({ rows: [{ id: 5, slug: 'vet-amigo', name: 'Vet Amigo', approved: false }] });
+                .mockResolvedValueOnce({ rows: [{ id: 5, slug: 'vet-amigo', name: 'Vet Amigo', email: 'contacto@vetamigo.com', approved: false }] });
 
             const res = await asUser(
                 request(buildApp()).post('/api/vets'),
@@ -61,6 +62,24 @@ describe('Vets', () => {
             expect(res.status).toBe(201);
             expect(res.body.slug).toBe('vet-amigo');
             expect(res.body.approved).toBe(false);
+            // Verifica que la INSERT usó el email del user (posición 4 = $4).
+            expect(pool.query.mock.calls[3][1][3]).toBe('contacto@vetamigo.com');
+        });
+
+        it('usa email del body si viene explícito (override del fallback)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ id: 6, email: 'atencion@vetamigo.com' }] });
+
+            const res = await asUser(request(buildApp()).post('/api/vets')).send({
+                name: 'Vet Amigo',
+                email: 'atencion@vetamigo.com',
+            });
+            expect(res.status).toBe(201);
+            // No consulta el email del user cuando body ya trae uno.
+            expect(pool.query.mock.calls[1][0]).toMatch(/SELECT 1 FROM vets WHERE slug/);
+            expect(pool.query.mock.calls[2][1][3]).toBe('atencion@vetamigo.com');
         });
 
         it('genera slug único agregando -2 si colisiona', async () => {
@@ -70,7 +89,10 @@ describe('Vets', () => {
                 .mockResolvedValueOnce({ rows: [] }) // -2 libre
                 .mockResolvedValueOnce({ rows: [{ id: 6, slug: 'vet-amigo-2' }] });
 
-            const res = await asUser(request(buildApp()).post('/api/vets')).send({ name: 'Vet Amigo' });
+            const res = await asUser(request(buildApp()).post('/api/vets')).send({
+                name: 'Vet Amigo',
+                email: 'x@y.com',
+            });
             expect(res.status).toBe(201);
             expect(res.body.slug).toBe('vet-amigo-2');
         });

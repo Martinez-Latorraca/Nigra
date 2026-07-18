@@ -33,7 +33,6 @@ export default function VetRegister() {
     const [checking, setChecking] = useState(true);
     const [form, setForm] = useState({
         name: '', city: '', address: '',
-        email: user?.email || '',
         phone: '', whatsapp: '', website: '', instagram: '',
         bio: '',
         services: [],
@@ -115,9 +114,11 @@ export default function VetRegister() {
                     Registrá tu veterinaria.
                 </h1>
                 <p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-500">
-                    Los datos institucionales son independientes de tu cuenta personal — el mail que
-                    pongas acá se muestra público como contacto de la vet, no reemplaza tu login.
-                    Después de crearla, un admin la aprueba para que aparezca en el directorio.
+                    Completá los datos que se mostrarán en el directorio público de Mimo. Después de
+                    crearla, un admin la aprueba para que aparezca en el listado.
+                    {user?.email ? (
+                        <> Tu cuenta <span className="font-semibold text-gray-700">{user.email}</span> queda como contacto por default; podés cambiarlo desde el dashboard.</>
+                    ) : null}
                 </p>
 
                 <form
@@ -155,20 +156,6 @@ export default function VetRegister() {
                             />
                         </Field>
                     </div>
-
-                    <Field
-                        label="Email de contacto"
-                        hint="Este es el mail público que verán los users. No es tu login."
-                    >
-                        <input
-                            type="email"
-                            className={inputCls}
-                            value={form.email}
-                            onChange={update('email')}
-                            placeholder="contacto@vetamigo.com"
-                            maxLength={150}
-                        />
-                    </Field>
 
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <Field label="Teléfono">

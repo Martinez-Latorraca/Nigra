@@ -139,7 +139,7 @@ function Register() {
                         />
                         {accountType === 'vet' ? (
                             <p className="text-[11px] text-gray-400 mt-2 px-1">
-                                Este es tu login personal. El email institucional de la veterinaria lo agregás en el siguiente paso.
+                                Con este mail vas a iniciar sesión y va a aparecer como contacto de la vet en el directorio.
                             </p>
                         ) : null}
                     </div>

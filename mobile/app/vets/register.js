@@ -40,7 +40,6 @@ export default function VetRegister() {
   const [checking, setChecking] = useState(true);
   const [form, setForm] = useState({
     name: '', city: '', address: '',
-    email: user?.email || '',
     phone: '', whatsapp: '', website: '', instagram: '',
     bio: '',
     services: [],
@@ -107,8 +106,9 @@ export default function VetRegister() {
           <Text style={[styles.kicker, { color: c.subtitle }]}>REGISTRO VET</Text>
           <Text style={[styles.title, { color: c.title }]}>Registrá tu veterinaria.</Text>
           <Text style={[styles.subtitle, { color: c.subtitle }]}>
-            Los datos institucionales son independientes de tu cuenta personal — el mail acá
-            se muestra público, no es tu login. Después de crearla, un admin la aprueba.
+            Completá los datos que se mostrarán en el directorio público.
+            {user?.email ? ` Tu cuenta ${user.email} queda como contacto por default; podés cambiarlo desde el dashboard.` : ''}
+            {' '}Después de crearla, un admin la aprueba.
           </Text>
 
           <View style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
@@ -142,23 +142,6 @@ export default function VetRegister() {
                 placeholder="Bv. Artigas 1234"
                 placeholderTextColor={c.subtitle}
                 maxLength={200}
-              />
-            </Field>
-
-            <Field
-              label="Email de contacto"
-              hint="Público, no es tu login."
-              c={c}
-            >
-              <TextInput
-                style={inputStyle}
-                value={form.email}
-                onChangeText={update('email')}
-                placeholder="contacto@vetamigo.com"
-                placeholderTextColor={c.subtitle}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                maxLength={150}
               />
             </Field>
 

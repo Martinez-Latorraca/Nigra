@@ -31,6 +31,9 @@ const ensureUniqueSlug = async (base) => {
 };
 
 // POST /api/vets — auto-registro del user actual como owner. 409 si ya tiene una.
+// Si el body no trae email, usamos el email del user (login) como contacto
+// público — simplifica el flow de registro y evita al user tener que ingresar
+// el mismo mail dos veces.
 export const createVet = async (req, res) => {
     try {
         const ownerId = req.user.id;
@@ -40,6 +43,14 @@ export const createVet = async (req, res) => {
         }
 
         const b = req.body;
+        let vetEmail = b.email || null;
+        if (!vetEmail) {
+            const { rows: userRows } = await pool.query(
+                'SELECT email FROM users WHERE id = $1',
+                [ownerId]
+            );
+            vetEmail = userRows[0]?.email || null;
+        }
         const slug = await ensureUniqueSlug(b.slug ? slugify(b.slug) : slugify(b.name));
 
         const result = await pool.query(
@@ -50,7 +61,7 @@ export const createVet = async (req, res) => {
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
             ) RETURNING ${PUBLIC_COLUMNS}, approved, owner_user_id`,
             [
-                slug, b.name, ownerId, b.email || null, b.phone || null, b.whatsapp || null,
+                slug, b.name, ownerId, vetEmail, b.phone || null, b.whatsapp || null,
                 b.website || null, b.instagram || null, b.address || null, b.city || null,
                 b.country || 'UY', b.lat ?? null, b.lng ?? null, b.logo_url || null,
                 b.cover_url || null, b.bio || null, b.hours || null, b.services || [],

@@ -48,6 +48,15 @@ export default function PetCard({ pet, onPress, style }) {
           </Text>
         ) : null}
 
+        {pet.vet_name ? (
+          <View style={styles.vetBadge}>
+            <Text style={styles.vetBadgeIcon}>🏥</Text>
+            <Text style={styles.vetBadgeText} numberOfLines={1}>
+              {pet.vet_name}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Footer con divisor */}
         <View style={[styles.footer, { borderTopColor: c.cardBorder }]}>
           <Text style={[styles.footerLeft, { color: matchPercentage ? '#0d945c' : c.label }]}>
@@ -102,4 +111,17 @@ const styles = StyleSheet.create({
   },
   footerLeft: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   contact: { fontSize: 13, fontWeight: '600' },
+  vetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,184,48,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  vetBadgeIcon: { fontSize: 11 },
+  vetBadgeText: { fontSize: 10, fontWeight: '700', color: '#C98800', letterSpacing: 0.3 },
 });

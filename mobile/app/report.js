@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -69,6 +69,16 @@ export default function Find() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [contactInfo, setContactInfo] = useState('');
+  // Vet del user (si tiene una aprobada): habilita el toggle para publicar en
+  // nombre de la vet (badge visible + registered_by_vet_id en el pet).
+  const [myVet, setMyVet] = useState(null);
+  const [asVet, setAsVet] = useState(false);
+
+  useEffect(() => {
+    api.get('/api/vets/me')
+      .then(({ data }) => { if (data.approved) setMyVet(data); })
+      .catch(() => {});
+  }, []);
 
   const isLost = situation === 'lost';
 
@@ -194,6 +204,7 @@ export default function Find() {
       formData.append('lat', String(position.lat));
       formData.append('lng', String(position.lng));
       if (isLost && name.trim()) formData.append('name', name.trim());
+      if (asVet && myVet) formData.append('on_behalf_of_vet', 'true');
 
       const { data } = await api.post('/api/pets/report-pet', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -403,6 +414,37 @@ export default function Find() {
               keyboardType="phone-pad"
             />
 
+            {myVet ? (
+              <Pressable
+                onPress={() => setAsVet((v) => !v)}
+                style={[
+                  styles.vetToggle,
+                  {
+                    backgroundColor: c.card,
+                    borderColor: asVet ? '#FFB830' : c.cardBorder,
+                    borderWidth: asVet ? 1.5 : 1,
+                  },
+                ]}
+              >
+                <View style={styles.vetToggleTextWrap}>
+                  <Text style={[styles.vetToggleTitle, { color: c.title }]}>
+                    Publicar como {myVet.name}
+                  </Text>
+                  <Text style={[styles.vetToggleSub, { color: c.subtitle }]}>
+                    El reporte va a mostrar el badge de tu veterinaria.
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.vetToggleCheck,
+                    { backgroundColor: asVet ? '#FFB830' : 'transparent', borderColor: asVet ? '#FFB830' : c.cardBorder },
+                  ]}
+                >
+                  {asVet ? <Text style={styles.vetToggleCheckText}>✓</Text> : null}
+                </View>
+              </Pressable>
+            ) : null}
+
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <Pressable
@@ -496,4 +538,24 @@ const styles = StyleSheet.create({
   submitText: { fontWeight: '700', fontSize: 16 },
   disabled: { opacity: 0.5 },
   hintText: { textAlign: 'center', fontSize: 12, marginTop: 10 },
+  vetToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 20,
+    marginTop: 20,
+  },
+  vetToggleTextWrap: { flex: 1 },
+  vetToggleTitle: { fontSize: 14, fontWeight: '700' },
+  vetToggleSub: { fontSize: 12, marginTop: 2 },
+  vetToggleCheck: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vetToggleCheckText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 });

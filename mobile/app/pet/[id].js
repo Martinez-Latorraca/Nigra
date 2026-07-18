@@ -191,6 +191,19 @@ export default function PetDetail() {
             Informante: <Text style={{ color: c.text, fontWeight: '600' }}>{pet.reporter_name || 'Anónimo'}</Text>
           </Text>
 
+          {pet.vet_name ? (
+            <Pressable
+              onPress={() => pet.vet_slug ? router.push(`/vets/${pet.vet_slug}`) : null}
+              style={styles.vetChip}
+            >
+              <Text style={styles.vetChipIcon}>🏥</Text>
+              <Text style={styles.vetChipText}>
+                Reportado por {pet.vet_name}
+                {pet.vet_verified_at ? ' ⭐' : ''}
+              </Text>
+            </Pressable>
+          ) : null}
+
           {pet.created_at ? (
             <Text style={[styles.date, { color: c.subtitle }]}>
               Reportado el{' '}
@@ -309,4 +322,17 @@ const styles = StyleSheet.create({
   deleteBtnText: { color: '#EF4444', fontWeight: '700', fontSize: 15 },
   notFound: { fontSize: 64, fontWeight: '700' },
   notFoundMsg: { fontSize: 15 },
+  vetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,184,48,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  vetChipIcon: { fontSize: 13 },
+  vetChipText: { fontSize: 12, fontWeight: '700', color: '#C98800' },
 });

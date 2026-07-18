@@ -232,9 +232,19 @@ function Pet() {
                         </div>
 
                         {/* 3. Información del Informante */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em]  block">Informante: </span>
                             <p className="text-sm font-semibold text-gray-900">{pet.reporter_name || 'Usuario Anónimo'}</p>
+                            {pet.vet_name ? (
+                                <Link
+                                    to={`/vets/${pet.vet_slug}`}
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-[#FFB830]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#C98800] transition-all hover:bg-[#FFB830]/25"
+                                >
+                                    <span>🏥</span>
+                                    <span>{pet.vet_name}</span>
+                                    {pet.vet_verified_at ? <span>⭐</span> : null}
+                                </Link>
+                            ) : null}
                         </div>
 
 

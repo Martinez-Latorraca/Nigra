@@ -200,6 +200,48 @@ describe('Vets', () => {
         });
     });
 
+    describe('PATCH /api/vets/me/alerts', () => {
+        it('actualiza receives_lost/receives_found + radio ally hasta 5km', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, plan: 'ally' }] })
+                .mockResolvedValueOnce({ rows: [{ id: 5, receives_lost: true, receives_found: false, alert_radius_km: 5, plan: 'ally' }] });
+
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({
+                receives_lost: true, receives_found: false, alert_radius_km: 5,
+            });
+            expect(res.status).toBe(200);
+            expect(res.body.receives_lost).toBe(true);
+            expect(res.body.alert_radius_km).toBe(5);
+        });
+
+        it('ally no puede setear radio > 5km (403)', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 5, plan: 'ally' }] });
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ alert_radius_km: 15 });
+            expect(res.status).toBe(403);
+        });
+
+        it('sponsor puede setear radio hasta 50km', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, plan: 'sponsor_pro' }] })
+                .mockResolvedValueOnce({ rows: [{ id: 5, alert_radius_km: 50, plan: 'sponsor_pro' }] });
+
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ alert_radius_km: 50 });
+            expect(res.status).toBe(200);
+            expect(res.body.alert_radius_km).toBe(50);
+        });
+
+        it('404 si el user no tiene vet', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ receives_lost: true });
+            expect(res.status).toBe(404);
+        });
+
+        it('rechaza body vacío (400)', async () => {
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({});
+            expect(res.status).toBe(400);
+        });
+    });
+
     describe('Admin endpoints', () => {
         it('GET /admin/pending — lista solo pending para admin', async () => {
             mockAdminRole();

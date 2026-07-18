@@ -3,6 +3,7 @@ import {
     createVet,
     getMyVet,
     updateMyVet,
+    updateMyVetAlerts,
     deleteMyVet,
     listVets,
     nearbyVets,
@@ -16,6 +17,7 @@ import validate from '../middlewares/validate.js';
 import {
     createVetSchema,
     updateVetSchema,
+    updateVetAlertsSchema,
     nearbyVetsSchema,
     listVetsSchema,
 } from '../schemas/vetSchemas.js';
@@ -34,6 +36,7 @@ router.patch('/admin/:id/approve', authenticateToken, requireAdmin, setVetApprov
 router.post('/', authenticateToken, validate(createVetSchema), createVet);
 router.get('/me', authenticateToken, getMyVet);
 router.patch('/me', authenticateToken, validate(updateVetSchema), updateMyVet);
+router.patch('/me/alerts', authenticateToken, validate(updateVetAlertsSchema), updateMyVetAlerts);
 router.delete('/me', authenticateToken, deleteMyVet);
 
 // Público (después de todas las rutas específicas).

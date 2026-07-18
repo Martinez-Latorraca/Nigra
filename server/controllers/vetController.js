@@ -140,6 +140,55 @@ export const deleteMyVet = async (req, res) => {
     }
 };
 
+// PATCH /api/vets/me/alerts — config de alertas por radio.
+// Gate por plan: ally = radio máximo 5km. Sponsors escalan según plan.
+export const updateMyVetAlerts = async (req, res) => {
+    try {
+        const { receives_lost, receives_found, alert_radius_km } = req.body;
+        const { rows: existingRows } = await pool.query(
+            'SELECT id, plan FROM vets WHERE owner_user_id = $1',
+            [req.user.id]
+        );
+        if (existingRows.length === 0) {
+            return res.status(404).json({ error: 'No tenés una veterinaria registrada.' });
+        }
+        const vet = existingRows[0];
+
+        if (alert_radius_km !== undefined) {
+            const cap = vet.plan === 'ally' ? 5 : 50;
+            if (alert_radius_km > cap) {
+                return res.status(403).json({
+                    error: `Tu plan actual permite un radio máximo de ${cap} km.`,
+                });
+            }
+        }
+
+        const sets = [];
+        const values = [];
+        let i = 1;
+        for (const [field, value] of Object.entries({
+            receives_lost, receives_found, alert_radius_km,
+        })) {
+            if (value !== undefined) {
+                sets.push(`${field} = $${i}`);
+                values.push(value);
+                i += 1;
+            }
+        }
+        values.push(vet.id);
+
+        const { rows } = await pool.query(
+            `UPDATE vets SET ${sets.join(', ')} WHERE id = $${i}
+             RETURNING id, receives_lost, receives_found, alert_radius_km, plan`,
+            values
+        );
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('updateMyVetAlerts error:', error);
+        res.status(500).json({ error: 'No se pudo actualizar la config de alertas.' });
+    }
+};
+
 // GET /api/vets — directorio público (solo approved).
 export const listVets = async (req, res) => {
     try {

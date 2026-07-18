@@ -15,7 +15,7 @@ vi.mock('../utils/geocode.js', () => ({
 vi.mock('../utils/push.js', () => ({ sendExpoPush: vi.fn() }));
 vi.mock('cloudinary', () => ({ v2: { config: vi.fn() } }));
 
-const { notifyNearbyUsers } = await import('../controllers/petController.js');
+const { notifyNearbyUsers, notifyNearbyVets } = await import('../controllers/petController.js');
 
 const makeDeps = () => {
     const emit = vi.fn();
@@ -159,5 +159,99 @@ describe('notifyNearbyUsers', () => {
 
         await notifyNearbyUsers({ ...deps, newPet: basePet, reporterId: 1 });
         expect(deps.sendExpoPush).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('notifyNearbyVets', () => {
+    let deps;
+    beforeEach(() => { deps = makeDeps(); });
+
+    it('sin coords: no hace nada', async () => {
+        await notifyNearbyVets({ ...deps, newPet: { ...basePet, lat: null }, reporterId: 1 });
+        expect(deps.pool.query).not.toHaveBeenCalled();
+    });
+
+    it('status distinto de lost/found: skip', async () => {
+        await notifyNearbyVets({ ...deps, newPet: { ...basePet, status: 'resolved' }, reporterId: 1 });
+        expect(deps.pool.query).not.toHaveBeenCalled();
+    });
+
+    it('sin candidatos: no dispara push', async () => {
+        deps.pool.query.mockResolvedValueOnce({ rows: [] });
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 1 });
+        expect(deps.pool.query).toHaveBeenCalledTimes(1);
+        expect(deps.sendExpoPush).not.toHaveBeenCalled();
+    });
+
+    it('lost: filtra por receives_lost + approved + radio propio (haversine)', async () => {
+        deps.pool.query.mockResolvedValueOnce({ rows: [] });
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 1 });
+        const sql = deps.pool.query.mock.calls[0][0];
+        expect(sql).toMatch(/v\.approved = TRUE/);
+        expect(sql).toMatch(/v\.receives_lost = TRUE/);
+        expect(sql).toMatch(/<= v\.alert_radius_km/);
+        expect(sql).toMatch(/6371 \* acos/);
+    });
+
+    it('found: filtra por receives_found', async () => {
+        deps.pool.query.mockResolvedValueOnce({ rows: [] });
+        await notifyNearbyVets({ ...deps, newPet: { ...basePet, status: 'found' }, reporterId: 1 });
+        expect(deps.pool.query.mock.calls[0][0]).toMatch(/v\.receives_found = TRUE/);
+    });
+
+    it('excluye vet cuyo owner es el reporter', async () => {
+        deps.pool.query.mockResolvedValueOnce({ rows: [] });
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 42 });
+        const [, params] = deps.pool.query.mock.calls[0];
+        expect(params[2]).toBe(42); // reporterId
+        expect(deps.pool.query.mock.calls[0][0]).toMatch(/v\.owner_user_id <> \$3/);
+    });
+
+    it('happy path: crea notif type=nearby_vet_lost, socket al owner, push si hay token', async () => {
+        deps.pool.query
+            .mockResolvedValueOnce({
+                rows: [{ vet_id: 5, vet_name: 'Vet Amigo', vet_slug: 'vet-amigo', owner_user_id: 10, push_token: 'T-vet' }],
+            })
+            .mockResolvedValueOnce({ rows: [] }) // dedupe: no existe
+            .mockResolvedValueOnce({
+                rows: [{ id: 200, user_id: 10, type: 'nearby_vet_lost', data: {}, read_at: null, created_at: '' }],
+            });
+
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 1 });
+
+        expect(deps.pool.query.mock.calls[2][0]).toMatch(/INSERT INTO notifications/);
+        expect(deps.pool.query.mock.calls[2][1][0]).toBe(10); // notif user_id = owner
+        expect(deps.pool.query.mock.calls[2][1][1]).toBe('nearby_vet_lost');
+        expect(deps.io.to).toHaveBeenCalledWith('user_10');
+        expect(deps.sendExpoPush).toHaveBeenCalledWith('T-vet', expect.objectContaining({
+            data: expect.objectContaining({ type: 'nearby_vet_lost', pet_id: 42, vet_id: 5 }),
+        }));
+    });
+
+    it('dedupe: si ya existe notif del pet a la vet, no re-inserta ni push', async () => {
+        deps.pool.query
+            .mockResolvedValueOnce({
+                rows: [{ vet_id: 5, vet_name: 'X', vet_slug: 'x', owner_user_id: 10, push_token: 'T' }],
+            })
+            .mockResolvedValueOnce({ rows: [{ 1: 1 }] }); // dedupe: existe
+
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 1 });
+        expect(deps.pool.query).toHaveBeenCalledTimes(2); // no llegó al INSERT
+        expect(deps.sendExpoPush).not.toHaveBeenCalled();
+    });
+
+    it('sin push_token: guarda notif pero no manda push (para dashboard/inbox)', async () => {
+        deps.pool.query
+            .mockResolvedValueOnce({
+                rows: [{ vet_id: 5, vet_name: 'X', vet_slug: 'x', owner_user_id: 10, push_token: null }],
+            })
+            .mockResolvedValueOnce({ rows: [] })
+            .mockResolvedValueOnce({
+                rows: [{ id: 200, user_id: 10, type: 'nearby_vet_lost', data: {}, read_at: null, created_at: '' }],
+            });
+
+        await notifyNearbyVets({ ...deps, newPet: basePet, reporterId: 1 });
+        expect(deps.sendExpoPush).not.toHaveBeenCalled();
+        expect(deps.io.to).toHaveBeenCalledWith('user_10'); // socket sí (útil para web)
     });
 });

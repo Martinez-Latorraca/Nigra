@@ -52,3 +52,12 @@ export const listVetsSchema = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20),
 });
+
+// Config de alertas por radio para la vet. Todos los campos opcionales pero
+// al menos uno tiene que venir.
+export const updateVetAlertsSchema = Joi.object({
+    receives_lost: Joi.boolean().optional(),
+    receives_found: Joi.boolean().optional(),
+    // Ally: 5km fijo. Sponsor: 15/50 según plan. El controller gate por plan.
+    alert_radius_km: Joi.number().integer().min(1).max(50).optional(),
+}).min(1);

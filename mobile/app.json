@@ -9,7 +9,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-blank.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFF6F0"
     },
@@ -31,7 +31,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#00000000"
+        "backgroundColor": "#FFF6F0"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mimo.app",
@@ -89,7 +89,8 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "extra": {
       "router": {},

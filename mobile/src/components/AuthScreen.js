@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Logo from '../../assets/Mimo-logo-paw.svg';
+import Logo from '../../assets/menu-icon-paw.svg';
 import { useTheme } from '../lib/theme';
 
 // Re-exported so existing auth screens can keep importing from here.

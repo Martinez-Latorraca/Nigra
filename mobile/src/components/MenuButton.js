@@ -2,7 +2,7 @@ import { Pressable, View, StyleSheet } from 'react-native';
 import { useTheme } from '../lib/theme';
 import { useSocket } from '../lib/socket';
 import { useSidebar } from '../lib/sidebar';
-import MimoPaw from '../../assets/Mimo-logo-paw.svg';
+import MimoPaw from '../../assets/menu-icon-paw.svg';
 
 export default function MenuButton() {
   const c = useTheme();

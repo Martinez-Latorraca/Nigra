@@ -1,7 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setCredentials } from '../store/userSlice';
+
+// Whitelist replicada del Login: solo permitimos redirects a paths internos
+// conocidos post-OAuth (evita open-redirect).
+const ALLOWED_REDIRECTS = new Set([
+    '/app', '/reportar', '/buscar', '/profile',
+    '/vets', '/vets/register', '/vets/dashboard',
+]);
+
+function safeRedirect(raw) {
+    if (!raw) return null;
+    if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+    return ALLOWED_REDIRECTS.has(raw) ? raw : null;
+}
 
 // IDs públicos (van al navegador). Se inyectan en build: ver Dockerfile / .env.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -24,6 +37,8 @@ function loadScript(src, id) {
 export default function SocialAuth() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirectTo = safeRedirect(searchParams.get('redirect'));
     const googleBtnRef = useRef(null);
     const [error, setError] = useState('');
 
@@ -38,7 +53,7 @@ export default function SocialAuth() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
             dispatch(setCredentials({ user: data.user, token: data.token }));
-            navigate('/app');
+            navigate(redirectTo || '/app');
         } catch (e) {
             setError(e.message);
         }

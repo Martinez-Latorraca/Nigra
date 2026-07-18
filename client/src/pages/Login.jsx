@@ -1,8 +1,21 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { setCredentials } from '../store/userSlice';
 import SocialAuth from '../components/SocialAuth';
+
+// Whitelist de rutas válidas para el ?redirect= post-auth. Evita open-redirect.
+const ALLOWED_REDIRECTS = new Set([
+    '/app', '/reportar', '/buscar', '/profile',
+    '/vets', '/vets/register', '/vets/dashboard',
+]);
+
+function safeRedirect(raw) {
+    if (!raw) return null;
+    // Solo aceptamos paths internos (empiezan con /).
+    if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+    return ALLOWED_REDIRECTS.has(raw) ? raw : null;
+}
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -12,6 +25,8 @@ function Login() {
     const dispatch = useDispatch();
 
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirectTo = safeRedirect(searchParams.get('redirect'));
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -36,7 +51,7 @@ function Login() {
                 throw new Error(data.error || 'Credenciales incorrectas');
             }
 
-            navigate('/reportar');
+            navigate(redirectTo || '/app');
 
         } catch (err) {
             setError(err.message);

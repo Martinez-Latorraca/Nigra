@@ -1,14 +1,30 @@
 import { useState } from 'react';
-import { Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, TextInput, Pressable, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { router, Link } from 'expo-router';
 import api from '../src/lib/api';
 import { setCredentials } from '../src/store/userSlice';
 import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
 
+const ACCOUNT_TYPES = [
+  {
+    id: 'user',
+    emoji: '🐾',
+    title: 'Busco / reporto mascotas',
+    desc: 'Uso Mimo para encontrar o reportar mascotas.',
+  },
+  {
+    id: 'vet',
+    emoji: '🏥',
+    title: 'Represento una veterinaria',
+    desc: 'Publico mascotas encontradas y recibo alertas.',
+  },
+];
+
 export default function Register() {
   const dispatch = useDispatch();
   const c = useAuthColors();
+  const [accountType, setAccountType] = useState('user');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +41,7 @@ export default function Register() {
       // Auto-login después de crear la cuenta.
       const { data } = await api.post('/api/auth/login', { email, password });
       dispatch(setCredentials({ user: data.user, token: data.token }));
-      router.replace('/home');
+      router.replace(accountType === 'vet' ? '/vets/register' : '/home');
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear la cuenta');
     } finally {
@@ -46,7 +62,43 @@ export default function Register() {
         </Text>
       }
     >
-      <Text style={[styles.label, { color: c.label }]}>Nombre completo</Text>
+      <Text style={[styles.label, { color: c.label }]}>Tipo de cuenta</Text>
+      <View style={{ gap: 8, marginTop: 8 }}>
+        {ACCOUNT_TYPES.map((t) => {
+          const active = accountType === t.id;
+          return (
+            <Pressable
+              key={t.id}
+              onPress={() => setAccountType(t.id)}
+              disabled={loading}
+              style={[
+                styles.typeCard,
+                {
+                  backgroundColor: active ? c.inputBg : 'transparent',
+                  borderColor: active ? c.title : c.label,
+                  borderWidth: active ? 2 : 1,
+                },
+              ]}
+            >
+              <Text style={styles.typeEmoji}>{t.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.typeTitle, { color: c.inputText }]}>{t.title}</Text>
+                <Text style={[styles.typeDesc, { color: c.subtitle }]}>{t.desc}</Text>
+              </View>
+              <View
+                style={[
+                  styles.typeRadio,
+                  { borderColor: active ? c.title : c.label, backgroundColor: active ? c.title : 'transparent' },
+                ]}
+              />
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={[styles.label, { color: c.label }]}>
+        {accountType === 'vet' ? 'Nombre del responsable' : 'Nombre completo'}
+      </Text>
       <TextInput
         style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
         value={name}
@@ -70,6 +122,11 @@ export default function Register() {
         autoComplete="email"
         editable={!loading}
       />
+      {accountType === 'vet' ? (
+        <Text style={[styles.hint, { color: c.subtitle }]}>
+          Este es tu login personal. El email institucional de la vet lo agregás en el siguiente paso.
+        </Text>
+      ) : null}
 
       <Text style={[styles.label, { color: c.label }]}>Contraseña</Text>
       <TextInput
@@ -97,7 +154,9 @@ export default function Register() {
         {loading ? (
           <ActivityIndicator color={c.primaryText} />
         ) : (
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>Crear cuenta</Text>
+          <Text style={[styles.buttonText, { color: c.primaryText }]}>
+            {accountType === 'vet' ? 'Crear cuenta y continuar' : 'Crear cuenta'}
+          </Text>
         )}
       </Pressable>
     </AuthScreen>
@@ -113,6 +172,18 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   input: { borderRadius: 16, padding: 16, fontSize: 16 },
+  hint: { fontSize: 11, marginTop: 6, lineHeight: 15 },
+  typeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 16,
+    padding: 12,
+  },
+  typeEmoji: { fontSize: 22 },
+  typeTitle: { fontSize: 14, fontWeight: '700' },
+  typeDesc: { fontSize: 11, marginTop: 2, lineHeight: 15 },
+  typeRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
   error: {
     color: '#EF4444',
     textAlign: 'center',

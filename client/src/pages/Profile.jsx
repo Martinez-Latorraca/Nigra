@@ -16,7 +16,7 @@ const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada', resolved: 'Reencont
 
 function Card({ title, kicker, children, className = '' }) {
     return (
-        <div className={`bg-white rounded-[32px] border border-mimo-muted p-6 md:p-8 shadow-card ${className}`}>
+        <div className={`bg-mimo-warm rounded-[32px] border border-mimo-muted p-6 md:p-8 shadow-card ${className}`}>
             {kicker ? (
                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet mb-4">{kicker}</div>
             ) : null}
@@ -31,7 +31,7 @@ function Card({ title, kicker, children, className = '' }) {
 function StatTile({ label, value, hint, accent }) {
     return (
         <div
-            className="bg-white rounded-[24px] border border-mimo-muted p-5 shadow-card"
+            className="bg-mimo-warm rounded-[24px] border border-mimo-muted p-5 shadow-card"
             style={{ borderTop: `4px solid ${accent}` }}
         >
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">{label}</div>
@@ -113,7 +113,7 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
         }
     };
 
-    const input = 'w-full rounded-2xl border border-mimo-muted bg-mimo-warm px-4 py-3 text-sm text-mimo-noche focus:border-mimo-coral focus:outline-none';
+    const input = 'w-full rounded-2xl border border-mimo-muted bg-mimo-muted px-4 py-3 text-sm text-mimo-noche focus:border-mimo-coral focus:outline-none';
     const label = 'text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet';
 
     return (
@@ -129,7 +129,7 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                                 {vet.name.charAt(0)}
                             </div>
                         )}
-                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-bold uppercase tracking-widest text-mimo-noche hover:bg-mimo-warm">
+                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-mimo-noche hover:bg-mimo-muted">
                             {uploadingKind === 'logo' ? 'Subiendo…' : 'Cambiar'}
                             <input
                                 type="file"
@@ -149,7 +149,7 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                         ) : (
                             <div className="h-16 w-24 rounded-2xl bg-mimo-muted" />
                         )}
-                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-bold uppercase tracking-widest text-mimo-noche hover:bg-mimo-warm">
+                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-mimo-noche hover:bg-mimo-muted">
                             {uploadingKind === 'cover' ? 'Subiendo…' : 'Cambiar'}
                             <input
                                 type="file"
@@ -216,13 +216,13 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                 <button
                     onClick={save}
                     disabled={saving}
-                    className="flex-1 rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50"
+                    className="flex-1 rounded-full bg-mimo-coral text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50"
                 >
                     {saving ? 'Guardando…' : 'Guardar cambios'}
                 </button>
                 <button
                     onClick={onClose}
-                    className="rounded-full border border-mimo-muted text-mimo-ink px-6 py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-warm"
+                    className="rounded-full border border-mimo-muted text-mimo-ink px-6 py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-muted"
                 >
                     Cerrar
                 </button>
@@ -428,7 +428,7 @@ function Profile() {
 
     if (loading || (isVet && !vetLoaded)) {
         return (
-            <div className="min-h-screen bg-mimo-warm flex items-center justify-center">
+            <div className="min-h-screen bg-mimo-muted flex items-center justify-center">
                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">
                     Cargando…
                 </div>
@@ -449,7 +449,7 @@ function Profile() {
     const savingAlerts = savingVetAlerts || savingUserAlerts;
 
     return (
-        <div className="min-h-screen bg-mimo-warm text-mimo-noche">
+        <div className="min-h-screen bg-mimo-muted text-mimo-noche">
             <div className="max-w-6xl mx-auto px-6 pt-12 pb-16">
 
                 {/* -------------------------- HERO -------------------------- */}
@@ -486,7 +486,7 @@ function Profile() {
                     {isVet && vet ? (
                         <button
                             onClick={() => setEditing((v) => !v)}
-                            className="rounded-full bg-mimo-coral text-white px-8 py-3 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark shadow-mimo"
+                            className="rounded-full bg-mimo-coral text-white px-8 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark shadow-mimo"
                         >
                             {editing ? 'Cerrar' : 'Editar'}
                         </button>
@@ -532,7 +532,7 @@ function Profile() {
                             </div>
                             <a
                                 href="mailto:somos.mimo.app@gmail.com?subject=Quiero%20ser%20Socio%20Mimo"
-                                className="rounded-full bg-white text-mimo-noche px-6 py-3 text-sm font-bold uppercase tracking-widest hover:bg-mimo-warm"
+                                className="rounded-full bg-white text-mimo-noche px-6 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-muted"
                             >
                                 Contactar
                             </a>
@@ -556,84 +556,12 @@ function Profile() {
                     {/* Columna izquierda (span 2) */}
                     <div className="lg:col-span-2 space-y-6">
 
-                        {/* Últimos reportes vet */}
-                        {isVet && vetDash ? (
-                            <Card kicker="Últimos reportes">
-                                {vetDash.recent_pets.length === 0 ? (
-                                    <div className="py-10 text-center text-sm text-mimo-quiet">Todavía no publicaste mascotas.</div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {vetDash.recent_pets.map((p) => (
-                                            <Link
-                                                key={p.id}
-                                                to={`/pet/${p.id}`}
-                                                className="flex items-center gap-4 rounded-2xl border border-mimo-muted p-3 hover:bg-mimo-warm transition-colors"
-                                            >
-                                                <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-mimo-muted">
-                                                    {p.photo_url ? <img src={p.photo_url} className="h-full w-full object-cover" alt="" /> : null}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="text-sm font-bold text-mimo-noche truncate">
-                                                        {p.name || (p.status === 'lost' ? 'Sin nombre' : 'Encontrada')}
-                                                    </div>
-                                                    <div className="text-xs text-mimo-quiet truncate">{p.address || 'Sin ubicación'}</div>
-                                                </div>
-                                                <span
-                                                    className="rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white"
-                                                    style={{
-                                                        background: p.resolved_at ? '#3ECFB2' : p.status === 'lost' ? '#FF5C6C' : '#FFB830',
-                                                    }}
-                                                >
-                                                    {p.resolved_at ? 'Reencontrada' : STATUS_LABEL[p.status]}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
-                            </Card>
-                        ) : null}
-
-                        {/* Alertas recientes vet */}
-                        {isVet && vetDash ? (
-                            <Card kicker="Alertas recientes">
-                                {vetDash.recent_alerts.length === 0 ? (
-                                    <div className="py-10 text-center text-sm text-mimo-quiet">Sin alertas por ahora.</div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {vetDash.recent_alerts.map((a) => {
-                                            const isLost = a.type === 'nearby_vet_lost';
-                                            const petId = a.data?.pet_id;
-                                            return (
-                                                <Link
-                                                    key={a.id}
-                                                    to={petId ? `/pet/${petId}` : '#'}
-                                                    className="flex items-center gap-4 rounded-2xl border border-mimo-muted p-3 hover:bg-mimo-warm transition-colors"
-                                                >
-                                                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-mimo-muted">
-                                                        {a.pet_photo ? <img src={a.pet_photo} className="h-full w-full object-cover" alt="" /> : null}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isLost ? '#FF5C6C' : '#3ECFB2' }}>
-                                                            {isLost ? 'Perdida cerca' : 'Encontrada cerca'}
-                                                        </div>
-                                                        <div className="mt-0.5 text-sm font-bold text-mimo-noche truncate">{a.pet_name || 'Sin nombre'}</div>
-                                                        <div className="text-xs text-mimo-quiet truncate">{a.pet_address || 'Sin ubicación'}</div>
-                                                    </div>
-                                                    {!a.read_at && <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-mimo-coral" />}
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </Card>
-                        ) : null}
-
-                        {/* Bandeja de entrada */}
+                        {/* 1. Bandeja de entrada */}
                         <Card>
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="font-display font-extrabold text-2xl text-mimo-noche tracking-tight">Bandeja de entrada</h2>
                                 <span
-                                    className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest ${unreadCount > 0 ? 'bg-mimo-teal text-white animate-pulse' : 'bg-mimo-muted text-mimo-quiet'}`}
+                                    className={`text-[9px] font-display font-extrabold px-3 py-1 rounded-full uppercase tracking-widest ${unreadCount > 0 ? 'bg-mimo-teal text-white animate-pulse' : 'bg-mimo-muted text-mimo-quiet'}`}
                                 >
                                     {unreadCount > 0 ? `${unreadCount} Nuevos` : `${items.length} Activos`}
                                 </span>
@@ -651,7 +579,7 @@ function Profile() {
                                                 <div
                                                     key={item.key}
                                                     onClick={() => handleOpenChat(item)}
-                                                    className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-warm cursor-pointer transition-all"
+                                                    className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-muted cursor-pointer transition-all"
                                                 >
                                                     <div className={`w-12 h-12 bg-mimo-muted rounded-xl flex-shrink-0 overflow-hidden ${hasUnread ? 'ring-2 ring-mimo-teal/50' : ''}`}>
                                                         {item.photo_url ? <img src={item.photo_url} className="w-full h-full object-cover" alt="pet" /> : null}
@@ -676,7 +604,7 @@ function Profile() {
                                             <div
                                                 key={item.key}
                                                 onClick={() => handleOpenMatch(item)}
-                                                className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-warm cursor-pointer transition-all"
+                                                className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-muted cursor-pointer transition-all"
                                             >
                                                 <div className={`w-12 h-12 bg-mimo-muted rounded-xl flex-shrink-0 overflow-hidden ${hasUnread ? 'ring-2 ring-mimo-violeta/50' : ''}`}>
                                                     {photo ? <img src={photo} className="w-full h-full object-cover" alt="posible match" /> : null}
@@ -695,11 +623,54 @@ function Profile() {
                             )}
                         </Card>
 
-                        {/* Mis reportes (user) */}
+                        {/* 2. Alertas recientes (solo si es vet) */}
+                        {isVet && vetDash ? (
+                            <Card>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="font-display font-extrabold text-2xl text-mimo-noche tracking-tight">Alertas recientes</h2>
+                                    <span
+                                        className={`text-[9px] font-display font-extrabold px-3 py-1 rounded-full uppercase tracking-widest ${vetDash.stats.unread_alerts > 0 ? 'bg-mimo-coral text-white animate-pulse' : 'bg-mimo-muted text-mimo-quiet'}`}
+                                    >
+                                        {vetDash.stats.unread_alerts > 0 ? `${vetDash.stats.unread_alerts} sin leer` : `${vetDash.recent_alerts.length} activas`}
+                                    </span>
+                                </div>
+                                {vetDash.recent_alerts.length === 0 ? (
+                                    <div className="py-10 text-center text-sm text-mimo-quiet">Sin alertas por ahora.</div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {vetDash.recent_alerts.map((a) => {
+                                            const isLost = a.type === 'nearby_vet_lost';
+                                            const petId = a.data?.pet_id;
+                                            return (
+                                                <Link
+                                                    key={a.id}
+                                                    to={petId ? `/pet/${petId}` : '#'}
+                                                    className="flex items-center gap-4 rounded-2xl border border-mimo-muted p-3 hover:bg-mimo-muted transition-colors"
+                                                >
+                                                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-mimo-muted">
+                                                        {a.pet_photo ? <img src={a.pet_photo} className="h-full w-full object-cover" alt="" /> : null}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-[10px] font-display font-extrabold uppercase tracking-widest" style={{ color: isLost ? '#FF5C6C' : '#3ECFB2' }}>
+                                                            {isLost ? 'Perdida cerca' : 'Encontrada cerca'}
+                                                        </div>
+                                                        <div className="mt-0.5 text-sm font-bold text-mimo-noche truncate">{a.pet_name || 'Sin nombre'}</div>
+                                                        <div className="text-xs text-mimo-quiet truncate">{a.pet_address || 'Sin ubicación'}</div>
+                                                    </div>
+                                                    {!a.read_at && <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-mimo-coral" />}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </Card>
+                        ) : null}
+
+                        {/* 3. Mis reportes */}
                         <Card>
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="font-display font-extrabold text-2xl text-mimo-noche tracking-tight">Mis reportes</h2>
-                                <span className="text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-mimo-muted text-mimo-quiet">
+                                <span className="text-[9px] font-display font-extrabold px-3 py-1 rounded-full uppercase tracking-widest bg-mimo-muted text-mimo-quiet">
                                     {reportsTotal} totales
                                 </span>
                             </div>
@@ -733,7 +704,7 @@ function Profile() {
                                             <button
                                                 onClick={() => fetchReports(reportsPage + 1, true)}
                                                 disabled={loadingMore}
-                                                className="px-8 py-3 bg-mimo-noche text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:opacity-90 disabled:opacity-50"
+                                                className="px-8 py-3 bg-mimo-noche text-white text-[10px] font-display font-extrabold uppercase tracking-widest rounded-full hover:opacity-90 disabled:opacity-50"
                                             >
                                                 {loadingMore ? 'Cargando…' : `Cargar más (${reportsPage} de ${reportsTotalPages})`}
                                             </button>
@@ -751,7 +722,7 @@ function Profile() {
                         <Card kicker="Configuración de alertas">
                             {isVet && vet ? (
                                 <div className="space-y-3">
-                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
                                         <div className="pr-4">
                                             <div className="text-sm font-bold text-mimo-noche">Mascotas perdidas</div>
                                             <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una perdida en tu radio.</div>
@@ -763,7 +734,7 @@ function Profile() {
                                             className="h-5 w-5 accent-mimo-coral"
                                         />
                                     </label>
-                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
                                         <div className="pr-4">
                                             <div className="text-sm font-bold text-mimo-noche">Mascotas encontradas</div>
                                             <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una encontrada.</div>
@@ -796,7 +767,7 @@ function Profile() {
                                     </div>
                                 </div>
                             ) : (
-                                <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
                                     <div className="pr-4">
                                         <div className="text-sm font-bold text-mimo-noche">Alertas de mascotas cerca</div>
                                         <div className="text-xs text-mimo-quiet mt-1">Te avisamos cuando reporten una perdida o encontrada a menos de 5 km tuyo.</div>
@@ -813,7 +784,7 @@ function Profile() {
                             <button
                                 onClick={saveAlerts}
                                 disabled={savingAlerts}
-                                className="mt-6 w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50 shadow-mimo"
+                                className="mt-6 w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50 shadow-mimo"
                             >
                                 {savingAlerts ? 'Guardando…' : 'Guardar cambios'}
                             </button>
@@ -829,12 +800,12 @@ function Profile() {
                         <div className="space-y-3">
                             <button
                                 onClick={handleLogout}
-                                className="w-full rounded-full bg-mimo-teal text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-tealDark transition-colors"
+                                className="w-full rounded-full bg-mimo-teal text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-tealDark transition-colors"
                             >
                                 Cerrar sesión
                             </button>
                             <button
-                                className="w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark transition-colors"
+                                className="w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark transition-colors"
                             >
                                 Eliminar cuenta
                             </button>

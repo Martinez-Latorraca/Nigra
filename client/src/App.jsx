@@ -121,7 +121,7 @@ function App() {
   }, [socket, user?.id, dispatch]);
 
   return (
-    <div className="min-h-screen bg-mimo-warm font-sans flex flex-col">
+    <div className="min-h-screen bg-mimo-muted font-sans flex flex-col">
       <ScrollToTop />
       {!isLanding && <Navbar />}
       <main className="flex-1 flex flex-col">

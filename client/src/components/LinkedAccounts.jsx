@@ -144,10 +144,10 @@ export default function LinkedAccounts() {
     if (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID) return null;
 
     return (
-        <div className="bg-white rounded-[40px] p-8 border border-gray-100">
-            <p className="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-4">Cuentas vinculadas</p>
+        <div className="bg-mimo-warm rounded-[32px] p-6 md:p-8 border border-mimo-muted shadow-card">
+            <p className="text-[10px] font-display font-extrabold text-mimo-quiet uppercase tracking-[0.2em] mb-4">Cuentas vinculadas</p>
             {loading ? (
-                <p className="text-xs text-gray-400">Cargando…</p>
+                <p className="text-xs text-mimo-quiet">Cargando…</p>
             ) : (
                 <div className="space-y-3">
                     {PROVIDERS.filter(p => (p.id === 'google' && GOOGLE_CLIENT_ID) || (p.id === 'facebook' && FACEBOOK_APP_ID)).map(p => {
@@ -158,10 +158,10 @@ export default function LinkedAccounts() {
                                 <div className="flex items-center gap-3">
                                     <span
                                         className="w-2 h-2 rounded-full"
-                                        style={{ background: isLinked ? '#22c55e' : '#e5e7eb' }}
+                                        style={{ background: isLinked ? '#3ECFB2' : '#F0EBE8' }}
                                     />
-                                    <span className="text-sm font-semibold text-gray-900">{p.label}</span>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <span className="text-sm font-bold text-mimo-noche">{p.label}</span>
+                                    <span className="text-[10px] font-display font-extrabold text-mimo-quiet uppercase tracking-widest">
                                         {isLinked ? 'Conectada' : 'No conectada'}
                                     </span>
                                 </div>
@@ -170,7 +170,7 @@ export default function LinkedAccounts() {
                                         onClick={() => unlink(p.id)}
                                         disabled={busy === p.id || isOnlyMethod}
                                         title={isOnlyMethod ? 'Es tu único método de login' : ''}
-                                        className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed"
+                                        className="text-[10px] font-display font-extrabold text-mimo-quiet hover:text-mimo-coral uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed"
                                     >
                                         Desvincular
                                     </button>
@@ -178,7 +178,7 @@ export default function LinkedAccounts() {
                                     <button
                                         onClick={() => startLink(p.id)}
                                         disabled={busy === p.id}
-                                        className="text-[10px] font-bold text-gray-900 hover:text-pet-primary uppercase tracking-widest disabled:opacity-30"
+                                        className="text-[10px] font-display font-extrabold text-mimo-noche hover:text-mimo-coral uppercase tracking-widest disabled:opacity-30"
                                     >
                                         {busy === p.id ? 'Conectando…' : 'Conectar'}
                                     </button>
@@ -188,8 +188,8 @@ export default function LinkedAccounts() {
                     })}
                 </div>
             )}
-            {error && <div className="mt-4 p-3 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold">{error}</div>}
-            {notice && <div className="mt-4 p-3 bg-green-50 text-green-600 rounded-2xl text-xs font-semibold">{notice}</div>}
+            {error && <div className="mt-4 p-3 bg-mimo-coral/10 text-mimo-coral rounded-2xl text-xs font-bold">{error}</div>}
+            {notice && <div className="mt-4 p-3 bg-mimo-teal/10 text-mimo-tealDark rounded-2xl text-xs font-bold">{notice}</div>}
         </div>
     );
 }

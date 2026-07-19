@@ -340,10 +340,23 @@ async function ensureSchema() {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_lng DOUBLE PRECISION');
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_at TIMESTAMP');
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_nearby BOOLEAN NOT NULL DEFAULT false');
+        // Granular: separar perdidas / encontradas y permitir radio configurable
+        // (misma UX que las vets). Backfilleamos desde notify_nearby así los que
+        // ya habían activado alertas quedan igual.
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_lost BOOLEAN NOT NULL DEFAULT false');
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_found BOOLEAN NOT NULL DEFAULT false');
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_radius_km INTEGER NOT NULL DEFAULT 5');
+        await pool.query(`
+            UPDATE users
+            SET notify_lost = TRUE, notify_found = TRUE
+            WHERE notify_nearby = TRUE
+              AND notify_lost = FALSE
+              AND notify_found = FALSE
+        `);
         // Índice para la query de "users cerca" (usa la fórmula de haversine sobre
         // last_lat/lng, así que un índice básico por presencia de ubicación ayuda
         // a que la scan sea más chica).
-        await pool.query('CREATE INDEX IF NOT EXISTS users_nearby_alerts_idx ON users(notify_nearby) WHERE notify_nearby = true AND last_lat IS NOT NULL AND last_lng IS NOT NULL');
+        await pool.query('CREATE INDEX IF NOT EXISTS users_nearby_alerts_idx ON users(notify_lost, notify_found) WHERE (notify_lost = true OR notify_found = true) AND last_lat IS NOT NULL AND last_lng IS NOT NULL');
 
         // RLS habilitado sin policies. Nuestro server se conecta con el role
         // `postgres` de Supabase, que tiene BYPASSRLS — nuestras queries siguen

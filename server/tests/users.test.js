@@ -62,13 +62,19 @@ describe('Users', () => {
             expect(res.status).toBe(401);
         });
 
-        it('devuelve el perfil (incluye notify_nearby)', async () => {
+        it('devuelve el perfil (incluye notify_* y radio)', async () => {
             pool.query.mockResolvedValueOnce({
-                rows: [{ id: 7, name: 'Ana', email: 'a@a.com', role: 'user', avatar_url: null, notify_nearby: true }],
+                rows: [{
+                    id: 7, name: 'Ana', email: 'a@a.com', role: 'user', avatar_url: null,
+                    notify_nearby: true, notify_lost: true, notify_found: false, notify_radius_km: 15,
+                }],
             });
             const res = await request(buildApp()).get('/api/users/me').set('x-test-user', '7');
             expect(res.status).toBe(200);
             expect(res.body.notify_nearby).toBe(true);
+            expect(res.body.notify_lost).toBe(true);
+            expect(res.body.notify_found).toBe(false);
+            expect(res.body.notify_radius_km).toBe(15);
         });
 
         it('404 si el user no existe', async () => {
@@ -124,14 +130,30 @@ describe('Users', () => {
             expect(res.status).toBe(400);
         });
 
-        it('actualiza el toggle y devuelve el nuevo estado', async () => {
-            pool.query.mockResolvedValueOnce({ rows: [{ notify_nearby: true }] });
+        it('actualiza el toggle (forma legacy enabled) y devuelve el estado', async () => {
+            pool.query.mockResolvedValueOnce({
+                rows: [{ notify_nearby: true, notify_lost: true, notify_found: true, notify_radius_km: 5 }],
+            });
             const res = await request(buildApp())
                 .patch('/api/users/notify-nearby')
                 .set('x-test-user', '7')
                 .send({ enabled: true });
             expect(res.status).toBe(200);
             expect(res.body.notify_nearby).toBe(true);
+            expect(res.body.notify_lost).toBe(true);
+            expect(res.body.notify_found).toBe(true);
+        });
+
+        it('acepta la forma granular con radio', async () => {
+            pool.query.mockResolvedValueOnce({
+                rows: [{ notify_nearby: true, notify_lost: true, notify_found: false, notify_radius_km: 15 }],
+            });
+            const res = await request(buildApp())
+                .patch('/api/users/notify-nearby')
+                .set('x-test-user', '7')
+                .send({ notify_lost: true, notify_found: false, notify_radius_km: 15 });
+            expect(res.status).toBe(200);
+            expect(res.body.notify_radius_km).toBe(15);
         });
     });
 });

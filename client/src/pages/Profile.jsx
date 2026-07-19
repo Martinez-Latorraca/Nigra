@@ -255,18 +255,17 @@ function Profile() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // --- Alertas (user notify_nearby) --- //
-    const [notifyNearby, setNotifyNearby] = useState(false);
-    const [savingUserAlerts, setSavingUserAlerts] = useState(false);
-
-    // --- Vet dashboard --- //
+    // --- Alertas — unificado para user y vet --- //
+    // - vet: fuente = /api/vets/me/dashboard (receives_lost / receives_found / alert_radius_km).
+    // - user: fuente = /api/users/me (notify_lost / notify_found / notify_radius_km).
+    // Mismos 3 controles, distinto endpoint al guardar (branch en saveAlerts).
     const [vetDash, setVetDash] = useState(null);
     const [vetLoaded, setVetLoaded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [receivesLost, setReceivesLost] = useState(false);
     const [receivesFound, setReceivesFound] = useState(false);
     const [radius, setRadius] = useState(5);
-    const [savingVetAlerts, setSavingVetAlerts] = useState(false);
+    const [savingAlerts, setSavingAlerts] = useState(false);
     const [alertsMsg, setAlertsMsg] = useState('');
 
     // Items unificados de inbox (chats + matches)
@@ -337,7 +336,7 @@ function Profile() {
         finally { setVetLoaded(true); }
     };
 
-    // --- Fetch user notify_nearby --- //
+    // --- Fetch user notification prefs (solo para el path user) --- //
     const fetchUserNotify = async () => {
         try {
             const res = await fetch(`${API}/api/users/me`, {
@@ -345,15 +344,17 @@ function Profile() {
             });
             if (!res.ok) return;
             const data = await res.json();
-            setNotifyNearby(!!data.notify_nearby);
+            setReceivesLost(!!data.notify_lost);
+            setReceivesFound(!!data.notify_found);
+            if (Number.isFinite(data.notify_radius_km)) setRadius(data.notify_radius_km);
         } catch { /* silencioso */ }
     };
 
     useEffect(() => {
         if (!token) return;
         fetchReports();
-        fetchUserNotify();
         if (isVet) fetchVetDashboard();
+        else fetchUserNotify();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, isVet]);
 
@@ -393,36 +394,25 @@ function Profile() {
     };
 
     const saveAlerts = async () => {
-        setSavingVetAlerts(true);
-        setSavingUserAlerts(true);
+        setSavingAlerts(true);
         setAlertsMsg('');
         try {
-            if (isVet && vet) {
-                const res = await fetch(`${API}/api/vets/me/alerts`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({
-                        receives_lost: receivesLost,
-                        receives_found: receivesFound,
-                        alert_radius_km: radius,
-                    }),
-                });
-                if (!res.ok) throw new Error();
-            } else {
-                const res = await fetch(`${API}/api/users/notify-nearby`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ enabled: notifyNearby }),
-                });
-                if (!res.ok) throw new Error();
-            }
+            const url = isVet && vet ? `${API}/api/vets/me/alerts` : `${API}/api/users/notify-nearby`;
+            const body = isVet && vet
+                ? { receives_lost: receivesLost, receives_found: receivesFound, alert_radius_km: radius }
+                : { notify_lost: receivesLost, notify_found: receivesFound, notify_radius_km: radius };
+            const res = await fetch(url, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error();
             setAlertsMsg('Guardado.');
             setTimeout(() => setAlertsMsg(''), 2500);
         } catch {
             setAlertsMsg('No se pudo guardar.');
         } finally {
-            setSavingVetAlerts(false);
-            setSavingUserAlerts(false);
+            setSavingAlerts(false);
         }
     };
 
@@ -444,9 +434,9 @@ function Profile() {
     const successRate = vetDash && vetDash.stats.total_pets > 0
         ? Math.round((vetDash.stats.resolved_pets / vetDash.stats.total_pets) * 100)
         : null;
-    const maxRadius = vet?.plan === 'ally' ? 5 : 50;
-
-    const savingAlerts = savingVetAlerts || savingUserAlerts;
+    // El slider tiene cap si es una vet en plan ally (gate comercial).
+    // Para users normales el radio no depende de ningún plan → 50 km máx.
+    const maxRadius = isVet && vet?.plan === 'ally' ? 5 : 50;
 
     return (
         <div className="min-h-screen bg-mimo-muted text-mimo-noche">
@@ -454,11 +444,25 @@ function Profile() {
 
                 {/* -------------------------- HERO -------------------------- */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
-                    <div>
-                        <h1 className="font-display font-black text-5xl md:text-7xl tracking-tight leading-none">
-                            {displayName}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-3 mt-4">
+                    <div className="flex items-center gap-5">
+                        {isVet && vet ? (
+                            vet.logo_url ? (
+                                <img
+                                    src={vet.logo_url}
+                                    alt=""
+                                    className="w-20 h-20 md:w-24 md:h-24 rounded-3xl object-cover shadow-mimo flex-shrink-0"
+                                />
+                            ) : (
+                                <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-4xl shadow-mimo flex-shrink-0">
+                                    {vet.name.charAt(0)}
+                                </div>
+                            )
+                        ) : null}
+                        <div>
+                            <h1 className="font-display font-black text-5xl md:text-7xl tracking-tight leading-none">
+                                {displayName}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-3 mt-4">
                             {isVet && vet ? (
                                 <>
                                     <span className="text-sm font-semibold text-mimo-ink">
@@ -481,8 +485,10 @@ function Profile() {
                             ) : (
                                 <span className="text-sm font-semibold text-mimo-ink">Miembro Mimo</span>
                             )}
+                            </div>
                         </div>
                     </div>
+
                     {isVet && vet ? (
                         <button
                             onClick={() => setEditing((v) => !v)}
@@ -718,68 +724,55 @@ function Profile() {
                     {/* Columna derecha */}
                     <div className="space-y-6">
 
-                        {/* Configuración de alertas — UNIFICADA */}
+                        {/* Configuración de alertas — mismos 3 controles para user y vet.
+                            La diferencia real está en el endpoint (branch en saveAlerts) y en
+                            el cap del radio (solo si vet en plan ally). */}
                         <Card kicker="Configuración de alertas">
-                            {isVet && vet ? (
-                                <div className="space-y-3">
-                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
-                                        <div className="pr-4">
-                                            <div className="text-sm font-bold text-mimo-noche">Mascotas perdidas</div>
-                                            <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una perdida en tu radio.</div>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={receivesLost}
-                                            onChange={(e) => setReceivesLost(e.target.checked)}
-                                            className="h-5 w-5 accent-mimo-coral"
-                                        />
-                                    </label>
-                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
-                                        <div className="pr-4">
-                                            <div className="text-sm font-bold text-mimo-noche">Mascotas encontradas</div>
-                                            <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una encontrada.</div>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={receivesFound}
-                                            onChange={(e) => setReceivesFound(e.target.checked)}
-                                            className="h-5 w-5 accent-mimo-coral"
-                                        />
-                                    </label>
-                                    <div className="rounded-2xl border border-mimo-muted p-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="text-sm font-bold text-mimo-noche">Radio de alerta</div>
-                                            <div className="text-2xl font-black text-mimo-coral font-display">{radius} km</div>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min={1}
-                                            max={maxRadius}
-                                            value={radius}
-                                            onChange={(e) => setRadius(Number(e.target.value))}
-                                            className="mt-3 w-full accent-mimo-coral"
-                                        />
-                                        <div className="mt-2 text-[11px] text-mimo-quiet">
-                                            {vet.plan === 'ally'
-                                                ? <>Plan gratis: hasta 5 km. <span className="font-bold text-mimo-solDark">Socio Mimo extiende a 50 km.</span></>
-                                                : <>Socio Mimo · hasta 50 km.</>}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
+                            <div className="space-y-3">
                                 <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
                                     <div className="pr-4">
-                                        <div className="text-sm font-bold text-mimo-noche">Alertas de mascotas cerca</div>
-                                        <div className="text-xs text-mimo-quiet mt-1">Te avisamos cuando reporten una perdida o encontrada a menos de 5 km tuyo.</div>
+                                        <div className="text-sm font-bold text-mimo-noche">Mascotas perdidas</div>
+                                        <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una perdida en tu radio.</div>
                                     </div>
                                     <input
                                         type="checkbox"
-                                        checked={notifyNearby}
-                                        onChange={(e) => setNotifyNearby(e.target.checked)}
+                                        checked={receivesLost}
+                                        onChange={(e) => setReceivesLost(e.target.checked)}
                                         className="h-5 w-5 accent-mimo-coral"
                                     />
                                 </label>
-                            )}
+                                <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-muted">
+                                    <div className="pr-4">
+                                        <div className="text-sm font-bold text-mimo-noche">Mascotas encontradas</div>
+                                        <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una encontrada.</div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={receivesFound}
+                                        onChange={(e) => setReceivesFound(e.target.checked)}
+                                        className="h-5 w-5 accent-mimo-coral"
+                                    />
+                                </label>
+                                <div className="rounded-2xl border border-mimo-muted p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-bold text-mimo-noche">Radio de alerta</div>
+                                        <div className="text-2xl font-black text-mimo-coral font-display">{radius} km</div>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={1}
+                                        max={maxRadius}
+                                        value={radius}
+                                        onChange={(e) => setRadius(Number(e.target.value))}
+                                        className="mt-3 w-full accent-mimo-coral"
+                                    />
+                                    {isVet && vet?.plan === 'ally' ? (
+                                        <div className="mt-2 text-[11px] text-mimo-quiet">
+                                            Plan gratis: hasta 5 km. <span className="font-bold text-mimo-solDark">Socio Mimo extiende a 50 km.</span>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
 
                             <button
                                 onClick={saveAlerts}

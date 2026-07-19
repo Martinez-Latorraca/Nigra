@@ -15,15 +15,47 @@ export const updateLocation = async (req, res) => {
     }
 };
 
+// Acepta dos formas de body:
+//  - { enabled: bool }  → forma legacy: setea perdidas y encontradas juntas.
+//  - { notify_lost, notify_found, notify_radius_km }  → granular (nuevo).
+// El notify_nearby "master" queda derivado (lost OR found) para no romper
+// código viejo que aún lo lea.
 export const updateNotifyNearby = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { enabled } = req.body;
+        const { enabled, notify_lost, notify_found, notify_radius_km } = req.body;
+
+        let lost, found, radius;
+        if (typeof enabled === 'boolean') {
+            lost = enabled;
+            found = enabled;
+        } else {
+            lost = typeof notify_lost === 'boolean' ? notify_lost : undefined;
+            found = typeof notify_found === 'boolean' ? notify_found : undefined;
+        }
+        if (Number.isFinite(notify_radius_km)) radius = notify_radius_km;
+
+        const sets = [];
+        const values = [];
+        let i = 1;
+        if (typeof lost === 'boolean') { sets.push(`notify_lost = $${i++}`); values.push(lost); }
+        if (typeof found === 'boolean') { sets.push(`notify_found = $${i++}`); values.push(found); }
+        if (typeof radius === 'number') { sets.push(`notify_radius_km = $${i++}`); values.push(radius); }
+        // Master derivado para compat: activo si alguno de los granulares está activo.
+        if (typeof lost === 'boolean' || typeof found === 'boolean') {
+            sets.push(`notify_nearby = (COALESCE($${i++}::boolean, notify_lost) OR COALESCE($${i++}::boolean, notify_found))`);
+            values.push(typeof lost === 'boolean' ? lost : null);
+            values.push(typeof found === 'boolean' ? found : null);
+        }
+        if (sets.length === 0) return res.status(400).json({ error: 'Nada que actualizar' });
+
+        values.push(userId);
         const { rows } = await pool.query(
-            'UPDATE users SET notify_nearby = $1 WHERE id = $2 RETURNING notify_nearby',
-            [enabled, userId]
+            `UPDATE users SET ${sets.join(', ')} WHERE id = $${i}
+             RETURNING notify_nearby, notify_lost, notify_found, notify_radius_km`,
+            values
         );
-        res.json({ success: true, notify_nearby: rows[0]?.notify_nearby ?? enabled });
+        res.json({ success: true, ...rows[0] });
     } catch (error) {
         console.error('updateNotifyNearby error:', error);
         res.status(500).json({ error: 'Error actualizando preferencia' });
@@ -34,7 +66,7 @@ export const getMe = async (req, res) => {
     try {
         const userId = req.user.id;
         const { rows } = await pool.query(
-            'SELECT id, name, email, role, avatar_url, notify_nearby FROM users WHERE id = $1',
+            'SELECT id, name, email, role, avatar_url, notify_nearby, notify_lost, notify_found, notify_radius_km FROM users WHERE id = $1',
             [userId]
         );
         if (rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });

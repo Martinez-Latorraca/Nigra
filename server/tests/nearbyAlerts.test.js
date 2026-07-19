@@ -62,15 +62,18 @@ describe('notifyNearbyUsers', () => {
 
         await notifyNearbyUsers({ ...deps, newPet: basePet, reporterId: 1 });
 
-        // 1) La query de candidatos usa haversine con radio 5km y filtra por opt-in + fresh location + no reporter.
+        // 1) La query de candidatos usa haversine con el radio propio del user
+        // (u.notify_radius_km) y filtra por el opt-in que corresponde al tipo
+        // de reporte (notify_lost para lost) + fresh location + no reporter.
         // NO filtra por push_token — la notification se genera igual para users web-only.
         const [selectSql, selectParams] = deps.pool.query.mock.calls[0];
-        expect(selectSql).toMatch(/notify_nearby = true/);
+        expect(selectSql).toMatch(/u\.notify_lost = true/);
         expect(selectSql).toMatch(/last_location_at > NOW\(\) - INTERVAL '30 days'/);
         expect(selectSql).toMatch(/u\.id <> \$3/);
         expect(selectSql).toMatch(/6371 \* acos/); // haversine
+        expect(selectSql).toMatch(/<= u\.notify_radius_km/);
         expect(selectSql).not.toMatch(/push_token IS NOT NULL/);
-        expect(selectParams).toEqual([basePet.lat, basePet.lng, 1, 5]); // radio 5km
+        expect(selectParams).toEqual([basePet.lat, basePet.lng, 1]); // sin radio hardcoded
 
         // 2) INSERT notification con type nearby_lost + payload correcto
         const [insertSql, insertParams] = deps.pool.query.mock.calls[2];
@@ -101,7 +104,7 @@ describe('notifyNearbyUsers', () => {
         }));
     });
 
-    it('found: type=nearby_found + copy en título coherente', async () => {
+    it('found: type=nearby_found + filtra por notify_found + copy coherente', async () => {
         deps.pool.query
             .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Ana', push_token: 'T1' }] })
             .mockResolvedValueOnce({ rows: [] })
@@ -109,6 +112,8 @@ describe('notifyNearbyUsers', () => {
 
         await notifyNearbyUsers({ ...deps, newPet: { ...basePet, status: 'found' }, reporterId: 1 });
 
+        const [selectSql] = deps.pool.query.mock.calls[0];
+        expect(selectSql).toMatch(/u\.notify_found = true/);
         const [, insertParams] = deps.pool.query.mock.calls[2];
         expect(insertParams[1]).toBe('nearby_found');
         expect(deps.sendExpoPush).toHaveBeenCalledWith('T1', expect.objectContaining({

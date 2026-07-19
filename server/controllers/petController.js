@@ -4,10 +4,9 @@ import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
 import { sendExpoPush } from '../utils/push.js';
 
-const NEARBY_ALERT_RADIUS_KM = 5;
-
-// Alerta a users que optaron in (notify_nearby=true) y compartieron ubicación
-// en los últimos 30 días, cuyas coordenadas caen dentro de un radio del reporte.
+// Alerta a users que optaron in (notify_lost / notify_found según el tipo de
+// reporte) y compartieron ubicación en los últimos 30 días, cuyas coordenadas
+// caen dentro del radio configurado por CADA user (notify_radius_km).
 // Filtra al reporter y a users sin push_token. Anti-dupe vía notifications:
 // si ya existe una notif tipo nearby_* del mismo pet para el user, skip.
 // Fire-and-forget desde reportPet.
@@ -16,22 +15,23 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
     if (!['lost', 'found'].includes(newPet.status)) return;
     try {
         const notifType = newPet.status === 'lost' ? 'nearby_lost' : 'nearby_found';
+        const optInColumn = newPet.status === 'lost' ? 'notify_lost' : 'notify_found';
         // El WHERE NO filtra por push_token: users sin token igual reciben la
         // notification en su inbox (útil para users web-only). Sólo el push
         // real se gate más abajo por presencia de push_token.
         const sql = `
             SELECT u.id, u.name, u.push_token
             FROM users u
-            WHERE u.notify_nearby = true
+            WHERE u.${optInColumn} = true
               AND u.last_lat IS NOT NULL
               AND u.last_lng IS NOT NULL
               AND u.last_location_at > NOW() - INTERVAL '30 days'
               AND u.id <> $3
-              AND (6371 * acos(cos(radians($1)) * cos(radians(u.last_lat)) * cos(radians(u.last_lng) - radians($2)) + sin(radians($1)) * sin(radians(u.last_lat)))) <= $4
+              AND (6371 * acos(cos(radians($1)) * cos(radians(u.last_lat)) * cos(radians(u.last_lng) - radians($2)) + sin(radians($1)) * sin(radians(u.last_lat)))) <= u.notify_radius_km
             LIMIT 100
         `;
         const { rows: candidates } = await pool.query(sql, [
-            newPet.lat, newPet.lng, reporterId, NEARBY_ALERT_RADIUS_KM,
+            newPet.lat, newPet.lng, reporterId,
         ]);
         for (const u of candidates) {
             // Dedupe: si ya le mandamos alerta de este pet, skip.

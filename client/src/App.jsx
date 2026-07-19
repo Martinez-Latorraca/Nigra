@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Landing from './pages/Landing';
 import Find from './pages/Find';
@@ -21,7 +21,6 @@ import PetList from './pages/PetList';
 import AdminPanel from './pages/AdminPanel';
 import Vets from './pages/Vets';
 import VetProfile from './pages/VetProfile';
-import VetDashboard from './pages/VetDashboard';
 import VetRegister from './pages/VetRegister';
 import { ScrollToTop } from './helpers/ScrollToTop';
 
@@ -141,7 +140,7 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/vets" element={<Vets />} />
           <Route path="/vets/register" element={<VetRegister />} />
-          <Route path="/vets/dashboard" element={<VetDashboard />} />
+          <Route path="/vets/dashboard" element={<Navigate to="/profile" replace />} />
           <Route path="/vets/:slug" element={<VetProfile />} />
         </Routes>
         {!isLanding && <ChatWidget socket={socket} />}

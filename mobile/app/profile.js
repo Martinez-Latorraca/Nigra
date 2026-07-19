@@ -17,6 +17,7 @@ import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme } from '../src/lib/theme';
 import MenuButton from '../src/components/MenuButton';
 import LinkedAccounts from '../src/components/LinkedAccounts';
+import VetPanel from '../src/components/VetPanel';
 
 export default function Profile() {
   const c = useTheme();
@@ -148,6 +149,8 @@ export default function Profile() {
       </View>
 
       <LinkedAccounts c={c} />
+
+      {user?.has_vet ? <VetPanel /> : null}
 
       <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text>
     </View>

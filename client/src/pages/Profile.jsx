@@ -6,6 +6,7 @@ import { clearCredentials } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
+import VetPanel from '../components/VetPanel';
 
 function Profile() {
     const navigate = useNavigate();
@@ -184,6 +185,9 @@ function Profile() {
                     </div>
                 </div>
             </div>
+
+            {/* --- VET PANEL (solo si el user tiene vet asociada) --- */}
+            {user.has_vet ? <VetPanel /> : null}
 
             {/* --- BENTO GRID --- */}
             <div className="w-full max-w-5xl px-6 grid grid-cols-1 md:grid-cols-3 gap-6">

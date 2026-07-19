@@ -47,7 +47,7 @@ export default function VetRegister() {
         if (!token) { navigate('/login'); return; }
         fetch(`${API}/api/vets/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => {
-                if (r.ok) navigate('/vets/dashboard');
+                if (r.ok) navigate('/profile');
                 else setChecking(false);
             })
             .catch(() => setChecking(false));
@@ -83,7 +83,7 @@ export default function VetRegister() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo registrar.');
-            navigate('/vets/dashboard');
+            navigate('/profile');
         } catch (err) {
             setError(err.message);
         } finally {

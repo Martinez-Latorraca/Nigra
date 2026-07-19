@@ -5,6 +5,7 @@ import {
     updateMyVet,
     updateMyVetAlerts,
     getMyVetDashboard,
+    uploadMyVetImage,
     deleteMyVet,
     listVets,
     nearbyVets,
@@ -14,6 +15,7 @@ import {
 } from '../controllers/vetController.js';
 import { authenticateToken } from '../middlewares/auth.js';
 import { requireAdmin } from '../middlewares/adminAuth.js';
+import { upload } from '../middlewares/upload.js';
 import validate from '../middlewares/validate.js';
 import {
     createVetSchema,
@@ -39,6 +41,7 @@ router.get('/me', authenticateToken, getMyVet);
 router.get('/me/dashboard', authenticateToken, getMyVetDashboard);
 router.patch('/me', authenticateToken, validate(updateVetSchema), updateMyVet);
 router.patch('/me/alerts', authenticateToken, validate(updateVetAlertsSchema), updateMyVetAlerts);
+router.post('/me/image', authenticateToken, upload.single('image'), uploadMyVetImage);
 router.delete('/me', authenticateToken, deleteMyVet);
 
 // Público (después de todas las rutas específicas).

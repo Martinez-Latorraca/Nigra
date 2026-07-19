@@ -45,7 +45,7 @@ export default function Login() {
     dispatch(setCredentials({ user: data.user, token: data.token }));
     setLoadingProvider(null);
     if (data.user?.has_vet && !data.user.vet_approved) {
-      router.replace('/vets/dashboard');
+      router.replace('/profile');
     } else {
       router.replace('/home');
     }
@@ -69,7 +69,7 @@ export default function Login() {
       const { data } = await api.post('/api/auth/login', { email, password });
       dispatch(setCredentials({ user: data.user, token: data.token }));
       if (data.user?.has_vet && !data.user.vet_approved) {
-        router.replace('/vets/dashboard');
+        router.replace('/profile');
       } else {
         router.replace('/home');
       }

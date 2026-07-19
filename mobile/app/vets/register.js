@@ -50,7 +50,7 @@ export default function VetRegister() {
 
   useEffect(() => {
     api.get('/api/vets/me')
-      .then(() => router.replace('/vets/dashboard'))
+      .then(() => router.replace('/profile'))
       .catch(() => setChecking(false));
   }, []);
 
@@ -74,7 +74,7 @@ export default function VetRegister() {
         if (body[k] === '' || body[k] === null) delete body[k];
       }
       await api.post('/api/vets', body);
-      router.replace('/vets/dashboard');
+      router.replace('/profile');
     } catch (e) {
       setError(e.response?.data?.error || 'No se pudo registrar.');
     } finally {

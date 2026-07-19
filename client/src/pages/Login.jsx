@@ -7,7 +7,7 @@ import SocialAuth from '../components/SocialAuth';
 // Whitelist de rutas válidas para el ?redirect= post-auth. Evita open-redirect.
 const ALLOWED_REDIRECTS = new Set([
     '/app', '/reportar', '/buscar', '/profile',
-    '/vets', '/vets/register', '/vets/dashboard',
+    '/vets', '/vets/register',
 ]);
 
 function safeRedirect(raw) {
@@ -51,7 +51,7 @@ function Login() {
                 if (redirectTo) {
                     navigate(redirectTo);
                 } else if (data.user?.has_vet && !data.user.vet_approved) {
-                    navigate('/vets/dashboard');
+                    navigate('/profile');
                 } else {
                     navigate('/app');
                 }

@@ -1,5 +1,6 @@
 import pool from '../db.js';
 import { slugify, ensureUniqueVetSlug } from '../utils/slug.js';
+import { uploadBufferToCloudinary } from '../utils/cloudinary.js';
 
 const PUBLIC_COLUMNS = `
     id, slug, name, email, phone, whatsapp, website, instagram,
@@ -112,6 +113,37 @@ export const updateMyVet = async (req, res) => {
     } catch (error) {
         console.error('updateMyVet error:', error);
         res.status(500).json({ error: 'No se pudo actualizar la veterinaria.' });
+    }
+};
+
+// POST /api/vets/me/image — sube imagen a Cloudinary y actualiza logo_url/cover_url.
+// Body: multipart con `image` (file) y `field` ('logo' | 'cover').
+export const uploadMyVetImage = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Falta la imagen.' });
+        const field = req.body.field;
+        if (field !== 'logo' && field !== 'cover') {
+            return res.status(400).json({ error: 'field debe ser "logo" o "cover".' });
+        }
+
+        const { rows: vetRows } = await pool.query(
+            'SELECT id FROM vets WHERE owner_user_id = $1',
+            [req.user.id]
+        );
+        if (vetRows.length === 0) return res.status(404).json({ error: 'No tenés una veterinaria registrada.' });
+
+        const result = await uploadBufferToCloudinary(req.file.buffer, 'mimo/vets');
+        const url = result.secure_url;
+        const column = field === 'logo' ? 'logo_url' : 'cover_url';
+
+        const { rows } = await pool.query(
+            `UPDATE vets SET ${column} = $1 WHERE id = $2 RETURNING ${column}`,
+            [url, vetRows[0].id]
+        );
+        res.json({ [column]: rows[0][column] });
+    } catch (error) {
+        console.error('uploadMyVetImage error:', error);
+        res.status(500).json({ error: 'No se pudo subir la imagen.' });
     }
 };
 

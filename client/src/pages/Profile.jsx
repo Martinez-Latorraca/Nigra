@@ -539,14 +539,13 @@ function Profile() {
 
                 {/* -------------------------- SPONSOR CTA -------------------------- */}
                 {isVet && vet && !vet.is_sponsor ? (
-                    <div className="rounded-[32px] p-8 mb-8 text-mimo-noche bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">
+                    <div className="rounded-[32px] p-8 mb-8 text-mimo-warm bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div className="max-w-lg">
-                                <div className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] opacity-70">Sumate como</div>
+                                <div className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] opacity-80">Sumate como</div>
                                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                                     <span className="font-display font-black text-3xl tracking-tight leading-none">Socio</span>
-                                    <MimoLogo variant="wordmark" size={110} bg="coral" />
-                                    <span className="text-3xl leading-none" aria-hidden="true">⭐</span>
+                                    <MimoLogo variant="wordmarkText" size={95} bg="dark" />
                                 </div>
                                 <p className="mt-3 text-sm opacity-90 leading-relaxed">
                                     Alcance de alertas hasta 50 km, card destacada en el directorio,

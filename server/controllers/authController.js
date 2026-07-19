@@ -189,6 +189,7 @@ export const login = async (req, res) => {
                 name: row.name,
                 email: row.email,
                 role: row.role,
+                avatar_url: row.avatar_url,
                 has_vet: !!row.vet_id,
                 vet_approved: !!row.vet_approved,
             },

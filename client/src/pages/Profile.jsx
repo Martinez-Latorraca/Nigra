@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { clearCredentials } from '../store/userSlice';
+import { clearCredentials, updateUserData } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
@@ -24,6 +24,21 @@ function Card({ title, kicker, children, className = '' }) {
                 <h2 className="font-display font-extrabold text-2xl md:text-3xl text-mimo-noche tracking-tight mb-6">{title}</h2>
             ) : null}
             {children}
+        </div>
+    );
+}
+
+// Avatar del hero: si hay src (logo vet o avatar_url del user desde OAuth),
+// muestra la foto; si no, un círculo coral con la primera inicial del nombre.
+function ProfileAvatar({ src, name }) {
+    const initial = (name || '?').trim().charAt(0).toUpperCase();
+    const cls = 'w-20 h-20 md:w-24 md:h-24 rounded-3xl shadow-mimo flex-shrink-0';
+    if (src) {
+        return <img src={src} alt="" referrerPolicy="no-referrer" className={`${cls} object-cover`} />;
+    }
+    return (
+        <div className={`${cls} bg-mimo-coral flex items-center justify-center text-white font-display font-black text-4xl`}>
+            {initial}
         </div>
     );
 }
@@ -337,6 +352,9 @@ function Profile() {
     };
 
     // --- Fetch user notification prefs (solo para el path user) --- //
+    // Aprovechamos para hidratar avatar_url en Redux — así los users que ya
+    // estaban logueados antes de que el server empezara a devolverlo ven la
+    // foto sin re-login.
     const fetchUserNotify = async () => {
         try {
             const res = await fetch(`${API}/api/users/me`, {
@@ -347,6 +365,9 @@ function Profile() {
             setReceivesLost(!!data.notify_lost);
             setReceivesFound(!!data.notify_found);
             if (Number.isFinite(data.notify_radius_km)) setRadius(data.notify_radius_km);
+            if (data.avatar_url && data.avatar_url !== user?.avatar_url) {
+                dispatch(updateUserData({ avatar_url: data.avatar_url }));
+            }
         } catch { /* silencioso */ }
     };
 
@@ -445,19 +466,10 @@ function Profile() {
                 {/* -------------------------- HERO -------------------------- */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
                     <div className="flex items-center gap-5">
-                        {isVet && vet ? (
-                            vet.logo_url ? (
-                                <img
-                                    src={vet.logo_url}
-                                    alt=""
-                                    className="w-20 h-20 md:w-24 md:h-24 rounded-3xl object-cover shadow-mimo flex-shrink-0"
-                                />
-                            ) : (
-                                <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-4xl shadow-mimo flex-shrink-0">
-                                    {vet.name.charAt(0)}
-                                </div>
-                            )
-                        ) : null}
+                        <ProfileAvatar
+                            src={isVet && vet ? vet.logo_url : user.avatar_url}
+                            name={displayName}
+                        />
                         <div>
                             <h1 className="font-display font-black text-5xl md:text-7xl tracking-tight leading-none">
                                 {displayName}

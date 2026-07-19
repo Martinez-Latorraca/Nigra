@@ -261,6 +261,7 @@ function Profile() {
 
     // --- Vet dashboard --- //
     const [vetDash, setVetDash] = useState(null);
+    const [vetLoaded, setVetLoaded] = useState(false);
     const [editing, setEditing] = useState(false);
     const [receivesLost, setReceivesLost] = useState(false);
     const [receivesFound, setReceivesFound] = useState(false);
@@ -333,6 +334,7 @@ function Profile() {
             setReceivesFound(data.vet.receives_found);
             setRadius(data.vet.alert_radius_km);
         } catch { /* silencioso */ }
+        finally { setVetLoaded(true); }
     };
 
     // --- Fetch user notify_nearby --- //
@@ -395,7 +397,7 @@ function Profile() {
         setSavingUserAlerts(true);
         setAlertsMsg('');
         try {
-            if (isVet) {
+            if (isVet && vet) {
                 const res = await fetch(`${API}/api/vets/me/alerts`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -424,7 +426,7 @@ function Profile() {
         }
     };
 
-    if (loading) {
+    if (loading || (isVet && !vetLoaded)) {
         return (
             <div className="min-h-screen bg-mimo-warm flex items-center justify-center">
                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">
@@ -747,7 +749,7 @@ function Profile() {
 
                         {/* Configuración de alertas — UNIFICADA */}
                         <Card kicker="Configuración de alertas">
-                            {isVet ? (
+                            {isVet && vet ? (
                                 <div className="space-y-3">
                                     <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
                                         <div className="pr-4">

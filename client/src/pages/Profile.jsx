@@ -1,135 +1,372 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// 👇 1. Importamos los hooks de Redux y nuestra acción
 import { useSelector, useDispatch } from 'react-redux';
 import { clearCredentials } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
-import VetPanel from '../components/VetPanel';
+
+const API = import.meta.env.VITE_API_URL || '';
+
+const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada', resolved: 'Reencontrada' };
+
+// ------------------------------------------------------------------------- //
+// Sub-componentes locales
+// ------------------------------------------------------------------------- //
+
+function Card({ title, kicker, children, className = '' }) {
+    return (
+        <div className={`bg-white rounded-[32px] border border-mimo-muted p-6 md:p-8 shadow-card ${className}`}>
+            {kicker ? (
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet mb-4">{kicker}</div>
+            ) : null}
+            {title ? (
+                <h2 className="font-display font-extrabold text-2xl md:text-3xl text-mimo-noche tracking-tight mb-6">{title}</h2>
+            ) : null}
+            {children}
+        </div>
+    );
+}
+
+function StatTile({ label, value, hint, accent }) {
+    return (
+        <div
+            className="bg-white rounded-[24px] border border-mimo-muted p-5 shadow-card"
+            style={{ borderTop: `4px solid ${accent}` }}
+        >
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">{label}</div>
+            <div className="mt-2 font-display font-black text-4xl text-mimo-noche tracking-tight">{value}</div>
+            {hint ? <div className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-mimo-quiet">{hint}</div> : null}
+        </div>
+    );
+}
+
+function VetEditForm({ vet, token, onClose, onSaved }) {
+    const [form, setForm] = useState({
+        name: vet.name || '',
+        phone: vet.phone || '',
+        whatsapp: vet.whatsapp || '',
+        website: vet.website || '',
+        instagram: vet.instagram || '',
+        address: vet.address || '',
+        city: vet.city || '',
+        bio: vet.bio || '',
+    });
+    const [servicesInput, setServicesInput] = useState((vet.services || []).join(', '));
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [uploadingKind, setUploadingKind] = useState(null);
+    const [logoPreview, setLogoPreview] = useState(vet.logo_url || '');
+    const [coverPreview, setCoverPreview] = useState(vet.cover_url || '');
+
+    const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+    const uploadImage = async (kind, file) => {
+        setErr('');
+        setUploadingKind(kind);
+        try {
+            const fd = new FormData();
+            fd.append('image', file);
+            fd.append('field', kind);
+            const res = await fetch(`${API}/api/vets/me/image`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: fd,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'No se pudo subir la imagen.');
+            if (kind === 'logo') setLogoPreview(data.logo_url);
+            else setCoverPreview(data.cover_url);
+            onSaved?.();
+        } catch (e) {
+            setErr(e.message);
+        } finally {
+            setUploadingKind(null);
+        }
+    };
+
+    const save = async () => {
+        setSaving(true);
+        setMsg('');
+        setErr('');
+        try {
+            const services = servicesInput.split(',').map((s) => s.trim()).filter(Boolean);
+            const body = { ...form, services };
+            for (const k of Object.keys(body)) {
+                if (body[k] === '' || body[k] === null) delete body[k];
+            }
+            const res = await fetch(`${API}/api/vets/me`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
+            setMsg('Guardado.');
+            onSaved?.();
+            setTimeout(() => onClose?.(), 800);
+        } catch (e) {
+            setErr(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const input = 'w-full rounded-2xl border border-mimo-muted bg-mimo-warm px-4 py-3 text-sm text-mimo-noche focus:border-mimo-coral focus:outline-none';
+    const label = 'text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet';
+
+    return (
+        <Card kicker="Editar perfil vet" className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <div className={`${label} mb-2`}>Logo</div>
+                    <div className="flex items-center gap-3">
+                        {logoPreview ? (
+                            <img src={logoPreview} alt="" className="h-16 w-16 rounded-2xl object-cover" />
+                        ) : (
+                            <div className="h-16 w-16 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-black text-2xl">
+                                {vet.name.charAt(0)}
+                            </div>
+                        )}
+                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-bold uppercase tracking-widest text-mimo-noche hover:bg-mimo-warm">
+                            {uploadingKind === 'logo' ? 'Subiendo…' : 'Cambiar'}
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploadingKind !== null}
+                                onChange={(e) => e.target.files?.[0] && uploadImage('logo', e.target.files[0])}
+                            />
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>Portada</div>
+                    <div className="flex items-center gap-3">
+                        {coverPreview ? (
+                            <img src={coverPreview} alt="" className="h-16 w-24 rounded-2xl object-cover" />
+                        ) : (
+                            <div className="h-16 w-24 rounded-2xl bg-mimo-muted" />
+                        )}
+                        <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-bold uppercase tracking-widest text-mimo-noche hover:bg-mimo-warm">
+                            {uploadingKind === 'cover' ? 'Subiendo…' : 'Cambiar'}
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploadingKind !== null}
+                                onChange={(e) => e.target.files?.[0] && uploadImage('cover', e.target.files[0])}
+                            />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <div className={`${label} mb-2`}>Nombre</div>
+                    <input className={input} value={form.name} onChange={update('name')} />
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>Teléfono</div>
+                    <input className={input} value={form.phone} onChange={update('phone')} placeholder="+598 …" />
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>WhatsApp</div>
+                    <input className={input} value={form.whatsapp} onChange={update('whatsapp')} placeholder="+598 …" />
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>Sitio web</div>
+                    <input className={input} value={form.website} onChange={update('website')} placeholder="https://…" />
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>Instagram</div>
+                    <input className={input} value={form.instagram} onChange={update('instagram')} placeholder="@handle" />
+                </div>
+                <div>
+                    <div className={`${label} mb-2`}>Ciudad</div>
+                    <input className={input} value={form.city} onChange={update('city')} />
+                </div>
+                <div className="md:col-span-2">
+                    <div className={`${label} mb-2`}>Dirección</div>
+                    <input className={input} value={form.address} onChange={update('address')} />
+                </div>
+                <div className="md:col-span-2">
+                    <div className={`${label} mb-2`}>Sobre la clínica</div>
+                    <textarea
+                        className={`${input} min-h-[100px]`}
+                        value={form.bio}
+                        onChange={update('bio')}
+                        placeholder="Contá qué hacen, especialidades, horarios…"
+                    />
+                </div>
+                <div className="md:col-span-2">
+                    <div className={`${label} mb-2`}>Servicios (separá por coma)</div>
+                    <input
+                        className={input}
+                        value={servicesInput}
+                        onChange={(e) => setServicesInput(e.target.value)}
+                        placeholder="Consultas, Vacunación, Cirugía…"
+                    />
+                </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                    onClick={save}
+                    disabled={saving}
+                    className="flex-1 rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50"
+                >
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+                <button
+                    onClick={onClose}
+                    className="rounded-full border border-mimo-muted text-mimo-ink px-6 py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-warm"
+                >
+                    Cerrar
+                </button>
+            </div>
+            {msg ? <div className="mt-3 rounded-2xl bg-mimo-teal/10 p-3 text-center text-xs font-bold text-mimo-tealDark">{msg}</div> : null}
+            {err ? <div className="mt-3 rounded-2xl bg-mimo-coral/10 p-3 text-center text-xs font-bold text-mimo-coral">{err}</div> : null}
+        </Card>
+    );
+}
+
+// ------------------------------------------------------------------------- //
+// Página principal
+// ------------------------------------------------------------------------- //
 
 function Profile() {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.user.token);
+    const user = useSelector((s) => s.user.data);
+    const messages = useSelector((s) => s.inbox.messages);
+    const notifList = useSelector((s) => s.notifications.list);
+
+    const isVet = !!user?.has_vet;
+
+    // --- Reports (user) --- //
     const [reports, setReports] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [reportsPage, setReportsPage] = useState(1);
     const [reportsTotalPages, setReportsTotalPages] = useState(1);
     const [reportsTotal, setReportsTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+
+    // --- Alertas (user notify_nearby) --- //
     const [notifyNearby, setNotifyNearby] = useState(false);
-    const [savingToggle, setSavingToggle] = useState(false);
+    const [savingUserAlerts, setSavingUserAlerts] = useState(false);
 
-    const token = useSelector(state => state.user.token);
-    const user = useSelector(state => state.user.data);
+    // --- Vet dashboard --- //
+    const [vetDash, setVetDash] = useState(null);
+    const [editing, setEditing] = useState(false);
+    const [receivesLost, setReceivesLost] = useState(false);
+    const [receivesFound, setReceivesFound] = useState(false);
+    const [radius, setRadius] = useState(5);
+    const [savingVetAlerts, setSavingVetAlerts] = useState(false);
+    const [alertsMsg, setAlertsMsg] = useState('');
 
-    const messages = useSelector(state => state.inbox.messages);
-    const notifList = useSelector(state => state.notifications.list);
-    const dispatch = useDispatch();
-
-    // Mergeamos chats y matches en una sola lista ordenada por recency,
-    // igual que el mobile inbox.
+    // Items unificados de inbox (chats + matches)
     const items = useMemo(() => {
-        const chats = (messages || []).map(m => ({
+        const chats = (messages || []).map((m) => ({
             kind: 'chat',
             key: `chat-${m.pet_id}-${m.other_user_id}`,
             sortDate: m.created_at,
             ...m,
         }));
         const matches = (notifList || [])
-            .filter(n => n.type === 'match')
-            .map(n => ({
+            .filter((n) => n.type === 'match')
+            .map((n) => ({
                 kind: 'match',
                 key: `match-${n.id}`,
                 sortDate: n.created_at,
                 ...n,
             }));
-        return [...chats, ...matches].sort(
-            (a, b) => new Date(b.sortDate) - new Date(a.sortDate)
-        );
+        return [...chats, ...matches].sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
     }, [messages, notifList]);
 
-    const unreadChatCount = messages ? messages.filter(msg => {
-        const isUnread = msg.is_read === false || msg.is_read === 'false' || msg.is_read === 0;
-        const isForMe = Number(msg.receiver_id) === Number(user?.id);
-        return isUnread && isForMe;
-    }).length : 0;
-    const unreadMatchCount = (notifList || []).filter(n => n.type === 'match' && !n.read_at).length;
+    const unreadChatCount = messages
+        ? messages.filter((m) => {
+              const isUnread = m.is_read === false || m.is_read === 'false' || m.is_read === 0;
+              const isForMe = Number(m.receiver_id) === Number(user?.id);
+              return isUnread && isForMe;
+          }).length
+        : 0;
+    const unreadMatchCount = (notifList || []).filter((n) => n.type === 'match' && !n.read_at).length;
     const unreadCount = unreadChatCount + unreadMatchCount;
 
-
+    // --- Fetch reports --- //
     const fetchReports = async (pageNum = 1, append = false) => {
-        if (!token) {
-            navigate('/login');
-            return;
-        }
+        if (!token) { navigate('/login'); return; }
         if (pageNum === 1) setLoading(true);
         else setLoadingMore(true);
-
         try {
-            const resReports = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/my-reports?page=${pageNum}&limit=10`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API}/api/pets/my-reports?page=${pageNum}&limit=10`, {
+                headers: { Authorization: `Bearer ${token}` },
             });
-
-            if (!resReports.ok) throw new Error('Error al sincronizar reportes.');
-
-            const data = await resReports.json();
-            setReports(prev => append ? [...prev, ...data.reports] : data.reports);
+            if (!res.ok) throw new Error('Error al sincronizar reportes.');
+            const data = await res.json();
+            setReports((prev) => (append ? [...prev, ...data.reports] : data.reports));
             setReportsPage(data.page);
             setReportsTotalPages(data.totalPages);
             setReportsTotal(data.total);
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
         } finally {
             setLoading(false);
             setLoadingMore(false);
         }
     };
 
-    // Hidratamos el estado del toggle de alertas cerca desde el server.
-    useEffect(() => {
-        if (!token) return;
-        fetch(`${import.meta.env.VITE_API_URL}/api/users/me`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data) setNotifyNearby(!!data.notify_nearby); })
-            .catch(() => {});
-    }, [token]);
-
-    const handleToggleNotify = async () => {
-        const next = !notifyNearby;
-        setNotifyNearby(next); // optimistic
-        setSavingToggle(true);
+    // --- Fetch vet dashboard --- //
+    const fetchVetDashboard = async () => {
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/notify-nearby`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: next }),
+            const res = await fetch(`${API}/api/vets/me/dashboard`, {
+                headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error();
-        } catch {
-            setNotifyNearby(!next); // rollback
-        } finally {
-            setSavingToggle(false);
-        }
+            if (!res.ok) return;
+            const data = await res.json();
+            setVetDash(data);
+            setReceivesLost(data.vet.receives_lost);
+            setReceivesFound(data.vet.receives_found);
+            setRadius(data.vet.alert_radius_km);
+        } catch { /* silencioso */ }
+    };
+
+    // --- Fetch user notify_nearby --- //
+    const fetchUserNotify = async () => {
+        try {
+            const res = await fetch(`${API}/api/users/me`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            setNotifyNearby(!!data.notify_nearby);
+        } catch { /* silencioso */ }
     };
 
     useEffect(() => {
+        if (!token) return;
         fetchReports();
-    }, [navigate, token]);
+        fetchUserNotify();
+        if (isVet) fetchVetDashboard();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, isVet]);
 
+    // --- Handlers --- //
     const handleLogout = () => {
         dispatch(clearCredentials());
         navigate('/');
     };
-
 
     const handleOpenChat = (msg) => {
         dispatch(openChat({
             pet_id: msg.pet_id,
             petPhoto: msg.photo_url,
             otherUserId: msg.other_user_id,
-            otherUserName: msg.other_user_name
+            otherUserName: msg.other_user_name,
         }));
     };
 
@@ -142,253 +379,466 @@ function Profile() {
     const handleDeleteReport = async (id) => {
         if (!window.confirm('¿Eliminar este registro permanentemente?')) return;
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${id}`, {
+            const res = await fetch(`${API}/api/pets/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
-            if (!response.ok) throw new Error('Error al eliminar');
-            setReports(reports.filter(report => report.id !== id));
+            if (!res.ok) throw new Error('Error al eliminar');
+            setReports((prev) => prev.filter((r) => r.id !== id));
         } catch (err) {
             alert(err.message);
         }
     };
 
+    const saveAlerts = async () => {
+        setSavingVetAlerts(true);
+        setSavingUserAlerts(true);
+        setAlertsMsg('');
+        try {
+            if (isVet) {
+                const res = await fetch(`${API}/api/vets/me/alerts`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        receives_lost: receivesLost,
+                        receives_found: receivesFound,
+                        alert_radius_km: radius,
+                    }),
+                });
+                if (!res.ok) throw new Error();
+            } else {
+                const res = await fetch(`${API}/api/users/notify-nearby`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ enabled: notifyNearby }),
+                });
+                if (!res.ok) throw new Error();
+            }
+            setAlertsMsg('Guardado.');
+            setTimeout(() => setAlertsMsg(''), 2500);
+        } catch {
+            setAlertsMsg('No se pudo guardar.');
+        } finally {
+            setSavingVetAlerts(false);
+            setSavingUserAlerts(false);
+        }
+    };
 
-    if (loading) return (
-        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">Sincronizando Mimo ID</div>
-        </div>
-    );
-
-    // Si el user hizo logout desde este mismo Profile, el estado de Redux se
-    // limpia ANTES de que el navigate('/') tenga efecto; sin este guard el
-    // render intermedio revienta con "Cannot read properties of null".
-    if (!user) return null;
-
-    return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-20 font-sans text-gray-900 flex flex-col items-center">
-
-            {/* --- HERO SECTION --- */}
-            <div className="w-full max-w-5xl pt-16 pb-12 px-6">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 block">Mi Cuenta</span>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                    <h1 className="text-6xl md:text-8xl font-semibold tracking-tighter text-black">
-                        {user.name || 'Usuario'}.
-                    </h1>
-                    <div className="flex gap-6 pb-2">
-                        <button onClick={handleLogout} className="text-sm font-medium text-gray-400 hover:text-black transition-colors">
-                            Cerrar sesión
-                        </button>
-                        <button className="text-sm font-medium text-red-500 hover:opacity-70 transition-opacity">
-                            Eliminar datos
-                        </button>
-                    </div>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-mimo-warm flex items-center justify-center">
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">
+                    Cargando…
                 </div>
             </div>
+        );
+    }
 
-            {/* --- VET PANEL (solo si el user tiene vet asociada) --- */}
-            {user.has_vet ? <VetPanel /> : null}
+    if (!user) return null;
 
-            {/* --- BENTO GRID --- */}
-            <div className="w-full max-w-5xl px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    // ------ Rendering ------ //
+    const vet = vetDash?.vet;
+    const displayName = isVet && vet?.name ? vet.name : (user.name || 'Usuario');
+    const successRate = vetDash && vetDash.stats.total_pets > 0
+        ? Math.round((vetDash.stats.resolved_pets / vetDash.stats.total_pets) * 100)
+        : null;
+    const maxRadius = vet?.plan === 'ally' ? 5 : 50;
 
-                {/* BLOQUE 1: BANDEJA DE MENSAJES */}
-                <div className="md:col-span-2 bg-white rounded-[40px] p-8 md:p-10 shadow-[0_2px_15px_rgba(0,0,0,0.02)] border border-gray-100">
-                    <div className="flex justify-between items-center mb-10">
-                        <h2 className="text-2xl font-semibold tracking-tight text-black">Bandeja de entrada.</h2>
-                        {/* 👇 5. Usamos el unreadCount de Redux para la etiqueta */}
-                        <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest transition-all ${unreadCount > 0 ? 'bg-green-500 text-white animate-pulse' : 'bg-pet-primary text-white'}`}>
-                            {unreadCount > 0 ? `${unreadCount} Nuevos` : `${items.length} Activos`}
-                        </span>
-                    </div>
+    const savingAlerts = savingVetAlerts || savingUserAlerts;
 
-                    <div className="space-y-4">
-                        {items.length === 0 ? (
-                            <div className="py-20 text-center">
-                                <p className="text-gray-300 font-medium">No hay actividad reciente.</p>
-                            </div>
-                        ) : (
-                            items.map(item => {
-                                if (item.kind === 'chat') {
-                                    const isUnread = item.is_read === false || item.is_read === 'false' || item.is_read === 0;
-                                    const isForMe = Number(item.receiver_id) === Number(user?.id);
-                                    const hasUnread = isUnread && isForMe;
+    return (
+        <div className="min-h-screen bg-mimo-warm text-mimo-noche">
+            <div className="max-w-6xl mx-auto px-6 pt-12 pb-16">
 
-                                    return (
-                                        <div
-                                            key={item.key}
-                                            onClick={() => handleOpenChat(item)}
-                                            className="group flex gap-6 items-start p-6 hover:bg-gray-50 rounded-[32px] transition-all border border-transparent hover:border-gray-100 cursor-pointer relative"
+                {/* -------------------------- HERO -------------------------- */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+                    <div>
+                        <h1 className="font-display font-black text-5xl md:text-7xl tracking-tight leading-none">
+                            {displayName}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-3 mt-4">
+                            {isVet && vet ? (
+                                <>
+                                    <span className="text-sm font-semibold text-mimo-ink">
+                                        {vet.is_sponsor ? '⭐ Socio Mimo' : 'Aliada'}
+                                    </span>
+                                    {!vet.approved && (
+                                        <span className="text-[10px] font-bold uppercase tracking-widest bg-mimo-coral/10 text-mimo-coral px-3 py-1 rounded-full">
+                                            Pendiente de aprobación
+                                        </span>
+                                    )}
+                                    {vet.approved && (
+                                        <Link
+                                            to={`/vets/${vet.slug}`}
+                                            className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet hover:text-mimo-noche"
                                         >
-                                            <div className={`w-14 h-14 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden shadow-sm transition-transform duration-500 group-hover:scale-105 ${hasUnread ? 'ring-2 ring-green-500/50' : ''}`}>
-                                                <img src={item.photo_url} className="w-full h-full object-cover" alt="pet" />
-                                            </div>
+                                            Ver perfil público →
+                                        </Link>
+                                    )}
+                                </>
+                            ) : (
+                                <span className="text-sm font-semibold text-mimo-ink">Miembro Mimo</span>
+                            )}
+                        </div>
+                    </div>
+                    {isVet && vet ? (
+                        <button
+                            onClick={() => setEditing((v) => !v)}
+                            className="rounded-full bg-mimo-coral text-white px-8 py-3 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark shadow-mimo"
+                        >
+                            {editing ? 'Cerrar' : 'Editar'}
+                        </button>
+                    ) : null}
+                </div>
 
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex flex-wrap mb-1">
-                                                    <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-between items-start gap-1 ' >
-                                                        <span className={`text-[9px] font-bold uppercase tracking-widest ${hasUnread ? 'text-green-600' : 'text-gray-400'}`}>
+                {/* -------------------------- VET STATS -------------------------- */}
+                {isVet && vetDash ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <StatTile label="Mascotas publicadas" value={vetDash.stats.total_pets} accent="#FF5C6C" />
+                        <StatTile
+                            label="Reencontradas"
+                            value={vetDash.stats.resolved_pets}
+                            hint={successRate !== null ? `${successRate}% tasa` : null}
+                            accent="#3ECFB2"
+                        />
+                        <StatTile
+                            label="Alertas recibidas"
+                            value={vetDash.stats.total_alerts}
+                            hint={vetDash.stats.unread_alerts > 0 ? `${vetDash.stats.unread_alerts} sin leer` : 'al día'}
+                            accent="#FFB830"
+                        />
+                        <StatTile
+                            label="Radio de alerta"
+                            value={`${vet.alert_radius_km} km`}
+                            hint={vet.plan === 'ally' ? 'Ally · máx 5' : 'Socio Mimo'}
+                            accent="#9B6DFF"
+                        />
+                    </div>
+                ) : null}
+
+                {/* -------------------------- SPONSOR CTA -------------------------- */}
+                {isVet && vet && !vet.is_sponsor ? (
+                    <div className="rounded-[32px] p-8 mb-8 text-white bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="max-w-lg">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">Sumate como</div>
+                                <h3 className="font-display font-black text-3xl mt-1 tracking-tight">Socio Mimo ⭐</h3>
+                                <p className="mt-2 text-sm opacity-95 leading-relaxed">
+                                    Alcance de alertas hasta 50 km, card destacada en el directorio,
+                                    badge visible en cada publicación y dashboard extendido.
+                                </p>
+                            </div>
+                            <a
+                                href="mailto:somos.mimo.app@gmail.com?subject=Quiero%20ser%20Socio%20Mimo"
+                                className="rounded-full bg-white text-mimo-noche px-6 py-3 text-sm font-bold uppercase tracking-widest hover:bg-mimo-warm"
+                            >
+                                Contactar
+                            </a>
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* -------------------------- EDIT FORM -------------------------- */}
+                {editing && isVet && vet ? (
+                    <VetEditForm
+                        vet={vet}
+                        token={token}
+                        onClose={() => setEditing(false)}
+                        onSaved={fetchVetDashboard}
+                    />
+                ) : null}
+
+                {/* -------------------------- GRID 2 COLS -------------------------- */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                    {/* Columna izquierda (span 2) */}
+                    <div className="lg:col-span-2 space-y-6">
+
+                        {/* Últimos reportes vet */}
+                        {isVet && vetDash ? (
+                            <Card kicker="Últimos reportes">
+                                {vetDash.recent_pets.length === 0 ? (
+                                    <div className="py-10 text-center text-sm text-mimo-quiet">Todavía no publicaste mascotas.</div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {vetDash.recent_pets.map((p) => (
+                                            <Link
+                                                key={p.id}
+                                                to={`/pet/${p.id}`}
+                                                className="flex items-center gap-4 rounded-2xl border border-mimo-muted p-3 hover:bg-mimo-warm transition-colors"
+                                            >
+                                                <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-mimo-muted">
+                                                    {p.photo_url ? <img src={p.photo_url} className="h-full w-full object-cover" alt="" /> : null}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-sm font-bold text-mimo-noche truncate">
+                                                        {p.name || (p.status === 'lost' ? 'Sin nombre' : 'Encontrada')}
+                                                    </div>
+                                                    <div className="text-xs text-mimo-quiet truncate">{p.address || 'Sin ubicación'}</div>
+                                                </div>
+                                                <span
+                                                    className="rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white"
+                                                    style={{
+                                                        background: p.resolved_at ? '#3ECFB2' : p.status === 'lost' ? '#FF5C6C' : '#FFB830',
+                                                    }}
+                                                >
+                                                    {p.resolved_at ? 'Reencontrada' : STATUS_LABEL[p.status]}
+                                                </span>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </Card>
+                        ) : null}
+
+                        {/* Alertas recientes vet */}
+                        {isVet && vetDash ? (
+                            <Card kicker="Alertas recientes">
+                                {vetDash.recent_alerts.length === 0 ? (
+                                    <div className="py-10 text-center text-sm text-mimo-quiet">Sin alertas por ahora.</div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {vetDash.recent_alerts.map((a) => {
+                                            const isLost = a.type === 'nearby_vet_lost';
+                                            const petId = a.data?.pet_id;
+                                            return (
+                                                <Link
+                                                    key={a.id}
+                                                    to={petId ? `/pet/${petId}` : '#'}
+                                                    className="flex items-center gap-4 rounded-2xl border border-mimo-muted p-3 hover:bg-mimo-warm transition-colors"
+                                                >
+                                                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-mimo-muted">
+                                                        {a.pet_photo ? <img src={a.pet_photo} className="h-full w-full object-cover" alt="" /> : null}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isLost ? '#FF5C6C' : '#3ECFB2' }}>
+                                                            {isLost ? 'Perdida cerca' : 'Encontrada cerca'}
+                                                        </div>
+                                                        <div className="mt-0.5 text-sm font-bold text-mimo-noche truncate">{a.pet_name || 'Sin nombre'}</div>
+                                                        <div className="text-xs text-mimo-quiet truncate">{a.pet_address || 'Sin ubicación'}</div>
+                                                    </div>
+                                                    {!a.read_at && <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-mimo-coral" />}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </Card>
+                        ) : null}
+
+                        {/* Bandeja de entrada */}
+                        <Card>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="font-display font-extrabold text-2xl text-mimo-noche tracking-tight">Bandeja de entrada</h2>
+                                <span
+                                    className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest ${unreadCount > 0 ? 'bg-mimo-teal text-white animate-pulse' : 'bg-mimo-muted text-mimo-quiet'}`}
+                                >
+                                    {unreadCount > 0 ? `${unreadCount} Nuevos` : `${items.length} Activos`}
+                                </span>
+                            </div>
+                            {items.length === 0 ? (
+                                <div className="py-16 text-center text-sm text-mimo-quiet">No hay actividad reciente.</div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {items.map((item) => {
+                                        if (item.kind === 'chat') {
+                                            const isUnread = item.is_read === false || item.is_read === 'false' || item.is_read === 0;
+                                            const isForMe = Number(item.receiver_id) === Number(user?.id);
+                                            const hasUnread = isUnread && isForMe;
+                                            return (
+                                                <div
+                                                    key={item.key}
+                                                    onClick={() => handleOpenChat(item)}
+                                                    className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-warm cursor-pointer transition-all"
+                                                >
+                                                    <div className={`w-12 h-12 bg-mimo-muted rounded-xl flex-shrink-0 overflow-hidden ${hasUnread ? 'ring-2 ring-mimo-teal/50' : ''}`}>
+                                                        {item.photo_url ? <img src={item.photo_url} className="w-full h-full object-cover" alt="pet" /> : null}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className={`text-[9px] font-bold uppercase tracking-widest ${hasUnread ? 'text-mimo-tealDark' : 'text-mimo-quiet'}`}>
                                                             {hasUnread ? 'Nuevo mensaje' : (item.other_user_name || 'Consulta')}
-                                                        </span>
-                                                        <p className={`text-sm leading-relaxed truncate pr-8 ${hasUnread ? 'text-black font-semibold' : 'text-gray-500 font-medium'}`}>
-                                                            {item.sender_id === user.id ? <span className="text-gray-400 font-normal">Tú: </span> : <span className="text-gray-400 font-normal">El/Ella: </span>}
+                                                        </div>
+                                                        <p className={`text-sm truncate ${hasUnread ? 'text-mimo-noche font-bold' : 'text-mimo-ink font-medium'}`}>
+                                                            {item.sender_id === user.id ? <span className="text-mimo-quiet">Tú: </span> : null}
                                                             {item.content}
                                                         </p>
                                                     </div>
-                                                    <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-around items-end text-right gap-1 '>
-                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                                            {new Date(item.created_at).toLocaleDateString()}
-                                                        </span>
-                                                        {hasUnread && (
-                                                            <div className="z-10">
-                                                                <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    {hasUnread && <div className="w-2.5 h-2.5 bg-mimo-teal rounded-full flex-shrink-0" />}
                                                 </div>
-                                            </div>
-
-                                            <div className="self-center text-gray-200 group-hover:text-black transition-colors">
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
-                                            </div>
-                                        </div>
-                                    );
-                                }
-
-                                // kind === 'match'
-                                const hasUnread = !item.read_at;
-                                const photo = item.data?.photo_url;
-                                return (
-                                    <div
-                                        key={item.key}
-                                        onClick={() => handleOpenMatch(item)}
-                                        className="group flex gap-6 items-start p-6 hover:bg-gray-50 rounded-[32px] transition-all border border-transparent hover:border-gray-100 cursor-pointer relative"
-                                    >
-                                        <div className={`w-14 h-14 bg-gray-100 rounded-2xl flex-shrink-0 overflow-hidden shadow-sm transition-transform duration-500 group-hover:scale-105 ${hasUnread ? 'ring-2 ring-blue-500/50' : ''}`}>
-                                            {photo ? <img src={photo} className="w-full h-full object-cover" alt="posible match" /> : null}
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-wrap mb-1">
-                                                <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-between items-start gap-1 '>
-                                                    <span className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">
-                                                        Posible coincidencia
-                                                    </span>
-                                                    <p className={`text-sm leading-relaxed truncate pr-8 ${hasUnread ? 'text-black font-semibold' : 'text-gray-500 font-medium'}`}>
+                                            );
+                                        }
+                                        // match
+                                        const hasUnread = !item.read_at;
+                                        const photo = item.data?.photo_url;
+                                        return (
+                                            <div
+                                                key={item.key}
+                                                onClick={() => handleOpenMatch(item)}
+                                                className="group flex gap-4 items-center p-4 rounded-2xl border border-transparent hover:border-mimo-muted hover:bg-mimo-warm cursor-pointer transition-all"
+                                            >
+                                                <div className={`w-12 h-12 bg-mimo-muted rounded-xl flex-shrink-0 overflow-hidden ${hasUnread ? 'ring-2 ring-mimo-violeta/50' : ''}`}>
+                                                    {photo ? <img src={photo} className="w-full h-full object-cover" alt="posible match" /> : null}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-[9px] font-bold uppercase tracking-widest text-mimo-violeta">Posible coincidencia</div>
+                                                    <p className={`text-sm truncate ${hasUnread ? 'text-mimo-noche font-bold' : 'text-mimo-ink font-medium'}`}>
                                                         Reportaron una mascota similar{item.data?.match_name ? ` a ${item.data.match_name}` : ''}. ¿Es la tuya?
                                                     </p>
                                                 </div>
-                                                <div className='flex flex-col w-full sm:w-1/2 lg:w-1/2 justify-around items-end text-right gap-1 '>
-                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                                        {new Date(item.created_at).toLocaleDateString()}
-                                                    </span>
-                                                    {hasUnread && (
-                                                        <div className="z-10">
-                                                            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.6)] animate-pulse"></div>
-                                                        </div>
-                                                    )}
+                                                {hasUnread && <div className="w-2.5 h-2.5 bg-mimo-violeta rounded-full flex-shrink-0" />}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* Mis reportes (user) */}
+                        <Card>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="font-display font-extrabold text-2xl text-mimo-noche tracking-tight">Mis reportes</h2>
+                                <span className="text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest bg-mimo-muted text-mimo-quiet">
+                                    {reportsTotal} totales
+                                </span>
+                            </div>
+                            {reports.length === 0 ? (
+                                <div className="py-10 text-center text-sm text-mimo-quiet">Todavía no publicaste ningún reporte.</div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {reports.map((report) => (
+                                            <div key={report.id} className="group flex items-center gap-4 rounded-2xl border border-mimo-muted p-4 hover:shadow-mimo transition-shadow">
+                                                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-mimo-muted flex-shrink-0">
+                                                    {report.photo_url ? <img src={report.photo_url} className="w-full h-full object-cover" alt="pet" /> : null}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${report.resolved_at ? 'text-mimo-teal' : report.status === 'lost' ? 'text-mimo-coral' : 'text-mimo-quiet'}`}>
+                                                        {report.resolved_at ? 'Reencontrada ✓' : report.status === 'lost' ? 'Buscando' : 'Registrado'}
+                                                    </div>
+                                                    <h4 className="text-sm font-bold text-mimo-noche truncate leading-tight mb-2">{report.description || 'Sin descripción'}</h4>
+                                                    <button
+                                                        onClick={() => handleDeleteReport(report.id)}
+                                                        className="text-[9px] font-bold uppercase tracking-widest text-mimo-quiet hover:text-mimo-coral transition-colors"
+                                                    >
+                                                        Eliminar
+                                                    </button>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+                                    {reportsPage < reportsTotalPages && (
+                                        <div className="flex justify-center mt-6">
+                                            <button
+                                                onClick={() => fetchReports(reportsPage + 1, true)}
+                                                disabled={loadingMore}
+                                                className="px-8 py-3 bg-mimo-noche text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:opacity-90 disabled:opacity-50"
+                                            >
+                                                {loadingMore ? 'Cargando…' : `Cargar más (${reportsPage} de ${reportsTotalPages})`}
+                                            </button>
                                         </div>
+                                    )}
+                                </>
+                            )}
+                        </Card>
+                    </div>
 
-                                        <div className="self-center text-gray-200 group-hover:text-black transition-colors">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                    {/* Columna derecha */}
+                    <div className="space-y-6">
+
+                        {/* Configuración de alertas — UNIFICADA */}
+                        <Card kicker="Configuración de alertas">
+                            {isVet ? (
+                                <div className="space-y-3">
+                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                        <div className="pr-4">
+                                            <div className="text-sm font-bold text-mimo-noche">Mascotas perdidas</div>
+                                            <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una perdida en tu radio.</div>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={receivesLost}
+                                            onChange={(e) => setReceivesLost(e.target.checked)}
+                                            className="h-5 w-5 accent-mimo-coral"
+                                        />
+                                    </label>
+                                    <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                        <div className="pr-4">
+                                            <div className="text-sm font-bold text-mimo-noche">Mascotas encontradas</div>
+                                            <div className="text-xs text-mimo-quiet mt-1">Recibir alertas cuando reporten una encontrada.</div>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={receivesFound}
+                                            onChange={(e) => setReceivesFound(e.target.checked)}
+                                            className="h-5 w-5 accent-mimo-coral"
+                                        />
+                                    </label>
+                                    <div className="rounded-2xl border border-mimo-muted p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm font-bold text-mimo-noche">Radio de alerta</div>
+                                            <div className="text-2xl font-black text-mimo-coral font-display">{radius} km</div>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={1}
+                                            max={maxRadius}
+                                            value={radius}
+                                            onChange={(e) => setRadius(Number(e.target.value))}
+                                            className="mt-3 w-full accent-mimo-coral"
+                                        />
+                                        <div className="mt-2 text-[11px] text-mimo-quiet">
+                                            {vet.plan === 'ally'
+                                                ? <>Plan gratis: hasta 5 km. <span className="font-bold text-mimo-solDark">Socio Mimo extiende a 50 km.</span></>
+                                                : <>Socio Mimo · hasta 50 km.</>}
                                         </div>
                                     </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-
-                {/* BLOQUE 2: RESUMEN Y ACCIÓN */}
-                <div className="flex flex-col gap-6">
-                    <div className="bg-black rounded-[40px] p-8 text-white flex flex-col justify-between h-64 shadow-xl">
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-50 mb-2">Reportes activos</p>
-                            <p className="text-7xl font-semibold tracking-tighter">{reportsTotal}</p>
-                        </div>
-                        <Link to="/reportar" className="w-full bg-white text-black py-4 rounded-full font-semibold text-center text-sm hover:bg-gray-200 transition-all">
-                            Nuevo reporte
-                        </Link>
-                    </div>
-
-                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 flex-1 min-h-[150px] flex flex-col justify-center">
-                        <p className="text-[11px] font-bold text-gray-300 uppercase tracking-[0.2em] mb-2 text-center">Estado del sistema</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm font-semibold text-gray-900 tracking-tight">Comunidad Mimo Activa</span>
-                        </div>
-                    </div>
-
-                    <LinkedAccounts />
-
-                    <div className="bg-white rounded-[40px] p-8 border border-gray-100 flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900 tracking-tight mb-1">Alertas de mascotas cerca</p>
-                            <p className="text-xs text-gray-400 font-medium leading-relaxed">
-                                Te avisamos cuando reporten una mascota perdida o encontrada a menos de 5 km tuyo.
-                            </p>
-                        </div>
-                        <button
-                            onClick={handleToggleNotify}
-                            disabled={savingToggle}
-                            aria-pressed={notifyNearby}
-                            className={`shrink-0 relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${notifyNearby ? 'bg-pet-primary' : 'bg-gray-200'} disabled:opacity-50`}
-                        >
-                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${notifyNearby ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* --- SECCIÓN INFERIOR: MIS REGISTROS --- */}
-                <div className="md:col-span-3 mt-8">
-                    <div className="px-2 mb-8">
-                        <h3 className="text-2xl font-semibold tracking-tight text-black">Mis registros.</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                        {reports.map(report => (
-                            <div key={report.id} className="group bg-white rounded-[32px] p-4 flex items-center gap-6 border border-gray-100 transition-all hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)]">
-                                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-50 flex-shrink-0">
-                                    <img src={report.photo_url} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500" alt="pet" />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${report.resolved_at ? 'text-blue-500' : report.status === 'lost' ? 'text-red-500' : 'text-gray-400'}`}>
-                                        {report.resolved_at ? 'Reencontrada ✓' : report.status === 'lost' ? 'Buscando' : 'Registrado'}
-                                    </p>
-                                    <h4 className="font-semibold text-gray-900 truncate tracking-tight text-lg leading-tight mb-2">
-                                        {report.description || 'Sin descripción'}
-                                    </h4>
-                                    <button
-                                        onClick={() => handleDeleteReport(report.id)}
-                                        className="text-[10px] font-bold text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors"
-                                    >
-                                        Eliminar registro
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ) : (
+                                <label className="flex items-center justify-between rounded-2xl border border-mimo-muted p-4 cursor-pointer hover:bg-mimo-warm">
+                                    <div className="pr-4">
+                                        <div className="text-sm font-bold text-mimo-noche">Alertas de mascotas cerca</div>
+                                        <div className="text-xs text-mimo-quiet mt-1">Te avisamos cuando reporten una perdida o encontrada a menos de 5 km tuyo.</div>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={notifyNearby}
+                                        onChange={(e) => setNotifyNearby(e.target.checked)}
+                                        className="h-5 w-5 accent-mimo-coral"
+                                    />
+                                </label>
+                            )}
 
-                    {reportsPage < reportsTotalPages && (
-                        <div className="flex justify-center mt-8">
                             <button
-                                onClick={() => fetchReports(reportsPage + 1, true)}
-                                disabled={loadingMore}
-                                className="px-10 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={saveAlerts}
+                                disabled={savingAlerts}
+                                className="mt-6 w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50 shadow-mimo"
                             >
-                                {loadingMore ? 'Cargando...' : `Cargar más (${reportsPage} de ${reportsTotalPages})`}
+                                {savingAlerts ? 'Guardando…' : 'Guardar cambios'}
+                            </button>
+                            {alertsMsg ? (
+                                <div className="mt-3 text-center text-xs font-bold text-mimo-tealDark">{alertsMsg}</div>
+                            ) : null}
+                        </Card>
+
+                        {/* Cuentas vinculadas */}
+                        <LinkedAccounts />
+
+                        {/* Sesión */}
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleLogout}
+                                className="w-full rounded-full bg-mimo-teal text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-tealDark transition-colors"
+                            >
+                                Cerrar sesión
+                            </button>
+                            <button
+                                className="w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-bold uppercase tracking-widest hover:bg-mimo-coralDark transition-colors"
+                            >
+                                Eliminar cuenta
                             </button>
                         </div>
-                    )}
+                    </div>
                 </div>
-
-            </div>
-
-            {/* Footer sutil */}
-            <div className="mt-20 text-[10px] text-gray-300 font-bold tracking-[0.3em] uppercase">
-                Mimo Identity Service
             </div>
         </div>
     );

@@ -8,6 +8,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Profile from './pages/Profile';
 import ChatWidget from './components/ChatWidget';
 import Pet from './pages/Pet';
@@ -120,7 +121,7 @@ function App() {
   }, [socket, user?.id, dispatch]);
 
   return (
-    <div className="min-h-screen bg-pet-light font-sans flex flex-col">
+    <div className="min-h-screen bg-mimo-warm font-sans flex flex-col">
       <ScrollToTop />
       {!isLanding && <Navbar />}
       <main className="flex-1 flex flex-col">
@@ -146,6 +147,7 @@ function App() {
         {!isLanding && <ChatWidget socket={socket} />}
         {!isLanding && <NotificationToast socket={socket} />}
       </main>
+      {!isLanding && <Footer />}
     </div>
   );
 }

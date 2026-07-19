@@ -7,15 +7,38 @@ export default {
   theme: {
     extend: {
       colors: {
+        mimo: {
+          coral:   '#FF5C6C',
+          coralDark: '#FF3B4E',
+          teal:    '#3ECFB2',
+          tealDark: '#1FA88E',
+          sol:     '#FFB830',
+          solDark: '#C98800',
+          violeta: '#9B6DFF',
+          noche:   '#1A1A2E',
+          nocheAlt: '#2D2B55',
+          warm:    '#FFF6F0',
+          muted:   '#F0EBE8',
+          ink:     '#4A4A5A',
+          quiet:   '#9B8F8A',
+        },
         pet: {
           dark: '#08061D',
           accent: '#4d7298',
           light: '#F5F5F7',
-          primary: '#0d945c',
-          primaryDark: '#127545',
+          primary: '#FF5C6C',
+          primaryDark: '#FF3B4E',
           link: '#0076DF'
         }
-      }
+      },
+      fontFamily: {
+        display: ["'Nunito'", 'system-ui', 'sans-serif'],
+        sans:    ["'DM Sans'", "'Nunito'", 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        mimo: '0 4px 24px rgba(255, 92, 108, 0.12)',
+        card: '0 2px 12px rgba(0, 0, 0, 0.05)',
+      },
     },
     keyframes: {
       'slide-up': {

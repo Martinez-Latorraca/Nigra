@@ -13,7 +13,7 @@ function Navbar() {
     ).length : 0;
 
     return (
-        <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 p-4 md:px-8 flex justify-between items-center transition-all">
+        <nav className="sticky top-0 z-50 bg-mimo-warm/85 backdrop-blur-md border-b border-mimo-muted p-4 md:px-8 flex justify-between items-center transition-all">
             <Link to="/app" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
                 <MimoLogo size={30} color="#FF5C6C" />
                 <span
@@ -33,7 +33,7 @@ function Navbar() {
                             </Link>
                         )}
                         {/* El Punto Verde en el Navbar */}
-                        <Link to="/profile" className="relative text-sm font-medium bg-black text-white hover:bg-gray-800 px-5 py-2.5 rounded-full transition-all shadow-sm">
+                        <Link to="/profile" className="relative text-sm font-semibold bg-mimo-coral text-white hover:bg-mimo-coralDark px-5 py-2.5 rounded-full transition-all shadow-mimo">
                             Mi Perfil
                             {unreadCount > 0 && (
                                 <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">

@@ -15,7 +15,8 @@ describe('<Navbar />', () => {
 
         expect(screen.getByText('Iniciar Sesión')).toBeInTheDocument();
         expect(screen.queryByText('Mi Perfil')).not.toBeInTheDocument();
-        expect(screen.getByText('mimo')).toBeInTheDocument();
+        // El wordmark es un SVG (no un nodo de texto). Lo identificamos por aria-label.
+        expect(screen.getByLabelText('mimo')).toBeInTheDocument();
     });
 
     it('con token: muestra "Mi Perfil" y esconde "Iniciar Sesión"', () => {

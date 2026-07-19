@@ -5,6 +5,7 @@ import { clearCredentials, updateUserData } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
+import MimoLogo from '../components/MimoLogo';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -538,19 +539,23 @@ function Profile() {
 
                 {/* -------------------------- SPONSOR CTA -------------------------- */}
                 {isVet && vet && !vet.is_sponsor ? (
-                    <div className="rounded-[32px] p-8 mb-8 text-white bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">
+                    <div className="rounded-[32px] p-8 mb-8 text-mimo-noche bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div className="max-w-lg">
-                                <div className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80">Sumate como</div>
-                                <h3 className="font-display font-black text-3xl mt-1 tracking-tight">Socio Mimo ⭐</h3>
-                                <p className="mt-2 text-sm opacity-95 leading-relaxed">
+                                <div className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] opacity-70">Sumate como</div>
+                                <div className="mt-2 flex items-center gap-3 flex-wrap">
+                                    <span className="font-display font-black text-3xl tracking-tight leading-none">Socio</span>
+                                    <MimoLogo variant="wordmark" size={110} bg="coral" />
+                                    <span className="text-3xl leading-none" aria-hidden="true">⭐</span>
+                                </div>
+                                <p className="mt-3 text-sm opacity-90 leading-relaxed">
                                     Alcance de alertas hasta 50 km, card destacada en el directorio,
                                     badge visible en cada publicación y dashboard extendido.
                                 </p>
                             </div>
                             <a
                                 href="mailto:somos.mimo.app@gmail.com?subject=Quiero%20ser%20Socio%20Mimo"
-                                className="rounded-full bg-white text-mimo-noche px-6 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-muted"
+                                className="rounded-full bg-mimo-noche text-white px-6 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:opacity-90"
                             >
                                 Contactar
                             </a>

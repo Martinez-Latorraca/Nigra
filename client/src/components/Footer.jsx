@@ -8,15 +8,7 @@ export default function Footer() {
         <footer className="bg-mimo-noche text-white font-sans">
             <div className="max-w-6xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-4 gap-10">
                 <div className="md:col-span-1">
-                    <div className="flex items-center gap-2 mb-3">
-                        <MimoLogo size={28} color="#FF5C6C" />
-                        <span
-                            className="text-2xl leading-none"
-                            style={{ fontFamily: "'Nunito', system-ui, sans-serif", fontWeight: 900, color: '#fff', letterSpacing: '-0.03em' }}
-                        >
-                            mimo
-                        </span>
-                    </div>
+                    <MimoLogo variant="wordmark" size={132} bg="dark" />
                     <p className="text-sm text-white/60 font-medium mt-4">
                         Cada mascota merece un mimo.
                     </p>

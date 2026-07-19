@@ -14,14 +14,8 @@ function Navbar() {
 
     return (
         <nav className="sticky top-0 z-50 bg-mimo-warm/85 backdrop-blur-md border-b border-mimo-muted p-4 md:px-8 flex justify-between items-center transition-all">
-            <Link to="/app" className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-                <MimoLogo size={30} color="#FF5C6C" />
-                <span
-                    className="text-2xl leading-none"
-                    style={{ fontFamily: "'Nunito', system-ui, sans-serif", fontWeight: 900, color: '#1A1A2E', letterSpacing: '-0.03em' }}
-                >
-                    mimo
-                </span>
+            <Link to="/app" className="flex items-center hover:opacity-70 transition-opacity">
+                <MimoLogo variant="wordmark" size={110} />
             </Link>
 
             <div className="flex gap-4 items-center">

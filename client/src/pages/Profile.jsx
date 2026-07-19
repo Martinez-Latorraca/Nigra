@@ -382,7 +382,7 @@ function Profile() {
     // --- Handlers --- //
     const handleLogout = () => {
         dispatch(clearCredentials());
-        navigate('/');
+        navigate('/app');
     };
 
     const handleOpenChat = (msg) => {

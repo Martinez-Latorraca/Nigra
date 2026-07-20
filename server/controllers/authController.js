@@ -42,12 +42,18 @@ export const register = async (req, res) => {
         // el nuevo password/name y limpiamos deleted_at. Si el user era vet
         // owner, también reactivamos su vet. Los pets/mensajes históricos
         // vuelven a estar accesibles.
+        //
+        // IMPORTANTE: siempre re-verificamos el email al restaurar, incluso
+        // si estaba verificado antes. Esto bloquea un ataque de reclamo:
+        // alguien que conoce el email de un user borrado podría registrarse
+        // con su propio password y quedarse con los pets/chats históricos.
+        // El re-verify obliga a probar posesión del inbox.
         if (existing && existing.deleted_at) {
             const salt = await bcrypt.genSalt(10);
             const passwordHash = await bcrypt.hash(password, salt);
             await pool.query(
                 `UPDATE users
-                 SET name = $1, password = $2, deleted_at = NULL
+                 SET name = $1, password = $2, deleted_at = NULL, email_verified = FALSE
                  WHERE id = $3`,
                 [name, passwordHash, existing.id]
             );
@@ -55,16 +61,21 @@ export const register = async (req, res) => {
                 'UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1',
                 [existing.id]
             );
+            // Fire-and-forget: mail de verificación (igual que en signup nuevo).
+            try {
+                const token = await insertVerificationToken(existing.id);
+                sendVerificationEmail({ to: existing.email, token, name })
+                    .catch((e) => console.error('sendVerificationEmail error:', e?.message));
+            } catch (e) {
+                console.error('verification token insert error:', e?.message);
+            }
             const restored = {
                 id: existing.id,
                 name,
                 email: existing.email,
                 role: existing.role,
             };
-            // Si el email ya estaba verificado antes, no volvemos a pedirlo:
-            // la re-verificación no aporta seguridad porque quien controla el
-            // email es el mismo dueño.
-            return res.json({ success: true, user: restored, restored: true, requires_verification: !existing.email_verified });
+            return res.json({ success: true, user: restored, restored: true, requires_verification: true });
         }
 
         if (existing) {

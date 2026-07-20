@@ -71,42 +71,21 @@ function Register() {
         }
     };
 
-    if (registered && restored && !requiresVerification) {
-        // Recuperación de una cuenta soft-deleted que ya tenía email verificado.
-        // No hace falta re-verificar.
-        return (
-            <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-                <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
-                    <div className="text-5xl mb-4">🐾</div>
-                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">
-                        Recuperaste tu cuenta.
-                    </h2>
-                    <p className="text-gray-500 leading-relaxed mb-8">
-                        Tus reportes y datos vuelven intactos. Iniciá sesión con tu nueva contraseña.
-                    </p>
-                    <Link
-                        to="/login"
-                        className="inline-block w-full py-4 bg-mimo-coral hover:bg-mimo-coralDark text-white font-semibold rounded-full transition-all shadow-sm"
-                    >
-                        Ir al login
-                    </Link>
-                </div>
-            </div>
-        );
-    }
-
     if (registered) {
+        // Copy adaptado según sea un signup nuevo o una reactivación de cuenta
+        // soft-deleted. En ambos casos pedimos verificación de mail.
+        const title = restored ? 'Recuperando tu cuenta.' : 'Revisá tu email.';
+        const body = restored
+            ? <>Te mandamos un link a <strong className="text-gray-700">{email}</strong> para confirmar
+                que sos vos. Al tocarlo, tus reportes y datos vuelven intactos.</>
+            : <>Te mandamos un link a <strong className="text-gray-700">{email}</strong> para confirmar
+                tu cuenta. Después de tocarlo vas a poder iniciar sesión.</>;
         return (
             <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
                 <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
                     <div className="text-5xl mb-4">📬</div>
-                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">
-                        Revisá tu email.
-                    </h2>
-                    <p className="text-gray-500 leading-relaxed mb-8">
-                        Te mandamos un link a <strong className="text-gray-700">{email}</strong> para
-                        confirmar tu cuenta. Después de tocarlo vas a poder iniciar sesión.
-                    </p>
+                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">{title}</h2>
+                    <p className="text-gray-500 leading-relaxed mb-8">{body}</p>
                     <Link
                         to="/login"
                         className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all shadow-sm"

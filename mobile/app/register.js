@@ -62,28 +62,13 @@ export default function Register() {
     }
   };
 
-  if (registered && restored && !requiresVerification) {
-    return (
-      <AuthScreen
-        title="Recuperaste tu cuenta"
-        subtitle="Tus reportes y datos vuelven intactos. Iniciá sesión con tu nueva contraseña."
-      >
-        <Pressable
-          style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
-          onPress={() => router.replace('/login')}
-        >
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>Ir al login</Text>
-        </Pressable>
-      </AuthScreen>
-    );
-  }
-
   if (registered) {
+    const title = restored ? 'Recuperando tu cuenta' : 'Revisá tu email';
+    const subtitle = restored
+      ? `Te mandamos un link a ${email} para confirmar que sos vos. Al tocarlo, tus reportes y datos vuelven intactos.`
+      : `Te mandamos un link a ${email} para confirmar tu cuenta. Después de tocarlo, iniciá sesión.`;
     return (
-      <AuthScreen
-        title="Revisá tu email"
-        subtitle={`Te mandamos un link a ${email} para confirmar tu cuenta. Después de tocarlo, iniciá sesión.`}
-      >
+      <AuthScreen title={title} subtitle={subtitle}>
         <Pressable
           style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
           onPress={() => router.replace('/login')}

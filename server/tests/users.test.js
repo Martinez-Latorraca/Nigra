@@ -156,4 +156,37 @@ describe('Users', () => {
             expect(res.body.notify_radius_km).toBe(15);
         });
     });
+
+    describe('PATCH /api/users/me', () => {
+        it('requiere auth', async () => {
+            const res = await request(buildApp())
+                .patch('/api/users/me')
+                .send({ name: 'Nuevo' });
+            expect(res.status).toBe(401);
+        });
+
+        it('400 si name es vacio (schema)', async () => {
+            const res = await request(buildApp())
+                .patch('/api/users/me')
+                .set('x-test-user', '7')
+                .send({ name: '   ' });
+            expect(res.status).toBe(400);
+        });
+
+        it('actualiza el nombre y devuelve el perfil publico', async () => {
+            pool.query.mockResolvedValueOnce({
+                rows: [{ id: 7, name: 'Nuevo Nombre', email: 'a@a.com', role: 'user', avatar_url: null }],
+            });
+            const res = await request(buildApp())
+                .patch('/api/users/me')
+                .set('x-test-user', '7')
+                .send({ name: '  Nuevo Nombre  ' });
+            expect(res.status).toBe(200);
+            expect(res.body.name).toBe('Nuevo Nombre');
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/UPDATE users SET name = \$1/);
+            expect(params[0]).toBe('Nuevo Nombre');
+        });
+    });
+
 });

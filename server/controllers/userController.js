@@ -1,4 +1,5 @@
 import pool from '../db.js';
+import { uploadBufferToCloudinary } from '../utils/cloudinary.js';
 
 export const updateLocation = async (req, res) => {
     try {
@@ -74,6 +75,43 @@ export const getMe = async (req, res) => {
     } catch (error) {
         console.error('getMe error:', error);
         res.status(500).json({ error: 'Error obteniendo perfil' });
+    }
+};
+
+// PATCH /api/users/me — el user edita su propio perfil (por ahora: nombre).
+// El email no se toca acá: cambiarlo requiere re-verificación y merece su
+// propio flujo.
+export const updateMe = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { name } = req.body;
+        const { rows } = await pool.query(
+            `UPDATE users SET name = $1 WHERE id = $2
+             RETURNING id, name, email, role, avatar_url`,
+            [name.trim(), userId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('updateMe error:', error);
+        res.status(500).json({ error: 'Error actualizando perfil' });
+    }
+};
+
+// POST /api/users/me/avatar — sube foto a Cloudinary y actualiza avatar_url.
+// Body: multipart con `image`. Mismo patrón que /api/vets/me/image.
+export const uploadMyAvatar = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Falta la imagen.' });
+        const result = await uploadBufferToCloudinary(req.file.buffer, 'mimo/users');
+        const { rows } = await pool.query(
+            `UPDATE users SET avatar_url = $1 WHERE id = $2 RETURNING avatar_url`,
+            [result.secure_url, req.user.id]
+        );
+        res.json({ avatar_url: rows[0]?.avatar_url });
+    } catch (error) {
+        console.error('uploadMyAvatar error:', error);
+        res.status(500).json({ error: 'No se pudo subir la imagen.' });
     }
 };
 

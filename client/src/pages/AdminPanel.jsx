@@ -14,6 +14,7 @@ function AdminPanel() {
     const [users, setUsers] = useState([]);
     const [pets, setPets] = useState([]);
     const [conversations, setConversations] = useState([]);
+    const [pendingVets, setPendingVets] = useState([]);
     const [activeConversation, setActiveConversation] = useState(null);
     const [conversationMessages, setConversationMessages] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -104,6 +105,18 @@ function AdminPanel() {
         if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
     }, [authHeaders]);
 
+    const fetchPendingVets = useCallback(async (isTabChange = false) => {
+        if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
+        try {
+            const res = await fetch(`${API}/api/vets/admin/pending`, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok) setPendingVets(data.vets || []);
+        } catch (err) {
+            console.error(err);
+        }
+        if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
+    }, [authHeaders]);
+
     const fetchConversationMessages = async (conv) => {
         setActiveConversation(conv);
         setLoadingQuery(true);
@@ -125,6 +138,7 @@ function AdminPanel() {
         if (tab === 'users') fetchUsers(1, '', true);
         if (tab === 'pets') fetchPets(1, '', { status: 'all', type: 'all' }, true);
         if (tab === 'messages') fetchConversations(1, '', true);
+        if (tab === 'vets') fetchPendingVets(true);
     };
 
     // Initial fetch on mount
@@ -187,6 +201,20 @@ function AdminPanel() {
         }
     };
 
+    const handleSetVetApproval = async (id, approved) => {
+        if (!confirm(approved ? '¿Aprobar esta veterinaria?' : '¿Rechazar / desaprobar esta veterinaria?')) return;
+        try {
+            const res = await fetch(`${API}/api/vets/admin/${id}/approve`, {
+                method: 'PATCH',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved }),
+            });
+            if (res.ok) fetchPendingVets();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleDeleteMessage = async (id) => {
         if (!confirm('Eliminar este mensaje?')) return;
         try {
@@ -210,6 +238,7 @@ function AdminPanel() {
         { id: 'users', label: 'Usuarios' },
         { id: 'pets', label: 'Reportes' },
         { id: 'messages', label: 'Mensajes' },
+        { id: 'vets', label: 'Vets pendientes' },
     ];
 
     const formatDate = (d) => new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -237,8 +266,8 @@ function AdminPanel() {
                 </div>
             </div>
 
-            {/* Search bar (not on dashboard) */}
-            {activeTab !== 'dashboard' && !loadingTab && (
+            {/* Search bar (no aplica a dashboard ni al listado de vets pendientes) */}
+            {activeTab !== 'dashboard' && activeTab !== 'vets' && !loadingTab && (
                 <div className="mb-6 flex flex-wrap gap-4 items-end">
                     <div className="space-y-2">
                         <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Buscar</label>
@@ -455,6 +484,63 @@ function AdminPanel() {
                     </div>
                 )}
 
+                {/* ─── VETS TAB ─────────────────────────────── */}
+                {activeTab === 'vets' && !loadingTab && !loadingQuery && (
+                    <div className="overflow-x-auto w-full">
+                        {pendingVets.length === 0 ? (
+                            <p className="text-center text-gray-400 py-8">No hay veterinarias pendientes de aprobación.</p>
+                        ) : (
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-gray-400 border-b">
+                                        <th className="pb-2 pr-4">ID</th>
+                                        <th className="pb-2 pr-4">Nombre</th>
+                                        <th className="pb-2 pr-4">Email vet</th>
+                                        <th className="pb-2 pr-4">Ciudad</th>
+                                        <th className="pb-2 pr-4">Owner</th>
+                                        <th className="pb-2 pr-4">Registro</th>
+                                        <th className="pb-2">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pendingVets.map(v => (
+                                        <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                                            <td className="py-3 pr-4 text-gray-400">{v.id}</td>
+                                            <td className="py-3 pr-4 font-medium">
+                                                <Link to={`/vets/${v.slug}`} className="hover:underline">{v.name}</Link>
+                                            </td>
+                                            <td className="py-3 pr-4 text-gray-500">{v.email || '—'}</td>
+                                            <td className="py-3 pr-4 text-gray-500">{v.city || '—'}</td>
+                                            <td className="py-3 pr-4 text-gray-500">
+                                                {v.owner_name}
+                                                <br />
+                                                <span className="text-xs text-gray-400">{v.owner_email}</span>
+                                            </td>
+                                            <td className="py-3 pr-4 text-gray-400">{formatDate(v.created_at)}</td>
+                                            <td className="py-3">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleSetVetApproval(v.id, true)}
+                                                        className="text-xs px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                                                    >
+                                                        Aprobar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSetVetApproval(v.id, false)}
+                                                        className="text-xs px-3 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                                    >
+                                                        Rechazar
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                )}
+
                 {/* ─── MESSAGES TAB ──────────────────────────── */}
                 {activeTab === 'messages' && !loadingTab && !loadingQuery && !activeConversation && (
                     <div className="space-y-2" style={{ width: '100%', maxWidth: '700px' }}>
@@ -520,7 +606,7 @@ function AdminPanel() {
                 )}
 
                 {/* ─── PAGINATION ────────────────────────────── */}
-                {activeTab !== 'dashboard' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
+                {activeTab !== 'dashboard' && activeTab !== 'vets' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
                         {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
                             <button

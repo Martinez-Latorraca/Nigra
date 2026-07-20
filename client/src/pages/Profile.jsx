@@ -249,6 +249,121 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
     );
 }
 
+// Form de edición para users normales (no vet). Cambia nombre y foto de
+// perfil (avatar_url via Cloudinary). Al guardar despacha updateUserData
+// para reflejar los cambios en Redux sin re-login.
+function UserEditForm({ user, token, dispatch, onClose }) {
+    const [name, setName] = useState(user.name || '');
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState('');
+    const [err, setErr] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState(user.avatar_url || '');
+
+    const inputCls = 'w-full rounded-2xl border border-mimo-muted bg-mimo-muted px-4 py-3 text-sm text-mimo-noche focus:border-mimo-coral focus:outline-none';
+    const labelCls = 'text-[10px] font-display font-extrabold uppercase tracking-[0.2em] text-mimo-quiet';
+
+    const uploadAvatar = async (file) => {
+        setErr('');
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('image', file);
+            const res = await fetch(`${API}/api/users/me/avatar`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: fd,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'No se pudo subir la imagen.');
+            setAvatarPreview(data.avatar_url);
+            dispatch(updateUserData({ avatar_url: data.avatar_url }));
+        } catch (e) {
+            setErr(e.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const save = async () => {
+        setSaving(true);
+        setMsg('');
+        setErr('');
+        try {
+            const res = await fetch(`${API}/api/users/me`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ name: name.trim() }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
+            dispatch(updateUserData({ name: data.name, avatar_url: data.avatar_url }));
+            setMsg('Guardado.');
+            setTimeout(() => onClose?.(), 800);
+        } catch (e) {
+            setErr(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Card kicker="Editar perfil" className="mb-8">
+            <div className="mb-6">
+                <div className={`${labelCls} mb-2`}>Foto de perfil</div>
+                <div className="flex items-center gap-3">
+                    {avatarPreview ? (
+                        <img src={avatarPreview} referrerPolicy="no-referrer" alt="" className="h-16 w-16 rounded-2xl object-cover" />
+                    ) : (
+                        <div className="h-16 w-16 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-2xl">
+                            {(user.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                    )}
+                    <label className="cursor-pointer rounded-full border border-mimo-muted px-4 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-mimo-noche hover:bg-mimo-muted">
+                        {uploading ? 'Subiendo…' : 'Cambiar'}
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={uploading}
+                            onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
+                        />
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <div className={`${labelCls} mb-2`}>Nombre</div>
+                <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+
+            <div className="mt-4">
+                <div className={`${labelCls} mb-2`}>Email</div>
+                <input className={`${inputCls} opacity-60 cursor-not-allowed`} value={user.email || ''} disabled readOnly />
+                <div className="mt-1 text-[11px] text-mimo-quiet">Para cambiar tu email escribinos a somos.mimo.app@gmail.com.</div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                <button
+                    onClick={save}
+                    disabled={saving || !name.trim()}
+                    className="flex-1 rounded-full bg-mimo-coral text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark disabled:opacity-50"
+                >
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+                <button
+                    onClick={onClose}
+                    className="rounded-full border border-mimo-muted text-mimo-ink px-6 py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-muted"
+                >
+                    Cerrar
+                </button>
+            </div>
+            {msg ? <div className="mt-3 rounded-2xl bg-mimo-teal/10 p-3 text-center text-xs font-bold text-mimo-tealDark">{msg}</div> : null}
+            {err ? <div className="mt-3 rounded-2xl bg-mimo-coral/10 p-3 text-center text-xs font-bold text-mimo-coral">{err}</div> : null}
+        </Card>
+    );
+}
+
 // ------------------------------------------------------------------------- //
 // Página principal
 // ------------------------------------------------------------------------- //
@@ -502,14 +617,12 @@ function Profile() {
                         </div>
                     </div>
 
-                    {isVet && vet ? (
-                        <button
-                            onClick={() => setEditing((v) => !v)}
-                            className="rounded-full bg-mimo-coral text-white px-8 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark shadow-mimo"
-                        >
-                            {editing ? 'Cerrar' : 'Editar'}
-                        </button>
-                    ) : null}
+                    <button
+                        onClick={() => setEditing((v) => !v)}
+                        className="rounded-full bg-mimo-coral text-white px-8 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark shadow-mimo"
+                    >
+                        {editing ? 'Cerrar' : 'Editar'}
+                    </button>
                 </div>
 
                 {/* -------------------------- VET STATS -------------------------- */}
@@ -563,13 +676,22 @@ function Profile() {
                 ) : null}
 
                 {/* -------------------------- EDIT FORM -------------------------- */}
-                {editing && isVet && vet ? (
-                    <VetEditForm
-                        vet={vet}
-                        token={token}
-                        onClose={() => setEditing(false)}
-                        onSaved={fetchVetDashboard}
-                    />
+                {editing ? (
+                    isVet && vet ? (
+                        <VetEditForm
+                            vet={vet}
+                            token={token}
+                            onClose={() => setEditing(false)}
+                            onSaved={fetchVetDashboard}
+                        />
+                    ) : (
+                        <UserEditForm
+                            user={user}
+                            token={token}
+                            dispatch={dispatch}
+                            onClose={() => setEditing(false)}
+                        />
+                    )
                 ) : null}
 
                 {/* -------------------------- GRID 2 COLS -------------------------- */}

@@ -3,6 +3,23 @@ import { Link } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_URL || '';
 
+// Debe coincidir con el catálogo del edit form (Profile.jsx SERVICE_CATALOG).
+// Es duplicación deliberada: mantenerlo acá evita un import cross-page.
+const SERVICE_CATALOG = [
+    'Consultas',
+    'Vacunación',
+    'Cirugía',
+    'Urgencias 24h',
+    'Peluquería',
+    'Baño',
+    'Radiología',
+    'Ecografía',
+    'Laboratorio',
+    'Guardería',
+    'Adiestramiento',
+    'Atención a domicilio',
+];
+
 function VetCard({ vet }) {
     const isSponsor = !!vet.verified_at;
     return (
@@ -83,17 +100,29 @@ export default function Vets() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [city, setCity] = useState('');
+    const [servicesSelected, setServicesSelected] = useState(() => new Set());
+    // Geolocalización opt-in: null hasta que el user pide "cerca mío".
+    // { lat, lng } cuando otorgó permiso; se dispara refetch con haversine.
+    const [coords, setCoords] = useState(null);
+    const [geoLoading, setGeoLoading] = useState(false);
+    const [geoError, setGeoError] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
     const limit = 12;
 
-    const fetchVets = async (nextPage = 1, cityFilter = '') => {
+    const fetchVets = async (nextPage = 1, cityFilter = '', services = new Set(), geo = null) => {
         setLoading(true);
         setError('');
         try {
             const params = new URLSearchParams({ page: nextPage, limit });
             if (cityFilter) params.set('city', cityFilter);
+            if (services.size > 0) params.set('services', [...services].join(','));
+            if (geo) {
+                params.set('lat', String(geo.lat));
+                params.set('lng', String(geo.lng));
+                params.set('radius_km', '25'); // default razonable para "cerca mío"
+            }
             const res = await fetch(`${API}/api/vets?${params}`);
             if (!res.ok) throw new Error('No se pudo cargar el directorio.');
             const data = await res.json();
@@ -108,12 +137,55 @@ export default function Vets() {
     };
 
     useEffect(() => {
-        fetchVets(1, '');
+        fetchVets(1, '', new Set(), null);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleCitySubmit = (e) => {
         e.preventDefault();
-        fetchVets(1, city.trim());
+        fetchVets(1, city.trim(), servicesSelected, coords);
+    };
+
+    const toggleService = (s) => {
+        setServicesSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(s)) next.delete(s);
+            else next.add(s);
+            fetchVets(1, city.trim(), next, coords);
+            return next;
+        });
+    };
+
+    const toggleNearMe = () => {
+        setGeoError('');
+        if (coords) {
+            // Ya activo → desactivar
+            setCoords(null);
+            fetchVets(1, city.trim(), servicesSelected, null);
+            return;
+        }
+        if (!navigator.geolocation) {
+            setGeoError('Tu navegador no permite geolocalización.');
+            return;
+        }
+        setGeoLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const g = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setCoords(g);
+                setGeoLoading(false);
+                fetchVets(1, city.trim(), servicesSelected, g);
+            },
+            (err) => {
+                setGeoLoading(false);
+                setGeoError(
+                    err.code === err.PERMISSION_DENIED
+                        ? 'Necesitamos permiso de ubicación para mostrar vets cerca tuyo.'
+                        : 'No pudimos obtener tu ubicación. Probá de nuevo.'
+                );
+            },
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 }
+        );
     };
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -163,6 +235,38 @@ export default function Vets() {
                         Buscar
                     </button>
                 </form>
+
+                {/* Filtros: cerca mío + chips por servicio */}
+                <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <button
+                        onClick={toggleNearMe}
+                        disabled={geoLoading}
+                        className={`rounded-full px-4 py-2 text-xs font-display font-extrabold uppercase tracking-widest transition-all ${coords
+                            ? 'bg-mimo-teal text-white hover:bg-mimo-tealDark'
+                            : 'border border-mimo-muted bg-mimo-warm text-mimo-noche hover:border-mimo-coral/40'} disabled:opacity-50`}
+                    >
+                        {geoLoading ? 'Ubicando…' : coords ? '📍 Cerca mío (activo · quitar)' : '📍 Cerca mío'}
+                    </button>
+                    {SERVICE_CATALOG.map((s) => {
+                        const active = servicesSelected.has(s);
+                        return (
+                            <button
+                                key={s}
+                                onClick={() => toggleService(s)}
+                                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${active
+                                    ? 'bg-mimo-coral text-white'
+                                    : 'border border-mimo-muted bg-mimo-warm text-mimo-ink hover:border-mimo-coral/40'}`}
+                            >
+                                {active ? '✓ ' : ''}{s}
+                            </button>
+                        );
+                    })}
+                </div>
+                {geoError ? (
+                    <div className="mt-3 rounded-2xl bg-mimo-coral/10 p-3 text-xs font-semibold text-mimo-coral">
+                        {geoError}
+                    </div>
+                ) : null}
             </div>
 
             <div className="mx-auto w-full max-w-6xl px-6 pt-14">
@@ -201,7 +305,7 @@ export default function Vets() {
                         {totalPages > 1 && (
                             <div className="mt-12 flex justify-center gap-2">
                                 <button
-                                    onClick={() => fetchVets(page - 1, city)}
+                                    onClick={() => fetchVets(page - 1, city, servicesSelected, coords)}
                                     disabled={page === 1}
                                     className="rounded-full border border-mimo-muted bg-mimo-warm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-mimo-ink transition-all hover:bg-mimo-muted disabled:opacity-30"
                                 >
@@ -211,7 +315,7 @@ export default function Vets() {
                                     {page} / {totalPages}
                                 </span>
                                 <button
-                                    onClick={() => fetchVets(page + 1, city)}
+                                    onClick={() => fetchVets(page + 1, city, servicesSelected, coords)}
                                     disabled={page === totalPages}
                                     className="rounded-full border border-mimo-muted bg-mimo-warm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-mimo-ink transition-all hover:bg-mimo-muted disabled:opacity-30"
                                 >

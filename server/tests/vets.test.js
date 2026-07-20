@@ -136,6 +136,36 @@ describe('Vets', () => {
             expect(pool.query.mock.calls[0][1][0]).toBe('Montevideo');
             expect(pool.query.mock.calls[0][0]).toMatch(/LOWER\(city\)/);
         });
+
+        it('filtra por servicios (array overlap OR)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ total: 0 }] });
+
+            await request(buildApp()).get('/api/vets?services=Consultas,Cirug%C3%ADa');
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/services && \$\d+::text\[\]/);
+            expect(params[0]).toEqual(['Consultas', 'Cirugía']);
+        });
+
+        it('filtra por geoloc (haversine) y ordena por distancia', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ total: 0 }] });
+
+            await request(buildApp()).get('/api/vets?lat=-34.9&lng=-56.16&radius_km=10');
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/6371 \* acos/);
+            expect(sql).toMatch(/ORDER BY \(6371 \* acos/);
+            expect(params[0]).toBe(-34.9);
+            expect(params[1]).toBe(-56.16);
+            expect(params[2]).toBe(10);
+        });
+
+        it('400 si viene lat sin lng (validation: and)', async () => {
+            const res = await request(buildApp()).get('/api/vets?lat=-34.9');
+            expect(res.status).toBe(400);
+        });
     });
 
     describe('GET /api/vets/nearby', () => {

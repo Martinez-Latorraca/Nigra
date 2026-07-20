@@ -288,28 +288,55 @@ export const updateMyVetAlerts = async (req, res) => {
     }
 };
 
-// GET /api/vets — directorio público (solo approved).
+// GET /api/vets — directorio público (solo approved). Filtros opcionales:
+//   ?city=Montevideo
+//   ?services=Consultas,Urgencias%2024h   (OR: la vet tiene AL MENOS uno)
+//   ?lat=&lng=&radius_km=15                (haversine + ordena por distancia)
 export const listVets = async (req, res) => {
     try {
-        const { city, page = 1, limit = 20 } = req.query;
+        const { city, services, lat, lng, radius_km = 15, page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
-        const params = [];
+
+        // Construimos WHERE + params compartidos entre query principal y count.
+        // La query de count reusa los mismos filtros (menos limit/offset) para
+        // que el total refleje exactamente los que se están viendo.
+        const filterParams = [];
         let where = 'WHERE approved = TRUE AND deleted_at IS NULL';
         if (city) {
-            params.push(city);
-            where += ` AND LOWER(city) = LOWER($${params.length})`;
+            filterParams.push(city);
+            where += ` AND LOWER(city) = LOWER($${filterParams.length})`;
         }
-        params.push(limit, offset);
+        if (services) {
+            const arr = String(services).split(',').map((s) => s.trim()).filter(Boolean);
+            if (arr.length > 0) {
+                filterParams.push(arr);
+                // Postgres array overlap: coincide si tiene al menos uno.
+                where += ` AND services && $${filterParams.length}::text[]`;
+            }
+        }
+        if (lat != null && lng != null) {
+            // Haversine en el WHERE + orden por distancia.
+            filterParams.push(Number(lat), Number(lng), Number(radius_km));
+            const iLat = filterParams.length - 2;
+            const iLng = filterParams.length - 1;
+            const iRad = filterParams.length;
+            where += ` AND lat IS NOT NULL AND lng IS NOT NULL AND (6371 * acos(cos(radians($${iLat})) * cos(radians(lat)) * cos(radians(lng) - radians($${iLng})) + sin(radians($${iLat})) * sin(radians(lat)))) <= $${iRad}`;
+        }
+
+        const orderClause = (lat != null && lng != null)
+            ? `ORDER BY (6371 * acos(cos(radians($${filterParams.length - 2})) * cos(radians(lat)) * cos(radians(lng) - radians($${filterParams.length - 1})) + sin(radians($${filterParams.length - 2})) * sin(radians(lat)))) ASC`
+            : 'ORDER BY verified_at DESC NULLS LAST, created_at DESC';
+
+        const listParams = [...filterParams, limit, offset];
         const { rows } = await pool.query(
             `SELECT ${PUBLIC_COLUMNS} FROM vets ${where}
-             ORDER BY verified_at DESC NULLS LAST, created_at DESC
-             LIMIT $${params.length - 1} OFFSET $${params.length}`,
-            params
+             ${orderClause}
+             LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+            listParams
         );
-        const countParams = city ? [city] : [];
         const { rows: countRows } = await pool.query(
-            `SELECT COUNT(*)::int AS total FROM vets ${where.replace(/LIMIT[\s\S]*|OFFSET[\s\S]*/, '')}`,
-            countParams
+            `SELECT COUNT(*)::int AS total FROM vets ${where}`,
+            filterParams
         );
         res.json({ vets: rows, total: countRows[0].total, page: Number(page), limit: Number(limit) });
     } catch (error) {

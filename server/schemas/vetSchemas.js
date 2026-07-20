@@ -49,9 +49,17 @@ export const nearbyVetsSchema = Joi.object({
 
 export const listVetsSchema = Joi.object({
     city: Joi.string().trim().max(80).optional(),
+    // Servicios: coma-separada. Filtro OR (vet que tenga al menos uno).
+    services: Joi.string().trim().max(500).optional(),
+    // Geoloc opcional. Si viene lat + lng se filtra por distancia; radius_km
+    // default 15. Los 3 son coherentes: si viene uno, los otros son requeridos
+    // para hacer haversine válido.
+    lat: Joi.number().min(-90).max(90).optional(),
+    lng: Joi.number().min(-180).max(180).optional(),
+    radius_km: Joi.number().min(0.1).max(500).default(15),
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20),
-});
+}).and('lat', 'lng'); // ambos o ninguno
 
 // Config de alertas por radio para la vet. Todos los campos opcionales pero
 // al menos uno tiene que venir.

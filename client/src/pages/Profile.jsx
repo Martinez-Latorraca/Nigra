@@ -6,6 +6,7 @@ import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
 import MimoLogo from '../components/MimoLogo';
+import MapSelector from '../components/MapSelector';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -112,6 +113,11 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
     const [uploadingKind, setUploadingKind] = useState(null);
     const [logoPreview, setLogoPreview] = useState(vet.logo_url || '');
     const [coverPreview, setCoverPreview] = useState(vet.cover_url || '');
+    // Ubicación en el mapa. Reutiliza MapSelector del reporte de pets.
+    // Inicializa con las coords guardadas o null (mapa vacío, esperando tap).
+    const [mapPosition, setMapPosition] = useState(
+        vet.lat != null && vet.lng != null ? { lat: vet.lat, lng: vet.lng } : null
+    );
 
     const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -152,6 +158,10 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                 ...otros,
             ];
             const body = { ...form, services };
+            if (mapPosition) {
+                body.lat = mapPosition.lat;
+                body.lng = mapPosition.lng;
+            }
             for (const k of Object.keys(body)) {
                 if (body[k] === '' || body[k] === null) delete body[k];
             }
@@ -250,6 +260,13 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                 <div className="md:col-span-2">
                     <div className={`${label} mb-2`}>Dirección</div>
                     <input className={input} value={form.address} onChange={update('address')} />
+                </div>
+                <div className="md:col-span-2">
+                    <div className={`${label} mb-2`}>Ubicación en el mapa</div>
+                    <MapSelector position={mapPosition} setPosition={setMapPosition} />
+                    <div className="mt-1 text-[11px] text-mimo-quiet">
+                        Sin marcar acá, tu vet no aparece en el filtro "Cerca mío" del directorio.
+                    </div>
                 </div>
                 <div className="md:col-span-2">
                     <div className={`${label} mb-2`}>Sobre la clínica</div>

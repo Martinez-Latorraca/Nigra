@@ -501,6 +501,31 @@ function Profile() {
         navigate('/app');
     };
 
+    // Soft-delete de la cuenta. Los datos quedan en la DB — si el user vuelve
+    // a loguearse o registrarse con el mismo email, la cuenta se reactiva.
+    // Los reportes de mascotas no se borran (siguen siendo útiles para la
+    // comunidad).
+    const handleDeleteAccount = async () => {
+        const ok = window.confirm(
+            'Eliminar tu cuenta.\n\n' +
+            'Tus datos y tus reportes se conservan y podés recuperarla ' +
+            'iniciando sesión con este mismo email más adelante.\n\n' +
+            '¿Continuar?'
+        );
+        if (!ok) return;
+        try {
+            const res = await fetch(`${API}/api/users/me`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error('No se pudo eliminar la cuenta.');
+            dispatch(clearCredentials());
+            navigate('/app');
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
     const handleOpenChat = (msg) => {
         dispatch(openChat({
             pet_id: msg.pet_id,
@@ -936,6 +961,7 @@ function Profile() {
                                 Cerrar sesión
                             </button>
                             <button
+                                onClick={handleDeleteAccount}
                                 className="w-full rounded-full bg-mimo-coral text-white py-4 text-sm font-display font-extrabold uppercase tracking-widest hover:bg-mimo-coralDark transition-colors"
                             >
                                 Eliminar cuenta

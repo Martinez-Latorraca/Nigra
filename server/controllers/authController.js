@@ -35,7 +35,39 @@ export const register = async (req, res) => {
         const isVet = account_type === 'vet';
 
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-        if (userCheck.rows.length > 0) {
+        const existing = userCheck.rows[0];
+
+        // Caso especial: el email pertenece a una cuenta soft-deleted. En vez
+        // de rechazar el registro o crear duplicado, reactivamos la cuenta con
+        // el nuevo password/name y limpiamos deleted_at. Si el user era vet
+        // owner, también reactivamos su vet. Los pets/mensajes históricos
+        // vuelven a estar accesibles.
+        if (existing && existing.deleted_at) {
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(password, salt);
+            await pool.query(
+                `UPDATE users
+                 SET name = $1, password = $2, deleted_at = NULL
+                 WHERE id = $3`,
+                [name, passwordHash, existing.id]
+            );
+            await pool.query(
+                'UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1',
+                [existing.id]
+            );
+            const restored = {
+                id: existing.id,
+                name,
+                email: existing.email,
+                role: existing.role,
+            };
+            // Si el email ya estaba verificado antes, no volvemos a pedirlo:
+            // la re-verificación no aporta seguridad porque quien controla el
+            // email es el mismo dueño.
+            return res.json({ success: true, user: restored, restored: true, requires_verification: !existing.email_verified });
+        }
+
+        if (existing) {
             return res.status(400).json({ error: 'El email ya está registrado' });
         }
 
@@ -179,11 +211,22 @@ export const login = async (req, res) => {
             });
         }
 
+        // Cuenta soft-deleted: la reactivamos y logueamos normal. El user
+        // acredita ser el dueño con el password, así que no hace falta un
+        // paso extra de confirmación.
+        let restored = false;
+        if (row.deleted_at) {
+            await pool.query('UPDATE users SET deleted_at = NULL WHERE id = $1', [row.id]);
+            await pool.query('UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1', [row.id]);
+            restored = true;
+        }
+
         const token = jwt.sign({ id: row.id }, JWT_SECRET, { expiresIn: '7d' });
 
         res.json({
             success: true,
             token,
+            restored,
             user: {
                 id: row.id,
                 name: row.name,

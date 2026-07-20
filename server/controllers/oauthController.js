@@ -138,7 +138,7 @@ const verifyFacebook = async (accessToken) => {
 
 const findUserByOAuth = async (provider, providerId) => {
     const q = await pool.query(
-        `SELECT u.id, u.name, u.email, u.role, u.avatar_url
+        `SELECT u.id, u.name, u.email, u.role, u.avatar_url, u.deleted_at
          FROM users u
          JOIN user_oauth_links l ON l.user_id = u.id
          WHERE l.provider = $1 AND l.provider_id = $2`,
@@ -149,10 +149,19 @@ const findUserByOAuth = async (provider, providerId) => {
 
 const findUserByEmail = async (email) => {
     const q = await pool.query(
-        'SELECT id, name, email, role, avatar_url, email_verified FROM users WHERE email = $1',
+        'SELECT id, name, email, role, avatar_url, email_verified, deleted_at FROM users WHERE email = $1',
         [email]
     );
     return q.rows[0] || null;
+};
+
+// El OAuth acredita al dueño del email, así que igual que en el login por
+// password, si la cuenta estaba soft-deleted la reactivamos silenciosamente.
+const reactivateIfDeleted = async (user) => {
+    if (!user?.deleted_at) return user;
+    await pool.query('UPDATE users SET deleted_at = NULL WHERE id = $1', [user.id]);
+    await pool.query('UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1', [user.id]);
+    return { ...user, deleted_at: null };
 };
 
 const primaryProviderOfUser = async (userId) => {
@@ -180,11 +189,12 @@ const insertOAuthLink = async (userId, provider, providerId) => {
 const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
     // 1) Ya linkeado a este exact (provider, provider_id).
     const linked = await findUserByOAuth(provider, providerId);
-    if (linked) return linked;
+    if (linked) return await reactivateIfDeleted(linked);
 
     // 2) Existe user con este email → intentar auto-link (solo Google/Apple).
     if (email) {
-        const byEmail = await findUserByEmail(email);
+        const byEmailRaw = await findUserByEmail(email);
+        const byEmail = await reactivateIfDeleted(byEmailRaw);
         if (byEmail) {
             if (!PROVIDER_VERIFIES_EMAIL[provider] || !byEmail.email_verified) {
                 const existingProvider = await primaryProviderOfUser(byEmail.id);

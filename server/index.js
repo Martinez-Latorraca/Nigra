@@ -340,6 +340,12 @@ async function ensureSchema() {
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_lng DOUBLE PRECISION');
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_location_at TIMESTAMP');
         await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_nearby BOOLEAN NOT NULL DEFAULT false');
+        // Soft delete de cuentas. NULL = activo, timestamp = eliminado. Todas
+        // las queries de auth (login/register) y directorio deben respetarlo.
+        // El user puede reactivarse loguéandose (email/pass o OAuth) o
+        // registrándose de nuevo con el mismo email.
+        await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP');
+        await pool.query('ALTER TABLE vets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP');
         // Granular: separar perdidas / encontradas y permitir radio configurable
         // (misma UX que las vets). Backfilleamos desde notify_nearby así los que
         // ya habían activado alertas quedan igual.

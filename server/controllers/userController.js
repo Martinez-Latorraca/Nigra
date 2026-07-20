@@ -67,11 +67,17 @@ export const getMe = async (req, res) => {
     try {
         const userId = req.user.id;
         const { rows } = await pool.query(
-            'SELECT id, name, email, role, avatar_url, notify_nearby, notify_lost, notify_found, notify_radius_km FROM users WHERE id = $1',
+            'SELECT id, name, email, role, avatar_url, notify_nearby, notify_lost, notify_found, notify_radius_km, deleted_at FROM users WHERE id = $1',
             [userId]
         );
         if (rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
-        res.json(rows[0]);
+        // Si la cuenta fue soft-deleted, el frontend debe desloguear.
+        // (El JWT sigue firmado pero ya no representa una cuenta activa.)
+        if (rows[0].deleted_at) {
+            return res.status(401).json({ error: 'Cuenta eliminada', code: 'account_deleted' });
+        }
+        const { deleted_at, ...safe } = rows[0];
+        res.json(safe);
     } catch (error) {
         console.error('getMe error:', error);
         res.status(500).json({ error: 'Error obteniendo perfil' });
@@ -95,6 +101,28 @@ export const updateMe = async (req, res) => {
     } catch (error) {
         console.error('updateMe error:', error);
         res.status(500).json({ error: 'Error actualizando perfil' });
+    }
+};
+
+// DELETE /api/users/me — soft delete. Marca users.deleted_at y, si el user
+// era owner de una vet, también marca vets.deleted_at (queda oculta del
+// directorio). Los pets y mensajes NO se tocan: la mascota puede seguir
+// necesitando la visibilidad. Volver a loguearse o registrarse con el mismo
+// email reactiva todo.
+export const deleteMe = async (req, res) => {
+    try {
+        await pool.query(
+            'UPDATE users SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL',
+            [req.user.id]
+        );
+        await pool.query(
+            'UPDATE vets SET deleted_at = NOW() WHERE owner_user_id = $1 AND deleted_at IS NULL',
+            [req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('deleteMe error:', error);
+        res.status(500).json({ error: 'No se pudo eliminar la cuenta.' });
     }
 };
 

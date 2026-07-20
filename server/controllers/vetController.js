@@ -294,7 +294,7 @@ export const listVets = async (req, res) => {
         const { city, page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
         const params = [];
-        let where = 'WHERE approved = TRUE';
+        let where = 'WHERE approved = TRUE AND deleted_at IS NULL';
         if (city) {
             params.push(city);
             where += ` AND LOWER(city) = LOWER($${params.length})`;
@@ -327,7 +327,7 @@ export const nearbyVets = async (req, res) => {
                 (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
                     + sin(radians($1)) * sin(radians(lat)))) AS distance_km
              FROM vets
-             WHERE approved = TRUE AND lat IS NOT NULL AND lng IS NOT NULL
+             WHERE approved = TRUE AND deleted_at IS NULL AND lat IS NOT NULL AND lng IS NOT NULL
                 AND (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
                     + sin(radians($1)) * sin(radians(lat)))) <= $3
              ORDER BY distance_km ASC
@@ -345,7 +345,7 @@ export const nearbyVets = async (req, res) => {
 export const getVetBySlug = async (req, res) => {
     try {
         const { rows } = await pool.query(
-            `SELECT ${PUBLIC_COLUMNS} FROM vets WHERE slug = $1 AND approved = TRUE`,
+            `SELECT ${PUBLIC_COLUMNS} FROM vets WHERE slug = $1 AND approved = TRUE AND deleted_at IS NULL`,
             [req.params.slug]
         );
         if (rows.length === 0) return res.status(404).json({ error: 'Veterinaria no encontrada.' });

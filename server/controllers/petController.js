@@ -23,6 +23,7 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
             SELECT u.id, u.name, u.push_token
             FROM users u
             WHERE u.${optInColumn} = true
+              AND u.deleted_at IS NULL
               AND u.last_lat IS NOT NULL
               AND u.last_lng IS NOT NULL
               AND u.last_location_at > NOW() - INTERVAL '30 days'
@@ -115,6 +116,8 @@ export async function notifyNearbyVets({ pool, io, sendExpoPush, newPet, reporte
             FROM vets v
             JOIN users u ON u.id = v.owner_user_id
             WHERE v.approved = TRUE
+              AND v.deleted_at IS NULL
+              AND u.deleted_at IS NULL
               AND ${optInField} = TRUE
               AND v.lat IS NOT NULL
               AND v.lng IS NOT NULL

@@ -10,12 +10,14 @@ import {
     uploadMyAvatar,
     updateNotifyNearby,
     getMe,
+    deleteMe,
 } from '../controllers/userController.js';
 
 const router = express.Router();
 
 router.get('/me', authenticateToken, getMe);
 router.patch('/me', authenticateToken, validate(updateMeSchema), updateMe);
+router.delete('/me', authenticateToken, deleteMe);
 router.post('/me/avatar', authenticateToken, upload.single('image'), uploadMyAvatar);
 router.post('/push-token', authenticateToken, registerPushToken);
 router.patch('/location', authenticateToken, validate(updateLocationSchema), updateLocation);

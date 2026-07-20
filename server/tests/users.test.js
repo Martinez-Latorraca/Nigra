@@ -157,6 +157,45 @@ describe('Users', () => {
         });
     });
 
+    describe('GET /api/users/me con soft-delete', () => {
+        it('devuelve 401 code=account_deleted si deleted_at != NULL', async () => {
+            pool.query.mockResolvedValueOnce({
+                rows: [{
+                    id: 7, name: 'Ana', email: 'a@a.com', role: 'user', avatar_url: null,
+                    notify_nearby: false, notify_lost: false, notify_found: false,
+                    notify_radius_km: 5,
+                    deleted_at: '2026-07-20T00:00:00.000Z',
+                }],
+            });
+            const res = await request(buildApp()).get('/api/users/me').set('x-test-user', '7');
+            expect(res.status).toBe(401);
+            expect(res.body.code).toBe('account_deleted');
+        });
+    });
+
+    describe('DELETE /api/users/me', () => {
+        it('requiere auth', async () => {
+            const res = await request(buildApp()).delete('/api/users/me');
+            expect(res.status).toBe(401);
+        });
+
+        it('setea deleted_at en users y en la vet asociada', async () => {
+            pool.query.mockResolvedValueOnce({ rowCount: 1 }); // update users
+            pool.query.mockResolvedValueOnce({ rowCount: 1 }); // update vets
+            const res = await request(buildApp()).delete('/api/users/me').set('x-test-user', '7');
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(pool.query).toHaveBeenNthCalledWith(1,
+                expect.stringMatching(/UPDATE users SET deleted_at = NOW\(\)/),
+                [7]
+            );
+            expect(pool.query).toHaveBeenNthCalledWith(2,
+                expect.stringMatching(/UPDATE vets SET deleted_at = NOW\(\)/),
+                [7]
+            );
+        });
+    });
+
     describe('PATCH /api/users/me', () => {
         it('requiere auth', async () => {
             const res = await request(buildApp())

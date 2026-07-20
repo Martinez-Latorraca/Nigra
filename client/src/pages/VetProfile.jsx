@@ -16,13 +16,13 @@ const HOURS_ORDER = [
 function ContactRow({ icon, label, value, href }) {
     if (!value) return null;
     const content = (
-        <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 transition-all hover:border-gray-200">
+        <div className="flex items-center gap-3 rounded-2xl border border-mimo-muted bg-mimo-warm px-4 py-3 transition-all hover:border-mimo-muted">
             <span className="text-lg">{icon}</span>
             <div className="min-w-0 flex-1">
-                <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                <div className="text-[9px] font-bold uppercase tracking-widest text-mimo-quiet">
                     {label}
                 </div>
-                <div className="truncate text-sm font-semibold text-gray-900">{value}</div>
+                <div className="truncate text-sm font-semibold text-mimo-noche">{value}</div>
             </div>
         </div>
     );
@@ -51,8 +51,8 @@ export default function VetProfile() {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-[#F5F5F7]">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 animate-pulse">
+            <div className="flex min-h-screen items-center justify-center bg-mimo-muted">
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">
                     Cargando
                 </div>
             </div>
@@ -61,10 +61,10 @@ export default function VetProfile() {
 
     if (error || !vet) {
         return (
-            <div className="flex min-h-screen flex-col items-center justify-center bg-[#F5F5F7] p-6 text-center">
-                <h1 className="mb-4 text-6xl font-semibold text-black">404.</h1>
-                <p className="mb-10 text-gray-500">{error}</p>
-                <Link to="/vets" className="rounded-full bg-black px-8 py-3 font-semibold text-white">
+            <div className="flex min-h-screen flex-col items-center justify-center bg-mimo-muted p-6 text-center">
+                <h1 className="mb-4 font-display font-black text-6xl text-mimo-noche">404.</h1>
+                <p className="mb-10 text-mimo-ink">{error}</p>
+                <Link to="/vets" className="rounded-full bg-mimo-coral px-8 py-3 text-sm font-display font-extrabold uppercase tracking-widest text-white hover:bg-mimo-coralDark shadow-mimo">
                     Volver al directorio
                 </Link>
             </div>
@@ -77,10 +77,10 @@ export default function VetProfile() {
         : null;
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-20 font-sans text-gray-900">
+        <div className="min-h-screen bg-mimo-muted pb-20 font-sans text-mimo-noche">
             {/* Hero */}
             <div className="relative w-full">
-                <div className="h-52 w-full overflow-hidden bg-gradient-to-br from-[#FFF6F0] to-[#F0EBE8] md:h-72">
+                <div className="h-52 w-full overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted md:h-72">
                     {vet.cover_url ? (
                         <img
                             src={vet.cover_url}
@@ -90,43 +90,43 @@ export default function VetProfile() {
                     ) : null}
                 </div>
                 <div className="mx-auto -mt-16 w-full max-w-5xl px-6">
-                    <div className="flex flex-col gap-6 rounded-[40px] border border-gray-100 bg-white p-8 shadow-[0_15px_40px_rgba(0,0,0,0.05)] md:flex-row md:items-end md:p-10">
+                    <div className="flex flex-col gap-6 rounded-[40px] border border-mimo-muted bg-mimo-warm p-8 shadow-[0_15px_40px_rgba(0,0,0,0.05)] md:flex-row md:items-end md:p-10">
                         <div className="-mt-16 md:mt-0">
                             {vet.logo_url ? (
                                 <img
                                     src={vet.logo_url}
                                     alt=""
-                                    className="h-24 w-24 rounded-3xl object-cover ring-4 ring-white shadow-md bg-white"
+                                    className="h-24 w-24 rounded-3xl object-cover ring-4 ring-white shadow-md bg-mimo-warm"
                                 />
                             ) : (
-                                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-[#FF5C6C] ring-4 ring-white shadow-md text-3xl font-bold text-white">
+                                <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-mimo-coral ring-4 ring-white shadow-md text-3xl font-bold text-white">
                                     {vet.name.charAt(0)}
                                 </div>
                             )}
                         </div>
                         <div className="flex-1">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
                                     Veterinaria
                                 </span>
                                 {isSponsor && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFB830] px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
+                                    <span className="inline-flex items-center gap-1 rounded-full bg-mimo-sol px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
                                         ⭐ Socio Mimo
                                     </span>
                                 )}
                             </div>
-                            <h1 className="text-3xl font-semibold tracking-tight text-black md:text-4xl">
+                            <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche md:text-5xl leading-none">
                                 {vet.name}
                             </h1>
                             {(vet.city || vet.address) && (
-                                <p className="mt-2 text-sm font-medium text-gray-500">
+                                <p className="mt-2 text-sm font-medium text-mimo-ink">
                                     📍 {[vet.address, vet.city].filter(Boolean).join(' · ')}
                                 </p>
                             )}
                         </div>
                         <Link
                             to="/vets"
-                            className="rounded-full border border-gray-200 bg-white px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-gray-500 transition-all hover:bg-gray-50"
+                            className="rounded-full border border-mimo-muted bg-mimo-warm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-mimo-ink transition-all hover:bg-mimo-muted"
                         >
                             ← Directorio
                         </Link>
@@ -139,26 +139,26 @@ export default function VetProfile() {
                 {/* Columna principal */}
                 <div className="space-y-6 md:col-span-2">
                     {vet.bio && (
-                        <div className="rounded-[32px] border border-gray-100 bg-white p-8">
-                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                        <div className="rounded-[32px] border border-mimo-muted bg-mimo-warm p-8">
+                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">
                                 Sobre nosotros
                             </span>
-                            <p className="whitespace-pre-line text-base leading-relaxed text-gray-700">
+                            <p className="whitespace-pre-line text-base leading-relaxed text-mimo-ink">
                                 {vet.bio}
                             </p>
                         </div>
                     )}
 
                     {vet.services && vet.services.length > 0 && (
-                        <div className="rounded-[32px] border border-gray-100 bg-white p-8">
-                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                        <div className="rounded-[32px] border border-mimo-muted bg-mimo-warm p-8">
+                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">
                                 Servicios
                             </span>
                             <div className="flex flex-wrap gap-2">
                                 {vet.services.map((s) => (
                                     <span
                                         key={s}
-                                        className="rounded-full bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700"
+                                        className="rounded-full bg-mimo-muted px-4 py-2 text-sm font-semibold text-mimo-ink"
                                     >
                                         {s}
                                     </span>
@@ -168,8 +168,8 @@ export default function VetProfile() {
                     )}
 
                     {vet.hours && Object.keys(vet.hours).length > 0 && (
-                        <div className="rounded-[32px] border border-gray-100 bg-white p-8">
-                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                        <div className="rounded-[32px] border border-mimo-muted bg-mimo-warm p-8">
+                            <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">
                                 Horarios
                             </span>
                             <div className="space-y-2">
@@ -179,10 +179,10 @@ export default function VetProfile() {
                                     return (
                                         <div
                                             key={k}
-                                            className="flex justify-between border-b border-gray-50 pb-2 text-sm"
+                                            className="flex justify-between border-b border-mimo-muted pb-2 text-sm"
                                         >
-                                            <span className="font-semibold text-gray-700">{label}</span>
-                                            <span className="text-gray-500">{v}</span>
+                                            <span className="font-semibold text-mimo-ink">{label}</span>
+                                            <span className="text-mimo-ink">{v}</span>
                                         </div>
                                     );
                                 })}

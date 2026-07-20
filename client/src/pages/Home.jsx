@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+
+const API = import.meta.env.VITE_API_URL || '';
 
 function Home() {
     const navigate = useNavigate();
@@ -8,6 +11,21 @@ function Home() {
     const handleReportClick = () => {
         token ? navigate('/reportar') : navigate('/login');
     };
+
+    // Vets destacadas para la card de descubribilidad. Fetch fire-and-forget:
+    // si falla, la card muestra iniciales genéricas — no bloquea el home.
+    const [vetsPreview, setVetsPreview] = useState([]);
+    const [vetsTotal, setVetsTotal] = useState(0);
+    useEffect(() => {
+        fetch(`${API}/api/vets?limit=4`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (!data) return;
+                setVetsPreview(data.vets || []);
+                setVetsTotal(data.total || 0);
+            })
+            .catch(() => {});
+    }, []);
 
     // Data de ejemplo para reencuentros (Esto después vendría de tu DB)
     const successStories = [
@@ -51,7 +69,33 @@ function Home() {
                     </span>
                 </div>
 
-                {/* 2. Explorar (Ancho Completo) */}
+                {/* 2. Veterinarias aliadas (Ancho Completo) */}
+                <Link to="/vets" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
+                    <div className="flex-1">
+                        <h2 className="text-3xl font-semibold tracking-tight mb-2">Veterinarias aliadas.</h2>
+                        <p className="text-gray-400 text-lg leading-tight">Clínicas de tu zona que reciben alertas y ayudan a que las mascotas vuelvan a casa.</p>
+                    </div>
+
+                    {/* Stack de logos de vets reales (con fallback a inicial coral) */}
+                    <div className="flex -space-x-5">
+                        {(vetsPreview.length > 0 ? vetsPreview : Array(4).fill(null)).map((v, i) => (
+                            <div key={v?.id || i} className="w-16 h-16 rounded-full border-4 border-white bg-mimo-coral overflow-hidden shadow-lg transition-transform group-hover:translate-y-[-5px] flex items-center justify-center text-white font-black text-xl" style={{ transitionDelay: `${i * 50}ms` }}>
+                                {v?.logo_url ? (
+                                    <img src={v.logo_url} alt={v.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span>{v?.name?.charAt(0) || '🏥'}</span>
+                                )}
+                            </div>
+                        ))}
+                        {vetsTotal > 4 && (
+                            <div className="w-16 h-16 rounded-full border-4 border-white bg-black flex items-center justify-center text-white text-[10px] font-bold shadow-lg">
+                                +{vetsTotal - 4}
+                            </div>
+                        )}
+                    </div>
+                </Link>
+
+                {/* 3. Explorar (Ancho Completo) */}
                 <Link to="/pets" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
                     <div className="flex-1">
                         <h2 className="text-3xl font-semibold tracking-tight mb-2">Explorar Comunidad.</h2>

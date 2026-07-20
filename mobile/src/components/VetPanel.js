@@ -18,6 +18,22 @@ import { useTheme } from '../lib/theme';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
 
+// Debe coincidir con el catálogo del web (Profile.jsx SERVICE_CATALOG).
+const SERVICE_CATALOG = [
+  'Consultas',
+  'Vacunación',
+  'Cirugía',
+  'Urgencias 24h',
+  'Peluquería',
+  'Baño',
+  'Radiología',
+  'Ecografía',
+  'Laboratorio',
+  'Guardería',
+  'Adiestramiento',
+  'Atención a domicilio',
+];
+
 function VetEditForm({ vet, c, onClose, onSaved }) {
   const [form, setForm] = useState({
     name: vet.name || '',
@@ -29,7 +45,24 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
     city: vet.city || '',
     bio: vet.bio || '',
   });
-  const [servicesInput, setServicesInput] = useState((vet.services || []).join(', '));
+  // Servicios: catálogo (checkboxes) + "Otros" libre. Backward-compat con
+  // strings previos: los que no están en el catálogo caen en Otros.
+  const initialServices = vet.services || [];
+  const catalogSet = new Set(SERVICE_CATALOG);
+  const [servicesSelected, setServicesSelected] = useState(
+    () => new Set(initialServices.filter((s) => catalogSet.has(s)))
+  );
+  const [servicesOther, setServicesOther] = useState(
+    initialServices.filter((s) => !catalogSet.has(s)).join(', ')
+  );
+  const toggleService = (s) => {
+    setServicesSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  };
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -76,10 +109,11 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
     setMsg('');
     setErr('');
     try {
-      const services = servicesInput
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const otros = servicesOther.split(',').map((s) => s.trim()).filter(Boolean);
+      const services = [
+        ...SERVICE_CATALOG.filter((s) => servicesSelected.has(s)),
+        ...otros,
+      ];
       const body = { ...form, services };
       for (const k of Object.keys(body)) {
         if (body[k] === '' || body[k] === null) delete body[k];
@@ -182,12 +216,42 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
       </View>
 
       <View style={{ marginTop: 10 }}>
-        <Text style={[formStyles.label, { color: c.subtitle }]}>SERVICIOS (separá por coma)</Text>
+        <Text style={[formStyles.label, { color: c.subtitle }]}>SERVICIOS</Text>
+        <View style={formStyles.chipsRow}>
+          {SERVICE_CATALOG.map((s) => {
+            const active = servicesSelected.has(s);
+            return (
+              <Pressable
+                key={s}
+                onPress={() => toggleService(s)}
+                style={[
+                  formStyles.chip,
+                  active
+                    ? { backgroundColor: '#FF5C6C', borderColor: '#FF5C6C' }
+                    : { backgroundColor: c.bg, borderColor: c.cardBorder },
+                ]}
+              >
+                <Text
+                  style={[
+                    formStyles.chipText,
+                    { color: active ? '#fff' : c.title },
+                  ]}
+                >
+                  {active ? '✓ ' : ''}{s}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={{ marginTop: 10 }}>
+        <Text style={[formStyles.label, { color: c.subtitle }]}>OTROS (separá por coma)</Text>
         <TextInput
           style={inputStyle}
-          value={servicesInput}
-          onChangeText={setServicesInput}
-          placeholder="Consultas, Vacunación, Cirugía…"
+          value={servicesOther}
+          onChangeText={setServicesOther}
+          placeholder="Ej: Homeopatía, Nutrición, Odontología…"
           placeholderTextColor={c.subtitle}
         />
       </View>
@@ -653,4 +717,12 @@ const formStyles = StyleSheet.create({
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   savedMsg: { textAlign: 'center', fontSize: 12, marginTop: 8, fontWeight: '700' },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+  chip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  chipText: { fontSize: 12, fontWeight: '700' },
 });

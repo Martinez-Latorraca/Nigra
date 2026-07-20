@@ -11,6 +11,25 @@ const API = import.meta.env.VITE_API_URL || '';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada', resolved: 'Reencontrada' };
 
+// Catálogo de servicios comunes de una veterinaria. El vet marca los que
+// ofrece con checkboxes; lo que no está en la lista se agrega libre en
+// 'Otros'. Los strings guardados hoy que no coincidan con el catálogo
+// migran silenciosamente a 'Otros' (backward-compat).
+const SERVICE_CATALOG = [
+    'Consultas',
+    'Vacunación',
+    'Cirugía',
+    'Urgencias 24h',
+    'Peluquería',
+    'Baño',
+    'Radiología',
+    'Ecografía',
+    'Laboratorio',
+    'Guardería',
+    'Adiestramiento',
+    'Atención a domicilio',
+];
+
 // ------------------------------------------------------------------------- //
 // Sub-componentes locales
 // ------------------------------------------------------------------------- //
@@ -68,7 +87,25 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
         city: vet.city || '',
         bio: vet.bio || '',
     });
-    const [servicesInput, setServicesInput] = useState((vet.services || []).join(', '));
+    // Servicios: separamos los que están en el catálogo (checkboxes) de los que
+    // no (van al textarea 'Otros'). Los cargados hoy libres se detectan por
+    // exclusión y quedan editables en 'Otros'.
+    const initialServices = vet.services || [];
+    const catalogSet = new Set(SERVICE_CATALOG);
+    const [servicesSelected, setServicesSelected] = useState(
+        () => new Set(initialServices.filter((s) => catalogSet.has(s)))
+    );
+    const [servicesOther, setServicesOther] = useState(
+        initialServices.filter((s) => !catalogSet.has(s)).join(', ')
+    );
+    const toggleService = (s) => {
+        setServicesSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(s)) next.delete(s);
+            else next.add(s);
+            return next;
+        });
+    };
     const [saving, setSaving] = useState(false);
     const [msg, setMsg] = useState('');
     const [err, setErr] = useState('');
@@ -107,7 +144,13 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
         setMsg('');
         setErr('');
         try {
-            const services = servicesInput.split(',').map((s) => s.trim()).filter(Boolean);
+            const otros = servicesOther.split(',').map((s) => s.trim()).filter(Boolean);
+            // Preservamos el orden del catálogo + append de otros para tener
+            // un output estable ante el usuario.
+            const services = [
+                ...SERVICE_CATALOG.filter((s) => servicesSelected.has(s)),
+                ...otros,
+            ];
             const body = { ...form, services };
             for (const k of Object.keys(body)) {
                 if (body[k] === '' || body[k] === null) delete body[k];
@@ -218,13 +261,33 @@ function VetEditForm({ vet, token, onClose, onSaved }) {
                     />
                 </div>
                 <div className="md:col-span-2">
-                    <div className={`${label} mb-2`}>Servicios (separá por coma)</div>
-                    <input
-                        className={input}
-                        value={servicesInput}
-                        onChange={(e) => setServicesInput(e.target.value)}
-                        placeholder="Consultas, Vacunación, Cirugía…"
-                    />
+                    <div className={`${label} mb-2`}>Servicios</div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {SERVICE_CATALOG.map((s) => {
+                            const active = servicesSelected.has(s);
+                            return (
+                                <button
+                                    type="button"
+                                    key={s}
+                                    onClick={() => toggleService(s)}
+                                    className={`rounded-2xl border px-3 py-2.5 text-sm font-semibold text-left transition-colors ${active
+                                        ? 'border-mimo-coral bg-mimo-coral text-white'
+                                        : 'border-mimo-muted bg-mimo-muted text-mimo-ink hover:border-mimo-coral/40'}`}
+                                >
+                                    {active ? '✓ ' : ''}{s}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-4">
+                        <div className={`${label} mb-2`}>Otros (separá por coma)</div>
+                        <input
+                            className={input}
+                            value={servicesOther}
+                            onChange={(e) => setServicesOther(e.target.value)}
+                            placeholder="Ej: Homeopatía, Nutrición, Odontología…"
+                        />
+                    </div>
                 </div>
             </div>
 

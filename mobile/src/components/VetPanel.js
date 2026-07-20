@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../lib/api';
 import { useTheme } from '../lib/theme';
+import MapPicker from './MapPicker';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
 
@@ -69,6 +70,12 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
   const [uploadingKind, setUploadingKind] = useState(null);
   const [logoUrl, setLogoUrl] = useState(vet.logo_url || '');
   const [coverUrl, setCoverUrl] = useState(vet.cover_url || '');
+  // Ubicación en el mapa. Reutiliza MapPicker (webview con leaflet) del
+  // reporte de mascotas. Sin marcar, la vet queda fuera del filtro "Cerca
+  // mío" del directorio — el editor lo aclara.
+  const [mapPosition, setMapPosition] = useState(
+    vet.lat != null && vet.lng != null ? { lat: vet.lat, lng: vet.lng } : null
+  );
 
   const update = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -115,6 +122,10 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
         ...otros,
       ];
       const body = { ...form, services };
+      if (mapPosition) {
+        body.lat = mapPosition.lat;
+        body.lng = mapPosition.lng;
+      }
       for (const k of Object.keys(body)) {
         if (body[k] === '' || body[k] === null) delete body[k];
       }
@@ -202,6 +213,20 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
           />
         </View>
       ))}
+
+      <View style={{ marginTop: 10 }}>
+        <Text style={[formStyles.label, { color: c.subtitle }]}>UBICACIÓN EN EL MAPA</Text>
+        <View style={formStyles.mapWrap}>
+          <MapPicker
+            value={mapPosition}
+            onChange={(lat, lng) => setMapPosition({ lat, lng })}
+            style={{ flex: 1 }}
+          />
+        </View>
+        <Text style={[formStyles.hint, { color: c.subtitle }]}>
+          Sin marcar acá, tu vet no aparece en el filtro "Cerca mío" del directorio.
+        </Text>
+      </View>
 
       <View style={{ marginTop: 10 }}>
         <Text style={[formStyles.label, { color: c.subtitle }]}>SOBRE LA CLÍNICA</Text>
@@ -725,4 +750,12 @@ const formStyles = StyleSheet.create({
     paddingVertical: 8,
   },
   chipText: { fontSize: 12, fontWeight: '700' },
+  mapWrap: {
+    height: 240,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F0EBE8',
+    marginTop: 2,
+  },
+  hint: { fontSize: 11, marginTop: 6, lineHeight: 15 },
 });

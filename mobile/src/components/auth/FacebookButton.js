@@ -21,7 +21,8 @@ export default function FacebookButton({ onStart, onSuccess, onError, onCancel, 
       onSuccess(data);
     } catch (error) {
       onError(
-        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Facebook'
+        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Facebook',
+        error.response?.data?.code
       );
     }
   };

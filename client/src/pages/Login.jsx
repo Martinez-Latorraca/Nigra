@@ -22,6 +22,7 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [notVerified, setNotVerified] = useState(false);
+    const [accountDeleted, setAccountDeleted] = useState(false);
     const [resendMsg, setResendMsg] = useState('');
     const [loading, setLoading] = useState(false);
     const dispatch = useDispatch();
@@ -34,6 +35,7 @@ function Login() {
         e.preventDefault();
         setError('');
         setNotVerified(false);
+        setAccountDeleted(false);
         setResendMsg('');
         setLoading(true);
 
@@ -60,6 +62,11 @@ function Login() {
 
             if (response.status === 403 && data.code === 'email_not_verified') {
                 setNotVerified(true);
+                setError('');
+                return;
+            }
+            if (response.status === 403 && data.code === 'account_deleted') {
+                setAccountDeleted(true);
                 setError('');
                 return;
             }
@@ -145,6 +152,20 @@ function Login() {
                                 Reenviar mail de verificación
                             </button>
                             {resendMsg ? <div className="text-center">{resendMsg}</div> : null}
+                        </div>
+                    )}
+
+                    {accountDeleted && (
+                        <div className="p-5 bg-mimo-coral/10 rounded-2xl text-xs text-mimo-coral flex flex-col gap-3">
+                            <div className="font-semibold">
+                                Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente con este mismo email — tus reportes y datos vuelven.
+                            </div>
+                            <Link
+                                to="/register"
+                                className="rounded-full bg-mimo-coral text-white font-semibold py-2.5 px-4 text-center hover:bg-mimo-coralDark transition-all"
+                            >
+                                Ir a crear cuenta
+                            </Link>
                         </div>
                     )}
 

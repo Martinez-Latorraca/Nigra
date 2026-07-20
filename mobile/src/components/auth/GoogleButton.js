@@ -34,7 +34,8 @@ export default function GoogleButton({ onStart, onSuccess, onError, onCancel, lo
         return;
       }
       onError(
-        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Google'
+        error.response?.data?.error || error.message || 'No se pudo iniciar sesión con Google',
+        error.response?.data?.code
       );
     }
   };

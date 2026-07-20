@@ -26,6 +26,12 @@ function Register() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [registered, setRegistered] = useState(false);
+    // Estado del post-register: `restored` = la cuenta ya existía soft-deleted
+    // y la reactivamos; `requiresVerification` = todavía hay que verificar el
+    // email (típico de un signup nuevo, o un restore de una cuenta que nunca
+    // había verificado).
+    const [restored, setRestored] = useState(false);
+    const [requiresVerification, setRequiresVerification] = useState(false);
 
     const navigate = useNavigate();
 
@@ -51,8 +57,12 @@ function Register() {
                 throw new Error(data.error || 'Error al crear la cuenta');
             }
 
-            // El user quedó con email_verified=false. Le mostramos una pantalla
-            // que le pide revisar su email antes de iniciar sesión.
+            // Un register puede resultar en:
+            //  · signup nuevo: requires_verification=true → "revisá tu email".
+            //  · restore de cuenta soft-deleted que ya había verificado antes:
+            //    requires_verification=false → "recuperaste tu cuenta, andá al login".
+            setRestored(!!data.restored);
+            setRequiresVerification(!!data.requires_verification);
             setRegistered(true);
         } catch (err) {
             setError(err.message);
@@ -60,6 +70,30 @@ function Register() {
             setLoading(false);
         }
     };
+
+    if (registered && restored && !requiresVerification) {
+        // Recuperación de una cuenta soft-deleted que ya tenía email verificado.
+        // No hace falta re-verificar.
+        return (
+            <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
+                <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
+                    <div className="text-5xl mb-4">🐾</div>
+                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">
+                        Recuperaste tu cuenta.
+                    </h2>
+                    <p className="text-gray-500 leading-relaxed mb-8">
+                        Tus reportes y datos vuelven intactos. Iniciá sesión con tu nueva contraseña.
+                    </p>
+                    <Link
+                        to="/login"
+                        className="inline-block w-full py-4 bg-mimo-coral hover:bg-mimo-coralDark text-white font-semibold rounded-full transition-all shadow-sm"
+                    >
+                        Ir al login
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     if (registered) {
         return (

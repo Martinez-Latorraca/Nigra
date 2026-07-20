@@ -29,6 +29,8 @@ export default function Register() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   const canSubmit =
     name.trim() && email.trim() && password.length >= 6 && password === passwordConfirm;
@@ -41,7 +43,9 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await api.post('/api/auth/register', { name, email, password, account_type: accountType });
+      const { data } = await api.post('/api/auth/register', { name, email, password, account_type: accountType });
+      setRestored(!!data.restored);
+      setRequiresVerification(!!data.requires_verification);
       setRegistered(true);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear la cuenta');
@@ -57,6 +61,22 @@ export default function Register() {
       // silencioso — el server siempre devuelve 200
     }
   };
+
+  if (registered && restored && !requiresVerification) {
+    return (
+      <AuthScreen
+        title="Recuperaste tu cuenta"
+        subtitle="Tus reportes y datos vuelven intactos. Iniciá sesión con tu nueva contraseña."
+      >
+        <Pressable
+          style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
+          onPress={() => router.replace('/login')}
+        >
+          <Text style={[styles.buttonText, { color: c.primaryText }]}>Ir al login</Text>
+        </Pressable>
+      </AuthScreen>
+    );
+  }
 
   if (registered) {
     return (

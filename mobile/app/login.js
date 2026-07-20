@@ -36,6 +36,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [notVerified, setNotVerified] = useState(false);
+  const [accountDeleted, setAccountDeleted] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
   const [loadingProvider, setLoadingProvider] = useState(null);
 
@@ -50,8 +51,12 @@ export default function Login() {
       router.replace('/home');
     }
   };
-  const handleSocialError = (msg) => {
-    setError(msg);
+  const handleSocialError = (msg, code) => {
+    if (code === 'account_deleted') {
+      setAccountDeleted(true);
+    } else {
+      setError(msg);
+    }
     setLoadingProvider(null);
   };
   const handleSocialCancel = () => setLoadingProvider(null);
@@ -63,6 +68,7 @@ export default function Login() {
   const handleEmailLogin = async () => {
     setError('');
     setNotVerified(false);
+    setAccountDeleted(false);
     setResendMsg('');
     setLoadingProvider('email');
     try {
@@ -78,6 +84,8 @@ export default function Login() {
       const code = err.response?.data?.code;
       if (status === 403 && code === 'email_not_verified') {
         setNotVerified(true);
+      } else if (status === 403 && code === 'account_deleted') {
+        setAccountDeleted(true);
       } else {
         setError(err.response?.data?.error || 'No se pudo iniciar sesión');
       }
@@ -151,6 +159,20 @@ export default function Login() {
             </Text>
           </Pressable>
           {resendMsg ? <Text style={styles.notVerifiedMsg}>{resendMsg}</Text> : null}
+        </View>
+      ) : null}
+
+      {accountDeleted ? (
+        <View style={styles.accountDeleted}>
+          <Text style={styles.accountDeletedTitle}>
+            Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente con este mismo email.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/register')}
+            style={[styles.button, { backgroundColor: '#FF5C6C', marginTop: 10 }]}
+          >
+            <Text style={[styles.buttonText, { color: '#fff' }]}>Ir a crear cuenta</Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -242,6 +264,13 @@ const styles = StyleSheet.create({
   },
   notVerifiedTitle: { color: '#9A3412', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   notVerifiedMsg: { color: '#9A3412', fontSize: 12, textAlign: 'center', marginTop: 8 },
+  accountDeleted: {
+    backgroundColor: '#FEE2E2',
+    padding: 16,
+    borderRadius: 16,
+    marginTop: 12,
+  },
+  accountDeletedTitle: { color: '#B91C1C', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   button: {
     borderRadius: 999,
     padding: 16,

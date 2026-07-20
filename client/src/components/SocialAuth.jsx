@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { setCredentials } from '../store/userSlice';
 
 // Whitelist replicada del Login: solo permitimos redirects a paths internos
@@ -41,9 +41,11 @@ export default function SocialAuth() {
     const redirectTo = safeRedirect(searchParams.get('redirect'));
     const googleBtnRef = useRef(null);
     const [error, setError] = useState('');
+    const [accountDeleted, setAccountDeleted] = useState(false);
 
     const exchange = async (path, body) => {
         setError('');
+        setAccountDeleted(false);
         try {
             const res = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
                 method: 'POST',
@@ -51,6 +53,10 @@ export default function SocialAuth() {
                 body: JSON.stringify(body),
             });
             const data = await res.json();
+            if (res.status === 403 && data.code === 'account_deleted') {
+                setAccountDeleted(true);
+                return;
+            }
             if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
             dispatch(setCredentials({ user: data.user, token: data.token }));
             if (redirectTo) {
@@ -144,6 +150,20 @@ export default function SocialAuth() {
             {error && (
                 <div className="mt-4 p-3 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold text-center">
                     {error}
+                </div>
+            )}
+
+            {accountDeleted && (
+                <div className="mt-4 p-4 bg-mimo-coral/10 rounded-2xl text-xs text-mimo-coral flex flex-col gap-3">
+                    <div className="font-semibold text-center">
+                        Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente con este mismo email.
+                    </div>
+                    <Link
+                        to="/register"
+                        className="rounded-full bg-mimo-coral text-white font-semibold py-2.5 px-4 text-center hover:bg-mimo-coralDark transition-all"
+                    >
+                        Ir a crear cuenta
+                    </Link>
                 </div>
             )}
         </div>

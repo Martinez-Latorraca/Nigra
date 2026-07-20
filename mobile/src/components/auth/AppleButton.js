@@ -36,7 +36,7 @@ export default function AppleButton({ onStart, onSuccess, onError, onCancel, dis
         onCancel();
         return;
       }
-      onError(err.response?.data?.error || err.message || 'No se pudo iniciar sesión con Apple');
+      onError(err.response?.data?.error || err.message || 'No se pudo iniciar sesión con Apple', err.response?.data?.code);
     }
   };
 

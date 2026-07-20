@@ -211,14 +211,15 @@ export const login = async (req, res) => {
             });
         }
 
-        // Cuenta soft-deleted: la reactivamos y logueamos normal. El user
-        // acredita ser el dueño con el password, así que no hace falta un
-        // paso extra de confirmación.
-        let restored = false;
+        // Cuenta soft-deleted: no dejamos loguearse. Si el user quiere volver,
+        // tiene que pasar explícitamente por /register — ese es el único
+        // camino de reactivación. Si permitiéramos restore automático en
+        // login, el "Eliminar cuenta" quedaría vacío de intención.
         if (row.deleted_at) {
-            await pool.query('UPDATE users SET deleted_at = NULL WHERE id = $1', [row.id]);
-            await pool.query('UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1', [row.id]);
-            restored = true;
+            return res.status(403).json({
+                error: 'Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente con este mismo email.',
+                code: 'account_deleted',
+            });
         }
 
         const token = jwt.sign({ id: row.id }, JWT_SECRET, { expiresIn: '7d' });
@@ -226,7 +227,6 @@ export const login = async (req, res) => {
         res.json({
             success: true,
             token,
-            restored,
             user: {
                 id: row.id,
                 name: row.name,

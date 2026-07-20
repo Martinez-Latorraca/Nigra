@@ -70,6 +70,15 @@ class OAuthAlreadyLinkedToOther extends Error {
     }
 }
 
+// Cuenta soft-deleted encontrada durante el flow OAuth. No hacemos restore
+// silencioso — el user tiene que pasar por /register para recuperarla.
+class OAuthAccountDeleted extends Error {
+    constructor() {
+        super('account_deleted');
+        this.status = 403;
+    }
+}
+
 // ─── Verificación de tokens de cada provider ────────────────────────────
 
 const verifyGoogle = async (idToken) => {
@@ -155,13 +164,12 @@ const findUserByEmail = async (email) => {
     return q.rows[0] || null;
 };
 
-// El OAuth acredita al dueño del email, así que igual que en el login por
-// password, si la cuenta estaba soft-deleted la reactivamos silenciosamente.
-const reactivateIfDeleted = async (user) => {
-    if (!user?.deleted_at) return user;
-    await pool.query('UPDATE users SET deleted_at = NULL WHERE id = $1', [user.id]);
-    await pool.query('UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1', [user.id]);
-    return { ...user, deleted_at: null };
+// No reactivamos silenciosamente desde OAuth: si la cuenta está soft-deleted,
+// tiramos error para que el frontend redirija al user a /register (único
+// camino de recovery). Mantiene la intención del delete.
+const rejectIfDeleted = (user) => {
+    if (user?.deleted_at) throw new OAuthAccountDeleted();
+    return user;
 };
 
 const primaryProviderOfUser = async (userId) => {
@@ -189,12 +197,11 @@ const insertOAuthLink = async (userId, provider, providerId) => {
 const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
     // 1) Ya linkeado a este exact (provider, provider_id).
     const linked = await findUserByOAuth(provider, providerId);
-    if (linked) return await reactivateIfDeleted(linked);
+    if (linked) return rejectIfDeleted(linked);
 
     // 2) Existe user con este email → intentar auto-link (solo Google/Apple).
     if (email) {
-        const byEmailRaw = await findUserByEmail(email);
-        const byEmail = await reactivateIfDeleted(byEmailRaw);
+        const byEmail = rejectIfDeleted(await findUserByEmail(email));
         if (byEmail) {
             if (!PROVIDER_VERIFIES_EMAIL[provider] || !byEmail.email_verified) {
                 const existingProvider = await primaryProviderOfUser(byEmail.id);
@@ -272,6 +279,12 @@ const handleOAuthError = (res, error, providerLabel) => {
     if (error instanceof OAuthAlreadyLinkedToOther) {
         return res.status(409).json({
             error: `Esta cuenta de ${providerLabel} ya está vinculada a otro usuario.`,
+        });
+    }
+    if (error instanceof OAuthAccountDeleted) {
+        return res.status(403).json({
+            error: 'Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente desde el registro.',
+            code: 'account_deleted',
         });
     }
     res.status(error.status || 401).json({

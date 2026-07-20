@@ -8,14 +8,32 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
 
 const PAGE_LIMIT = 20;
+
+// Debe coincidir con el catálogo del web y del edit form del vet.
+const SERVICE_CATALOG = [
+  'Consultas',
+  'Vacunación',
+  'Cirugía',
+  'Urgencias 24h',
+  'Peluquería',
+  'Baño',
+  'Radiología',
+  'Ecografía',
+  'Laboratorio',
+  'Guardería',
+  'Adiestramiento',
+  'Atención a domicilio',
+];
 
 function VetCard({ vet, onPress, c }) {
   const isSponsor = !!vet.verified_at;
@@ -87,16 +105,26 @@ export default function VetsList() {
   const [page, setPage] = useState(1);
   const [city, setCity] = useState('');
   const [committedCity, setCommittedCity] = useState('');
+  const [servicesSelected, setServicesSelected] = useState(() => new Set());
+  // Geoloc opt-in. { lat, lng } activa filtro "cerca mío" (orden por distancia).
+  const [coords, setCoords] = useState(null);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchVets = useCallback(async (nextPage = 1, cityFilter = '', append = false) => {
+  const fetchVets = useCallback(async (nextPage = 1, cityFilter = '', services = new Set(), geo = null, append = false) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
-      const { data } = await api.get('/api/vets', {
-        params: { page: nextPage, limit: PAGE_LIMIT, ...(cityFilter ? { city: cityFilter } : {}) },
-      });
+      const params = { page: nextPage, limit: PAGE_LIMIT };
+      if (cityFilter) params.city = cityFilter;
+      if (services.size > 0) params.services = [...services].join(',');
+      if (geo) {
+        params.lat = geo.lat;
+        params.lng = geo.lng;
+        params.radius_km = 25;
+      }
+      const { data } = await api.get('/api/vets', { params });
       setVets((prev) => (append ? [...prev, ...(data.vets || [])] : data.vets || []));
       setTotal(data.total || 0);
       setPage(nextPage);
@@ -109,13 +137,47 @@ export default function VetsList() {
   }, []);
 
   useEffect(() => {
-    fetchVets(1, '');
+    fetchVets(1, '', new Set(), null);
   }, [fetchVets]);
 
   const submit = () => {
     const trimmed = city.trim();
     setCommittedCity(trimmed);
-    fetchVets(1, trimmed);
+    fetchVets(1, trimmed, servicesSelected, coords);
+  };
+
+  const toggleService = (s) => {
+    setServicesSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      fetchVets(1, committedCity, next, coords);
+      return next;
+    });
+  };
+
+  const toggleNearMe = async () => {
+    if (coords) {
+      setCoords(null);
+      fetchVets(1, committedCity, servicesSelected, null);
+      return;
+    }
+    setGeoLoading(true);
+    try {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permiso necesario', 'Necesitamos tu ubicación para mostrar vets cerca tuyo.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const g = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      setCoords(g);
+      fetchVets(1, committedCity, servicesSelected, g);
+    } catch (e) {
+      Alert.alert('Error', 'No pudimos obtener tu ubicación.');
+    } finally {
+      setGeoLoading(false);
+    }
   };
 
   const hasMore = vets.length < total;
@@ -163,6 +225,49 @@ export default function VetsList() {
         </Pressable>
       </View>
 
+      {/* Filtros: Cerca mío + chips por servicio */}
+      <View style={styles.filtersRow}>
+        <Pressable
+          onPress={toggleNearMe}
+          disabled={geoLoading}
+          style={[
+            styles.filterChip,
+            coords
+              ? { backgroundColor: '#3ECFB2', borderColor: '#3ECFB2' }
+              : { backgroundColor: c.card, borderColor: c.cardBorder },
+            geoLoading && { opacity: 0.5 },
+          ]}
+        >
+          <Text
+            style={[
+              styles.filterChipText,
+              { color: coords ? '#fff' : c.title },
+            ]}
+          >
+            {geoLoading ? 'Ubicando…' : coords ? '📍 Cerca mío ✓' : '📍 Cerca mío'}
+          </Text>
+        </Pressable>
+        {SERVICE_CATALOG.map((s) => {
+          const active = servicesSelected.has(s);
+          return (
+            <Pressable
+              key={s}
+              onPress={() => toggleService(s)}
+              style={[
+                styles.filterChip,
+                active
+                  ? { backgroundColor: '#FF5C6C', borderColor: '#FF5C6C' }
+                  : { backgroundColor: c.card, borderColor: c.cardBorder },
+              ]}
+            >
+              <Text style={[styles.filterChipText, { color: active ? '#fff' : c.title }]}>
+                {active ? '✓ ' : ''}{s}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {!loading && (
         <Text style={[styles.count, { color: c.subtitle }]}>
           {total} {total === 1 ? 'RESULTADO' : 'RESULTADOS'}
@@ -195,7 +300,7 @@ export default function VetsList() {
           ListFooterComponent={
             hasMore ? (
               <Pressable
-                onPress={() => fetchVets(page + 1, committedCity, true)}
+                onPress={() => fetchVets(page + 1, committedCity, servicesSelected, coords, true)}
                 disabled={loadingMore}
                 style={[styles.moreBtn, { borderColor: c.cardBorder }]}
               >
@@ -236,6 +341,9 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingHorizontal: 18, paddingVertical: 10, fontSize: 14, fontWeight: '500' },
   searchBtn: { backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
   searchBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
+  filterChip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
+  filterChipText: { fontSize: 12, fontWeight: '700' },
   count: { fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginTop: 24, marginBottom: 4 },
   card: {
     borderRadius: 24,

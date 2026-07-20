@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Redirect, router } from 'expo-router';
 import { useSelector } from 'react-redux';
+import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import MenuButton from '../src/components/MenuButton';
 
@@ -23,6 +25,19 @@ const soon = (feature) =>
 export default function Home() {
   const { data, token } = useSelector((s) => s.user);
   const c = useTheme();
+
+  // Vets destacadas para la card de descubribilidad. Fetch fire-and-forget:
+  // si falla, la card muestra iniciales genéricas — no bloquea el home.
+  const [vetsPreview, setVetsPreview] = useState([]);
+  const [vetsTotal, setVetsTotal] = useState(0);
+  useEffect(() => {
+    api.get('/api/vets', { params: { limit: 4 } })
+      .then(({ data: d }) => {
+        setVetsPreview(d?.vets || []);
+        setVetsTotal(d?.total || 0);
+      })
+      .catch(() => {});
+  }, []);
 
   if (!token) return <Redirect href="/login" />;
 
@@ -57,6 +72,38 @@ export default function Home() {
           </Text>
           <View style={[styles.pill, { backgroundColor: c.primaryText }]}>
             <Text style={[styles.pillText, { color: c.primary }]}>Empezar</Text>
+          </View>
+        </Pressable>
+
+        {/* Veterinarias aliadas — descubribilidad del directorio */}
+        <Pressable
+          style={[styles.vetsCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
+          onPress={() => router.push('/vets')}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.smallCardTitle, { color: c.title }]}>Veterinarias aliadas.</Text>
+            <Text style={[styles.smallCardSub, { color: c.subtitle }]}>
+              Clínicas de tu zona que reciben alertas y ayudan a reencontrar mascotas.
+            </Text>
+          </View>
+          <View style={styles.vetsStack}>
+            {(vetsPreview.length > 0 ? vetsPreview : Array(4).fill(null)).map((v, i) => (
+              <View
+                key={v?.id || i}
+                style={[styles.vetChip, { marginLeft: i === 0 ? 0 : -12, zIndex: 10 - i }]}
+              >
+                {v?.logo_url ? (
+                  <Image source={{ uri: v.logo_url }} style={styles.vetChipImg} />
+                ) : (
+                  <Text style={styles.vetChipLetter}>{v?.name?.charAt(0) || '🏥'}</Text>
+                )}
+              </View>
+            ))}
+            {vetsTotal > 4 && (
+              <View style={[styles.vetChip, styles.vetChipMore, { marginLeft: -12 }]}>
+                <Text style={styles.vetChipMoreText}>+{vetsTotal - 4}</Text>
+              </View>
+            )}
           </View>
         </Pressable>
 
@@ -122,6 +169,31 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5 },
   row: { flexDirection: 'row', gap: 12, marginTop: 12 },
   smallCard: { flex: 1, borderRadius: 28, padding: 20, borderWidth: 1, gap: 6, minHeight: 150 },
+  vetsCard: {
+    marginTop: 12,
+    borderRadius: 28,
+    padding: 20,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  vetsStack: { flexDirection: 'row', alignItems: 'center' },
+  vetChip: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FF5C6C',
+    borderWidth: 3,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  vetChipImg: { width: '100%', height: '100%' },
+  vetChipLetter: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  vetChipMore: { backgroundColor: '#1A1A2E' },
+  vetChipMoreText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   smallCardTitle: { fontSize: 20, fontWeight: '700', letterSpacing: -0.3 },
   smallCardSub: { fontSize: 13, lineHeight: 18 },
   sectionKicker: { fontSize: 10, fontWeight: '700', letterSpacing: 3, marginTop: 40, marginBottom: 6 },

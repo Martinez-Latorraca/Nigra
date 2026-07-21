@@ -45,7 +45,13 @@ function VetCard({ vet, onPress, c }) {
         {
           backgroundColor: c.card,
           borderColor: isSponsor ? '#FFB830' : c.cardBorder,
-          borderWidth: isSponsor ? 1.5 : 1,
+          borderWidth: isSponsor ? 2 : 1,
+          // Sombra dorada sutil solo para sponsors (Android/iOS shadow API).
+          shadowColor: isSponsor ? '#FFB830' : '#000',
+          shadowOffset: { width: 0, height: isSponsor ? 6 : 2 },
+          shadowOpacity: isSponsor ? 0.22 : 0.05,
+          shadowRadius: isSponsor ? 12 : 4,
+          elevation: isSponsor ? 4 : 1,
         },
       ]}
     >

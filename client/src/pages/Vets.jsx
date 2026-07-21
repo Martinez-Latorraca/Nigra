@@ -27,7 +27,7 @@ function VetCard({ vet }) {
             to={`/vets/${vet.slug}`}
             className={`group flex flex-col overflow-hidden rounded-[32px] border transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.08)] ${
                 isSponsor
-                    ? 'border-mimo-sol/40 bg-mimo-warm ring-1 ring-mimo-sol/20'
+                    ? 'border-mimo-sol/60 bg-mimo-warm ring-2 ring-mimo-sol/40 shadow-[0_8px_28px_rgba(255,184,48,0.18)]'
                     : 'border-mimo-muted bg-mimo-warm'
             }`}
         >

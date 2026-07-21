@@ -117,6 +117,7 @@ export default function VetsList() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [ads, setAds] = useState([]);
 
   const fetchVets = useCallback(async (nextPage = 1, cityFilter = '', services = new Set(), geo = null, append = false) => {
     if (append) setLoadingMore(true);
@@ -140,6 +141,28 @@ export default function VetsList() {
       setLoading(false);
       setLoadingMore(false);
     }
+  }, []);
+
+  // Banner "Nuestros socios" — mismo endpoint que /pets. Con permiso de
+  // ubicación ya otorgado, prioriza cercanía; sin permiso, prioriza tier.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const params = { limit: 6 };
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          params.lat = loc.coords.latitude;
+          params.lng = loc.coords.longitude;
+        }
+      } catch { /* silencioso */ }
+      try {
+        const { data } = await api.get('/api/vets/ads', { params });
+        if (!cancelled) setAds(data?.vets || []);
+      } catch { /* silencioso */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -215,6 +238,44 @@ export default function VetsList() {
         </View>
         <Text style={styles.registerCtaArrow}>›</Text>
       </Pressable>
+
+      {/* Banner de Socios Mimo (publicidad) — carousel horizontal */}
+      {ads.length > 0 ? (
+        <View style={{ marginTop: 20 }}>
+          <View style={styles.adBannerHeader}>
+            <Text style={styles.adBannerKicker}>⭐ NUESTROS SOCIOS</Text>
+            <Text style={[styles.adBannerLabel, { color: c.subtitle }]}>Publicidad</Text>
+          </View>
+          <FlatList
+            data={ads}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(v) => String(v.id)}
+            contentContainerStyle={{ gap: 10, paddingRight: 8 }}
+            renderItem={({ item: v }) => (
+              <Pressable
+                onPress={() => router.push(`/vets/${v.slug}`)}
+                style={[styles.adBannerItem, { backgroundColor: c.card }]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  {v.logo_url ? (
+                    <Image source={{ uri: v.logo_url }} style={styles.adBannerLogo} />
+                  ) : (
+                    <View style={[styles.adBannerLogo, styles.adBannerLogoFallback]}>
+                      <Text style={styles.adBannerLogoLetter}>{v.name.charAt(0)}</Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.adBannerName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
+                    {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
+                  </View>
+                </View>
+                {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
+              </Pressable>
+            )}
+          />
+        </View>
+      ) : null}
 
       <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
         <TextInput
@@ -393,4 +454,22 @@ const styles = StyleSheet.create({
   registerCtaTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
   registerCtaSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
   registerCtaArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 22, fontWeight: '300' },
+
+  adBannerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  adBannerKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: '#C98800' },
+  adBannerLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
+  adBannerItem: {
+    width: 220,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#FFB830',
+    padding: 12,
+    gap: 6,
+  },
+  adBannerLogo: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F0EBE8' },
+  adBannerLogoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
+  adBannerLogoLetter: { color: '#fff', fontWeight: '800', fontSize: 18 },
+  adBannerName: { fontSize: 13, fontWeight: '800' },
+  adBannerCity: { fontSize: 10, fontWeight: '600' },
+  adBannerBio: { fontSize: 11, lineHeight: 15, marginTop: 4 },
 });

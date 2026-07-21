@@ -179,6 +179,35 @@ describe('Vets', () => {
         });
     });
 
+    describe('GET /api/vets/ads', () => {
+        it('sin geoloc: sponsors ordenados por tier DESC + random tiebreak', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            await request(buildApp()).get('/api/vets/ads');
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/plan <> 'ally'/);
+            expect(sql).toMatch(/sponsor_nation.*THEN 3/s);
+            expect(sql).toMatch(/sponsor_pro.*THEN 2/s);
+            expect(sql).toMatch(/ORDER BY[\s\S]*DESC, random\(\)/);
+            expect(params[0]).toBe(8); // default limit
+        });
+
+        it('con lat/lng: ordena por distancia asc (haversine)', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 1, distance_km: 2.5 }] });
+            const res = await request(buildApp()).get('/api/vets/ads?lat=-34.9&lng=-56.16&limit=5');
+            expect(res.status).toBe(200);
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/6371 \* acos/);
+            expect(sql).toMatch(/ORDER BY distance_km ASC/);
+            expect(params).toEqual([-34.9, -56.16, 5]);
+        });
+
+        it('caps limit en 20 (protege de flood)', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            await request(buildApp()).get('/api/vets/ads?limit=999');
+            expect(pool.query.mock.calls[0][1][0]).toBe(20);
+        });
+    });
+
     describe('GET /api/vets/nearby', () => {
         it('usa haversine para el radio y ordena por distancia', async () => {
             pool.query.mockResolvedValueOnce({ rows: [{ id: 1, distance_km: 2.3 }] });

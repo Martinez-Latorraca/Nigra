@@ -97,6 +97,7 @@ function VetCard({ vet }) {
 
 export default function Vets() {
     const [vets, setVets] = useState([]);
+    const [ads, setAds] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [city, setCity] = useState('');
@@ -139,6 +140,36 @@ export default function Vets() {
     useEffect(() => {
         fetchVets(1, '', new Set(), null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Sponsors destacados para el banner "Nuestros socios" arriba del listado.
+    // Usa el mismo endpoint que el feed de mascotas — el server decide el
+    // orden (por distancia si hay coords, por tier si no).
+    useEffect(() => {
+        const fetchAds = (params) => {
+            const qs = new URLSearchParams({ limit: 6, ...params });
+            fetch(`${API}/api/vets/ads?${qs}`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((d) => { if (d) setAds(d.vets || []); })
+                .catch(() => {});
+        };
+        if (navigator.geolocation && navigator.permissions?.query) {
+            navigator.permissions.query({ name: 'geolocation' })
+                .then((s) => {
+                    if (s.state === 'granted') {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => fetchAds({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                            () => fetchAds({}),
+                            { timeout: 5000, maximumAge: 5 * 60 * 1000 }
+                        );
+                    } else {
+                        fetchAds({});
+                    }
+                })
+                .catch(() => fetchAds({}));
+        } else {
+            fetchAds({});
+        }
     }, []);
 
     const handleCitySubmit = (e) => {
@@ -268,6 +299,44 @@ export default function Vets() {
                     </div>
                 ) : null}
             </div>
+
+            {/* Banner de Socios Mimo (publicidad) arriba del listado */}
+            {ads.length > 0 ? (
+                <div className="mx-auto w-full max-w-6xl px-6 pt-10">
+                    <div className="mb-3 flex items-center justify-between">
+                        <span className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] text-mimo-solDark">
+                            ⭐ Nuestros socios
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-mimo-quiet">
+                            Publicidad
+                        </span>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+                        {ads.map((v) => (
+                            <Link
+                                key={v.id}
+                                to={`/vets/${v.slug}`}
+                                className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 border-mimo-sol/50 bg-mimo-warm p-4 hover:shadow-[0_15px_40px_rgba(255,184,48,0.18)] transition-all"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {v.logo_url ? (
+                                        <img src={v.logo_url} alt="" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-xl flex-shrink-0">
+                                            {v.name.charAt(0)}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="font-display font-black text-sm text-mimo-noche truncate">{v.name}</div>
+                                        {v.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {v.city}</div> : null}
+                                    </div>
+                                </div>
+                                {v.bio ? <p className="mt-3 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
 
             <div className="mx-auto w-full max-w-6xl px-6 pt-14">
                 {loading ? (

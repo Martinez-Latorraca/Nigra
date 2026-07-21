@@ -8,6 +8,7 @@ import {
     uploadMyVetImage,
     deleteMyVet,
     listVets,
+    listVetAds,
     nearbyVets,
     getVetBySlug,
     listPendingVets,
@@ -29,6 +30,7 @@ const router = express.Router();
 
 // Público
 router.get('/', validate(listVetsSchema, 'query'), listVets);
+router.get('/ads', listVetAds);
 router.get('/nearby', validate(nearbyVetsSchema, 'query'), nearbyVets);
 
 // Admin (montado antes de /:slug para no colisionar).

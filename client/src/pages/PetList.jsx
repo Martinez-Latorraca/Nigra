@@ -4,8 +4,63 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { translateColor, translateType } from '../utils/translations';
 
+const API = import.meta.env.VITE_API_URL || '';
+const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
+
+// Card de publicidad de un vet sponsor. Reutiliza el look de PetCard pero con
+// badge "Publicidad" y tap → perfil público de la vet.
+function VetAdCard({ vet }) {
+    return (
+        <Link
+            to={`/vets/${vet.slug}`}
+            className="group bg-mimo-warm rounded-[40px] p-5 flex flex-col gap-5 border-2 border-mimo-sol/50 hover:shadow-[0_15px_40px_rgba(255,184,48,0.18)] transition-all duration-500"
+        >
+            <div className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted">
+                {vet.cover_url ? (
+                    <img
+                        src={vet.cover_url}
+                        alt={vet.name}
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        {vet.logo_url ? (
+                            <img src={vet.logo_url} alt={vet.name} className="w-24 h-24 rounded-3xl object-cover shadow-md" />
+                        ) : (
+                            <div className="w-24 h-24 rounded-3xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-4xl shadow-md">
+                                {vet.name.charAt(0)}
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className="absolute top-4 left-4">
+                    <span className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg bg-mimo-sol text-white">
+                        ⭐ Publicidad
+                    </span>
+                </div>
+            </div>
+            <div className="px-2">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-[9px] font-display font-extrabold text-mimo-solDark uppercase tracking-[0.2em]">Socio Mimo</span>
+                    {vet.city ? (
+                        <span className="text-[9px] font-bold text-mimo-quiet uppercase tracking-widest">{vet.city}</span>
+                    ) : null}
+                </div>
+                <h2 className="font-display font-black text-2xl text-mimo-noche leading-tight line-clamp-2 min-h-[3rem]">{vet.name}.</h2>
+                {vet.bio ? (
+                    <p className="mt-2 text-sm text-mimo-ink line-clamp-2 leading-relaxed">{vet.bio}</p>
+                ) : null}
+                <div className="mt-4 inline-flex items-center gap-1 text-[10px] font-display font-extrabold text-mimo-coral uppercase tracking-widest">
+                    Ver perfil →
+                </div>
+            </div>
+        </Link>
+    );
+}
+
 function PetList() {
     const [pets, setPets] = useState([]);
+    const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [page, setPage] = useState(1);
@@ -26,6 +81,40 @@ function PetList() {
             .then(res => res.json())
             .then(setAvailableColors)
             .catch(() => {});
+    }, []);
+
+    // Ads del feed. Si el navegador ya tiene el permiso de ubicación otorgado
+    // (Permissions API), usamos coords → orden por cercanía. Si no, sin
+    // coords → orden por tier de sponsor. No pedimos permiso proactivamente
+    // acá (sería intrusivo): la geoloc queda al toggle explícito de otras
+    // pantallas (ej: /vets "Cerca mío") o cuando el user lo activa por su cuenta.
+    useEffect(() => {
+        let cancelled = false;
+        const fetchAds = (params) => {
+            const qs = new URLSearchParams({ limit: 8, ...params });
+            fetch(`${API}/api/vets/ads?${qs}`)
+                .then((r) => (r.ok ? r.json() : null))
+                .then((d) => { if (!cancelled && d) setAds(d.vets || []); })
+                .catch(() => {});
+        };
+        if (navigator.geolocation && navigator.permissions?.query) {
+            navigator.permissions.query({ name: 'geolocation' })
+                .then((status) => {
+                    if (status.state === 'granted') {
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => fetchAds({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                            () => fetchAds({}),
+                            { timeout: 5000, maximumAge: 5 * 60 * 1000 }
+                        );
+                    } else {
+                        fetchAds({});
+                    }
+                })
+                .catch(() => fetchAds({}));
+        } else {
+            fetchAds({});
+        }
+        return () => { cancelled = true; };
     }, []);
 
     const fetchPets = useCallback(async (pageNum, append = false) => {
@@ -180,7 +269,8 @@ function PetList() {
                         </button>
                     </div>
                 ) : (
-                    pets.map(pet => (
+                    pets.reduce((acc, pet, i) => {
+                        acc.push(
                         <Link
                             to={`/pet/${pet.id}`}
                             key={pet.id}
@@ -218,7 +308,15 @@ function PetList() {
                                 <div className="text-gray-200 group-hover:text-black transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14m-7-7 7 7-7 7" /></svg></div>
                             </div>
                         </Link>
-                    ))
+                        );
+                        // Intercalar 1 card de publicidad cada AD_INTERVAL pets.
+                        if ((i + 1) % AD_INTERVAL === 0) {
+                            const adIdx = Math.floor((i + 1) / AD_INTERVAL) - 1;
+                            const ad = ads[adIdx];
+                            if (ad) acc.push(<VetAdCard key={`ad-${ad.id}`} vet={ad} />);
+                        }
+                        return acc;
+                    }, [])
                 )}
             </div>
 

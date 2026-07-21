@@ -346,6 +346,69 @@ export const listVets = async (req, res) => {
     }
 };
 
+// GET /api/vets/ads — cards de publicidad para el feed. Solo sponsors
+// (plan != 'ally'), approved + no deleted.
+// - Con lat/lng: ordenados por distancia asc (los más cercanos primero).
+// - Sin coords: ordenados por tier de sponsor DESC, random() como tie-breaker
+//   para rotar impresiones entre sponsors del mismo tier.
+// Ver [[project-vet-sponsor-model]] para el modelo comercial.
+export const listVetAds = async (req, res) => {
+    try {
+        const { lat, lng, limit = 8 } = req.query;
+        const cappedLimit = Math.min(Math.max(1, Number(limit) || 8), 20);
+        const hasGeo = lat != null && lng != null && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng));
+
+        const baseWhere = `
+            WHERE approved = TRUE
+              AND deleted_at IS NULL
+              AND plan <> 'ally'
+        `;
+
+        // Ranking por tier: nation > pro > basic > cualquier otro sponsor > ally.
+        // ally está excluido en el WHERE pero lo dejo en el CASE por si el
+        // campo aparece con planes desconocidos.
+        const tierRankExpr = `
+            CASE plan
+                WHEN 'sponsor_nation' THEN 3
+                WHEN 'sponsor_pro'    THEN 2
+                WHEN 'sponsor_basic'  THEN 1
+                ELSE 0
+            END
+        `;
+
+        let sql;
+        let params;
+        if (hasGeo) {
+            sql = `
+                SELECT ${PUBLIC_COLUMNS},
+                    (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
+                        + sin(radians($1)) * sin(radians(lat)))) AS distance_km
+                FROM vets
+                ${baseWhere}
+                  AND lat IS NOT NULL AND lng IS NOT NULL
+                ORDER BY distance_km ASC
+                LIMIT $3
+            `;
+            params = [Number(lat), Number(lng), cappedLimit];
+        } else {
+            sql = `
+                SELECT ${PUBLIC_COLUMNS}
+                FROM vets
+                ${baseWhere}
+                ORDER BY ${tierRankExpr} DESC, random()
+                LIMIT $1
+            `;
+            params = [cappedLimit];
+        }
+
+        const { rows } = await pool.query(sql, params);
+        res.json({ vets: rows });
+    } catch (error) {
+        console.error('listVetAds error:', error);
+        res.status(500).json({ error: 'Error obteniendo publicidad.' });
+    }
+};
+
 // GET /api/vets/nearby — vets aprobadas cerca de un punto (haversine).
 export const nearbyVets = async (req, res) => {
     try {

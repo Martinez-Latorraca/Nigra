@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   ActivityIndicator,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import PetCard from '../src/components/PetCard';
@@ -21,12 +23,63 @@ const FILTERS = [
   { key: 'lost', label: 'Perdidos' },
   { key: 'found', label: 'Encontrados' },
 ];
+const AD_INTERVAL = 6;
+
+// Card de publicidad de un vet sponsor. Estilo distinto del PetCard (borde
+// dorado + label "Publicidad") para no confundir con contenido orgánico.
+function VetAdCard({ vet, c, onPress, style }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.adCard,
+        {
+          backgroundColor: c.card,
+          borderColor: '#FFB830',
+          shadowColor: '#FFB830',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.22,
+          shadowRadius: 12,
+          elevation: 4,
+        },
+        style,
+      ]}
+    >
+      <View style={styles.adBadge}>
+        <Text style={styles.adBadgeText}>⭐ PUBLICIDAD</Text>
+      </View>
+      <View style={styles.adCoverWrap}>
+        {vet.cover_url ? (
+          <Image source={{ uri: vet.cover_url }} style={styles.adCover} />
+        ) : (
+          <View style={[styles.adCover, styles.adCoverPlaceholder]}>
+            {vet.logo_url ? (
+              <Image source={{ uri: vet.logo_url }} style={styles.adCenterLogo} />
+            ) : (
+              <View style={styles.adCenterFallback}>
+                <Text style={styles.adCenterFallbackText}>{vet.name.charAt(0)}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+      <View style={styles.adBody}>
+        <Text style={[styles.adKicker]}>SOCIO MIMO</Text>
+        <Text style={[styles.adName, { color: c.title }]} numberOfLines={2}>{vet.name}</Text>
+        {vet.city ? <Text style={[styles.adCity, { color: c.subtitle }]}>📍 {vet.city}</Text> : null}
+        {vet.bio ? <Text style={[styles.adBio, { color: c.subtitle }]} numberOfLines={2}>{vet.bio}</Text> : null}
+        <Text style={styles.adCta}>Ver perfil →</Text>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function Pets() {
   const c = useTheme();
   const { width } = useWindowDimensions();
   const numColumns = width >= 700 ? 2 : 1;
   const [pets, setPets] = useState([]);
+  const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +101,29 @@ export default function Pets() {
     setLoading(true);
     fetchPets(filter).finally(() => setLoading(false));
   }, [filter, fetchPets]);
+
+  // Ads del feed. Si el user ya autorizó ubicación (no pedimos aca proactivo),
+  // usamos coords para orden por cercanía; si no, orden por tier de sponsor.
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const params = { limit: 8 };
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          params.lat = loc.coords.latitude;
+          params.lng = loc.coords.longitude;
+        }
+      } catch { /* silencioso: caemos a orden por tier */ }
+      try {
+        const { data } = await api.get('/api/vets/ads', { params });
+        if (!cancelled) setAds(data?.vets || []);
+      } catch { /* silencioso */ }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -96,17 +172,39 @@ export default function Pets() {
         </View>
       ) : (
         <FlatList
-          data={pets}
+          data={(() => {
+            // Interleave: cada AD_INTERVAL pets, 1 ad. Marcamos con __kind
+            // para distinguirlas en renderItem sin cambiar la shape del backend.
+            const list = [];
+            pets.forEach((p, i) => {
+              list.push({ __kind: 'pet', ...p });
+              if ((i + 1) % AD_INTERVAL === 0) {
+                const adIdx = Math.floor((i + 1) / AD_INTERVAL) - 1;
+                const ad = ads[adIdx];
+                if (ad) list.push({ __kind: 'ad', ...ad, __id: `ad-${ad.id}` });
+              }
+            });
+            return list;
+          })()}
           key={numColumns}
           numColumns={numColumns}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item) => (item.__kind === 'ad' ? item.__id : String(item.id))}
           columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
           renderItem={({ item }) => (
-            <PetCard
-              pet={item}
-              onPress={() => router.push(`/pet/${item.id}`)}
-              style={numColumns > 1 ? styles.gridCard : undefined}
-            />
+            item.__kind === 'ad' ? (
+              <VetAdCard
+                vet={item}
+                c={c}
+                onPress={() => router.push(`/vets/${item.slug}`)}
+                style={numColumns > 1 ? styles.gridCard : undefined}
+              />
+            ) : (
+              <PetCard
+                pet={item}
+                onPress={() => router.push(`/pet/${item.id}`)}
+                style={numColumns > 1 ? styles.gridCard : undefined}
+              />
+            )
           )}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -137,4 +235,36 @@ const styles = StyleSheet.create({
   gridCard: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { textAlign: 'center', marginTop: 48, fontSize: 14, fontWeight: '500' },
+
+  adCard: {
+    borderRadius: 24,
+    borderWidth: 2,
+    padding: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  adBadge: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    backgroundColor: '#FFB830',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    zIndex: 10,
+  },
+  adBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
+  adCoverWrap: { borderRadius: 18, overflow: 'hidden', aspectRatio: 4 / 3, backgroundColor: '#F0EBE8' },
+  adCover: { width: '100%', height: '100%' },
+  adCoverPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  adCenterLogo: { width: 96, height: 96, borderRadius: 24 },
+  adCenterFallback: { width: 96, height: 96, borderRadius: 24, backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
+  adCenterFallbackText: { color: '#fff', fontSize: 40, fontWeight: '900' },
+  adBody: { padding: 8, gap: 4 },
+  adKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5, color: '#C98800' },
+  adName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
+  adCity: { fontSize: 11, fontWeight: '600' },
+  adBio: { fontSize: 12, lineHeight: 16, marginTop: 4 },
+  adCta: { color: '#FF5C6C', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8 },
 });

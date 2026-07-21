@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { tierOf } from '../utils/sponsorTiers';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -21,14 +22,18 @@ const SERVICE_CATALOG = [
 ];
 
 function VetCard({ vet }) {
-    const isSponsor = !!vet.verified_at;
+    // Ring/borde/badge en el color del tier del sponsor. Ally = sin destacar.
+    const tier = tierOf(vet);
+    const sponsorStyle = tier ? {
+        borderColor: tier.color,
+        boxShadow: `0 8px 28px ${tier.color}2E`, // ~18% opacity
+    } : undefined;
     return (
         <Link
             to={`/vets/${vet.slug}`}
-            className={`group flex flex-col overflow-hidden rounded-[32px] border transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.08)] ${
-                isSponsor
-                    ? 'border-mimo-sol/60 bg-mimo-warm ring-2 ring-mimo-sol/40 shadow-[0_8px_28px_rgba(255,184,48,0.18)]'
-                    : 'border-mimo-muted bg-mimo-warm'
+            style={sponsorStyle}
+            className={`group flex flex-col overflow-hidden rounded-[32px] border-2 transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.08)] ${
+                tier ? 'bg-mimo-warm' : 'border-mimo-muted bg-mimo-warm'
             }`}
         >
             <div className="relative h-32 overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted">
@@ -39,10 +44,13 @@ function VetCard({ vet }) {
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : null}
-                {isSponsor && (
-                    <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-mimo-sol px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white shadow-md">
+                {tier && (
+                    <div
+                        style={{ backgroundColor: tier.color }}
+                        className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white shadow-md"
+                    >
                         <span>⭐</span>
-                        <span>Socio Mimo</span>
+                        <span>{tier.label}</span>
                     </div>
                 )}
             </div>
@@ -312,11 +320,17 @@ export default function Vets() {
                         </span>
                     </div>
                     <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-                        {ads.map((v) => (
+                        {ads.map((v) => {
+                            const tier = tierOf(v);
+                            const style = tier
+                                ? { borderColor: tier.color, boxShadow: `0 15px 40px ${tier.color}2E` }
+                                : {};
+                            return (
                             <Link
                                 key={v.id}
                                 to={`/vets/${v.slug}`}
-                                className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 border-mimo-sol/50 bg-mimo-warm p-4 hover:shadow-[0_15px_40px_rgba(255,184,48,0.18)] transition-all"
+                                style={style}
+                                className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 bg-mimo-warm p-4 transition-all"
                             >
                                 <div className="flex items-center gap-3">
                                     {v.logo_url ? (
@@ -330,10 +344,12 @@ export default function Vets() {
                                         <div className="font-display font-black text-sm text-mimo-noche truncate">{v.name}</div>
                                         {v.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {v.city}</div> : null}
                                     </div>
+                                    {tier && <span style={{ color: tier.color }} className="text-lg">⭐</span>}
                                 </div>
                                 {v.bio ? <p className="mt-3 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}
                             </Link>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             ) : null}

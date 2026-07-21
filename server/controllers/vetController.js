@@ -376,33 +376,64 @@ export const listVetAds = async (req, res) => {
             END
         `;
 
-        let sql;
-        let params;
         if (hasGeo) {
-            sql = `
-                SELECT ${PUBLIC_COLUMNS},
+            // Con geoloc: cercanía manda sobre tier. La promesa del sponsor
+            // es aparecerle a users cerca, no dominar por pago.
+            const { rows } = await pool.query(
+                `SELECT ${PUBLIC_COLUMNS},
                     (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
                         + sin(radians($1)) * sin(radians(lat)))) AS distance_km
-                FROM vets
-                ${baseWhere}
-                  AND lat IS NOT NULL AND lng IS NOT NULL
-                ORDER BY distance_km ASC
-                LIMIT $3
-            `;
-            params = [Number(lat), Number(lng), cappedLimit];
-        } else {
-            sql = `
-                SELECT ${PUBLIC_COLUMNS}
-                FROM vets
-                ${baseWhere}
-                ORDER BY ${tierRankExpr} DESC, random()
-                LIMIT $1
-            `;
-            params = [cappedLimit];
+                 FROM vets
+                 ${baseWhere}
+                   AND lat IS NOT NULL AND lng IS NOT NULL
+                 ORDER BY distance_km ASC
+                 LIMIT $3`,
+                [Number(lat), Number(lng), cappedLimit]
+            );
+            return res.json({ vets: rows });
         }
 
-        const { rows } = await pool.query(sql, params);
-        res.json({ vets: rows });
+        // Sin geoloc: mix ponderado 50/30/20 nation/pro/basic. Garantiza que
+        // los 3 tiers tengan visibilidad — sin este mix, nation dominaría
+        // todos los slots hasta agotarse y basic nunca aparecería. Rellena
+        // huecos entre tiers si algún nivel está vacío.
+        const nationSlots = Math.ceil(cappedLimit * 0.5);
+        const proSlots    = Math.ceil(cappedLimit * 0.3);
+        const basicSlots  = cappedLimit - nationSlots - proSlots;
+
+        const fetchTier = (plan, take) => take <= 0
+            ? Promise.resolve({ rows: [] })
+            : pool.query(
+                `SELECT ${PUBLIC_COLUMNS} FROM vets
+                 WHERE approved = TRUE AND deleted_at IS NULL AND plan = $1
+                 ORDER BY random()
+                 LIMIT $2`,
+                [plan, take]
+            );
+
+        const [nRes, pRes, bRes] = await Promise.all([
+            fetchTier('sponsor_nation', nationSlots),
+            fetchTier('sponsor_pro',    proSlots),
+            fetchTier('sponsor_basic',  basicSlots),
+        ]);
+
+        // Rebalanceo: si algún tier trajo menos de lo pedido, rellenamos con
+        // los otros por tier DESC para no desperdiciar slots.
+        let picked = [...nRes.rows, ...pRes.rows, ...bRes.rows];
+        if (picked.length < cappedLimit) {
+            const already = new Set(picked.map((v) => v.id));
+            const { rows: extra } = await pool.query(
+                `SELECT ${PUBLIC_COLUMNS} FROM vets
+                 ${baseWhere}
+                   AND id <> ALL($1::int[])
+                 ORDER BY ${tierRankExpr} DESC, random()
+                 LIMIT $2`,
+                [picked.map((v) => v.id), cappedLimit - picked.length]
+            );
+            picked = picked.concat(extra);
+        }
+
+        res.json({ vets: picked.slice(0, cappedLimit) });
     } catch (error) {
         console.error('listVetAds error:', error);
         res.status(500).json({ error: 'Error obteniendo publicidad.' });

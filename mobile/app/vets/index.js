@@ -16,6 +16,7 @@ import * as Location from 'expo-location';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
+import { tierOf } from '../../src/lib/sponsorTiers';
 
 const PAGE_LIMIT = 20;
 
@@ -36,7 +37,7 @@ const SERVICE_CATALOG = [
 ];
 
 function VetCard({ vet, onPress, c }) {
-  const isSponsor = !!vet.verified_at;
+  const tier = tierOf(vet);
   return (
     <Pressable
       onPress={onPress}
@@ -44,19 +45,19 @@ function VetCard({ vet, onPress, c }) {
         styles.card,
         {
           backgroundColor: c.card,
-          borderColor: isSponsor ? '#FFB830' : c.cardBorder,
-          borderWidth: isSponsor ? 2 : 1,
-          // Sombra dorada sutil solo para sponsors (Android/iOS shadow API).
-          shadowColor: isSponsor ? '#FFB830' : '#000',
-          shadowOffset: { width: 0, height: isSponsor ? 6 : 2 },
-          shadowOpacity: isSponsor ? 0.22 : 0.05,
-          shadowRadius: isSponsor ? 12 : 4,
-          elevation: isSponsor ? 4 : 1,
+          borderColor: tier ? tier.color : c.cardBorder,
+          borderWidth: tier ? 2 : 1,
+          // Sombra del color del tier solo para sponsors.
+          shadowColor: tier ? tier.color : '#000',
+          shadowOffset: { width: 0, height: tier ? 6 : 2 },
+          shadowOpacity: tier ? 0.22 : 0.05,
+          shadowRadius: tier ? 12 : 4,
+          elevation: tier ? 4 : 1,
         },
       ]}
     >
-      {isSponsor && (
-        <View style={styles.sponsorBadge}>
+      {tier && (
+        <View style={[styles.sponsorBadge, { backgroundColor: tier.color }]}>
           <Text style={styles.sponsorText}>⭐ SOCIO MIMO</Text>
         </View>
       )}
@@ -252,27 +253,32 @@ export default function VetsList() {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(v) => String(v.id)}
             contentContainerStyle={{ gap: 10, paddingRight: 8 }}
-            renderItem={({ item: v }) => (
-              <Pressable
-                onPress={() => router.push(`/vets/${v.slug}`)}
-                style={[styles.adBannerItem, { backgroundColor: c.card }]}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  {v.logo_url ? (
-                    <Image source={{ uri: v.logo_url }} style={styles.adBannerLogo} />
-                  ) : (
-                    <View style={[styles.adBannerLogo, styles.adBannerLogoFallback]}>
-                      <Text style={styles.adBannerLogoLetter}>{v.name.charAt(0)}</Text>
+            renderItem={({ item: v }) => {
+              const t = tierOf(v);
+              const color = t?.color || '#FF5C6C';
+              return (
+                <Pressable
+                  onPress={() => router.push(`/vets/${v.slug}`)}
+                  style={[styles.adBannerItem, { backgroundColor: c.card, borderColor: color }]}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    {v.logo_url ? (
+                      <Image source={{ uri: v.logo_url }} style={styles.adBannerLogo} />
+                    ) : (
+                      <View style={[styles.adBannerLogo, styles.adBannerLogoFallback]}>
+                        <Text style={styles.adBannerLogoLetter}>{v.name.charAt(0)}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.adBannerName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
+                      {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
                     </View>
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.adBannerName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
-                    {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
+                    <Text style={{ color, fontSize: 16 }}>⭐</Text>
                   </View>
-                </View>
-                {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
-              </Pressable>
-            )}
+                  {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
+                </Pressable>
+              );
+            }}
           />
         </View>
       ) : null}
@@ -419,10 +425,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   sponsorBadge: {
+    // backgroundColor viene inline por tier
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: '#FFB830',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -459,10 +465,10 @@ const styles = StyleSheet.create({
   adBannerKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: '#C98800' },
   adBannerLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
   adBannerItem: {
+    // borderColor viene inline por tier de la vet
     width: 220,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: '#FFB830',
     padding: 12,
     gap: 6,
   },

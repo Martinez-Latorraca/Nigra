@@ -180,18 +180,30 @@ describe('Vets', () => {
     });
 
     describe('GET /api/vets/ads', () => {
-        it('sin geoloc: sponsors ordenados por tier DESC + random tiebreak', async () => {
-            pool.query.mockResolvedValueOnce({ rows: [] });
+        it('sin geoloc: mix ponderado con 3 queries paralelas (nation/pro/basic)', async () => {
+            // 3 fetches en paralelo, cada uno filtra por plan y limita a
+            // ceil(N*ratio). Todos devuelven vacio para simplificar.
+            pool.query
+                .mockResolvedValueOnce({ rows: [] }) // nation
+                .mockResolvedValueOnce({ rows: [] }) // pro
+                .mockResolvedValueOnce({ rows: [] }); // basic (0 rows → no llega al rebalanceo)
             await request(buildApp()).get('/api/vets/ads');
-            const [sql, params] = pool.query.mock.calls[0];
-            expect(sql).toMatch(/plan <> 'ally'/);
-            expect(sql).toMatch(/sponsor_nation.*THEN 3/s);
-            expect(sql).toMatch(/sponsor_pro.*THEN 2/s);
-            expect(sql).toMatch(/ORDER BY[\s\S]*DESC, random\(\)/);
-            expect(params[0]).toBe(8); // default limit
+            // Verificamos las 3 queries: cada una es WHERE plan = $1 ORDER BY random()
+            const call0 = pool.query.mock.calls[0];
+            const call1 = pool.query.mock.calls[1];
+            const call2 = pool.query.mock.calls[2];
+            const plans = [call0[1][0], call1[1][0], call2[1][0]].sort();
+            expect(plans).toEqual(['sponsor_basic', 'sponsor_nation', 'sponsor_pro']);
+            // limit por tier ponderado: nation=4 (50%), pro=3 (30%), basic=1 (resto de 8)
+            const limitsByPlan = Object.fromEntries(
+                [call0, call1, call2].map((c) => [c[1][0], c[1][1]])
+            );
+            expect(limitsByPlan.sponsor_nation).toBe(4);
+            expect(limitsByPlan.sponsor_pro).toBe(3);
+            expect(limitsByPlan.sponsor_basic).toBe(1);
         });
 
-        it('con lat/lng: ordena por distancia asc (haversine)', async () => {
+        it('con lat/lng: cercania manda sobre tier (haversine)', async () => {
             pool.query.mockResolvedValueOnce({ rows: [{ id: 1, distance_km: 2.5 }] });
             const res = await request(buildApp()).get('/api/vets/ads?lat=-34.9&lng=-56.16&limit=5');
             expect(res.status).toBe(200);
@@ -202,9 +214,15 @@ describe('Vets', () => {
         });
 
         it('caps limit en 20 (protege de flood)', async () => {
-            pool.query.mockResolvedValueOnce({ rows: [] });
+            // Con limit=20: nation=10, pro=6, basic=4. Verificamos primer call.
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
             await request(buildApp()).get('/api/vets/ads?limit=999');
-            expect(pool.query.mock.calls[0][1][0]).toBe(20);
+            // Suman al cap 20 exactamente.
+            const limits = pool.query.mock.calls.slice(0, 3).map((c) => c[1][1]);
+            expect(limits.reduce((a, b) => a + b, 0)).toBe(20);
         });
     });
 

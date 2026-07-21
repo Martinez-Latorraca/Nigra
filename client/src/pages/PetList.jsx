@@ -3,17 +3,21 @@ import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { translateColor, translateType } from '../utils/translations';
+import { tierOf } from '../utils/sponsorTiers';
 
 const API = import.meta.env.VITE_API_URL || '';
 const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
 
-// Card de publicidad de un vet sponsor. Reutiliza el look de PetCard pero con
-// badge "Publicidad" y tap → perfil público de la vet.
+// Card de publicidad de un vet sponsor. Look similar al PetCard pero con
+// badge "Publicidad" y ring del color del tier del sponsor.
 function VetAdCard({ vet }) {
+    const tier = tierOf(vet);
+    const color = tier?.color || '#FF5C6C'; // fallback si por algún motivo no matchea
     return (
         <Link
             to={`/vets/${vet.slug}`}
-            className="group bg-mimo-warm rounded-[40px] p-5 flex flex-col gap-5 border-2 border-mimo-sol/50 hover:shadow-[0_15px_40px_rgba(255,184,48,0.18)] transition-all duration-500"
+            style={{ borderColor: color, boxShadow: `0 15px 40px ${color}2E` }}
+            className="group bg-mimo-warm rounded-[40px] p-5 flex flex-col gap-5 border-2 transition-all duration-500"
         >
             <div className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted">
                 {vet.cover_url ? (
@@ -34,14 +38,17 @@ function VetAdCard({ vet }) {
                     </div>
                 )}
                 <div className="absolute top-4 left-4">
-                    <span className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg bg-mimo-sol text-white">
+                    <span
+                        style={{ backgroundColor: color }}
+                        className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg text-white"
+                    >
                         ⭐ Publicidad
                     </span>
                 </div>
             </div>
             <div className="px-2">
                 <div className="flex justify-between items-center mb-2">
-                    <span className="text-[9px] font-display font-extrabold text-mimo-solDark uppercase tracking-[0.2em]">Socio Mimo</span>
+                    <span style={{ color }} className="text-[9px] font-display font-extrabold uppercase tracking-[0.2em]">Socio Mimo ⭐</span>
                     {vet.city ? (
                         <span className="text-[9px] font-bold text-mimo-quiet uppercase tracking-widest">{vet.city}</span>
                     ) : null}

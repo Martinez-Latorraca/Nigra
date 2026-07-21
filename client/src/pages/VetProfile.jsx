@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { tierOf } from '../utils/sponsorTiers';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -71,7 +72,7 @@ export default function VetProfile() {
         );
     }
 
-    const isSponsor = !!vet.verified_at;
+    const tier = tierOf(vet);
     const whatsappHref = vet.whatsapp
         ? `https://wa.me/${String(vet.whatsapp).replace(/[^\d]/g, '')}`
         : null;
@@ -109,9 +110,12 @@ export default function VetProfile() {
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
                                     Veterinaria
                                 </span>
-                                {isSponsor && (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-mimo-sol px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
-                                        ⭐ Socio Mimo
+                                {tier && (
+                                    <span
+                                        style={{ backgroundColor: tier.color }}
+                                        className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white"
+                                    >
+                                        ⭐ {tier.label}
                                     </span>
                                 )}
                             </div>

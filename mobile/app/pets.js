@@ -17,6 +17,7 @@ import api from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import PetCard from '../src/components/PetCard';
 import MenuButton from '../src/components/MenuButton';
+import { tierOf } from '../src/lib/sponsorTiers';
 
 const FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -28,6 +29,8 @@ const AD_INTERVAL = 6;
 // Card de publicidad de un vet sponsor. Estilo distinto del PetCard (borde
 // dorado + label "Publicidad") para no confundir con contenido orgánico.
 function VetAdCard({ vet, c, onPress, style }) {
+  const tier = tierOf(vet);
+  const color = tier?.color || '#FF5C6C';
   return (
     <Pressable
       onPress={onPress}
@@ -35,8 +38,8 @@ function VetAdCard({ vet, c, onPress, style }) {
         styles.adCard,
         {
           backgroundColor: c.card,
-          borderColor: '#FFB830',
-          shadowColor: '#FFB830',
+          borderColor: color,
+          shadowColor: color,
           shadowOffset: { width: 0, height: 6 },
           shadowOpacity: 0.22,
           shadowRadius: 12,
@@ -45,7 +48,7 @@ function VetAdCard({ vet, c, onPress, style }) {
         style,
       ]}
     >
-      <View style={styles.adBadge}>
+      <View style={[styles.adBadge, { backgroundColor: color }]}>
         <Text style={styles.adBadgeText}>⭐ PUBLICIDAD</Text>
       </View>
       <View style={styles.adCoverWrap}>
@@ -64,7 +67,7 @@ function VetAdCard({ vet, c, onPress, style }) {
         )}
       </View>
       <View style={styles.adBody}>
-        <Text style={[styles.adKicker]}>SOCIO MIMO</Text>
+        <Text style={[styles.adKicker, { color }]}>SOCIO MIMO ⭐</Text>
         <Text style={[styles.adName, { color: c.title }]} numberOfLines={2}>{vet.name}</Text>
         {vet.city ? <Text style={[styles.adCity, { color: c.subtitle }]}>📍 {vet.city}</Text> : null}
         {vet.bio ? <Text style={[styles.adBio, { color: c.subtitle }]} numberOfLines={2}>{vet.bio}</Text> : null}
@@ -245,10 +248,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   adBadge: {
+    // backgroundColor viene inline por tier del sponsor
     position: 'absolute',
     top: 20,
     left: 20,
-    backgroundColor: '#FFB830',
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
   adCenterFallback: { width: 96, height: 96, borderRadius: 24, backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
   adCenterFallbackText: { color: '#fff', fontSize: 40, fontWeight: '900' },
   adBody: { padding: 8, gap: 4 },
-  adKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5, color: '#C98800' },
+  adKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
   adName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
   adCity: { fontSize: 11, fontWeight: '600' },
   adBio: { fontSize: 12, lineHeight: 16, marginTop: 4 },

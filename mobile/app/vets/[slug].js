@@ -14,6 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
+import { tierOf } from '../../src/lib/sponsorTiers';
 
 const HOURS_ORDER = [
   ['mon', 'Lunes'],
@@ -81,7 +82,7 @@ export default function VetProfile() {
     );
   }
 
-  const isSponsor = !!vet.verified_at;
+  const tier = tierOf(vet);
   const whatsappHref = vet.whatsapp
     ? `https://wa.me/${String(vet.whatsapp).replace(/[^\d]/g, '')}`
     : null;
@@ -118,8 +119,8 @@ export default function VetProfile() {
             <View style={{ flex: 1 }}>
               <View style={styles.badgeRow}>
                 <Text style={[styles.kicker, { color: c.subtitle }]}>VETERINARIA</Text>
-                {isSponsor && (
-                  <View style={styles.sponsorBadge}>
+                {tier && (
+                  <View style={[styles.sponsorBadge, { backgroundColor: tier.color }]}>
                     <Text style={styles.sponsorText}>⭐ SOCIO MIMO</Text>
                   </View>
                 )}
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
   logoLetter: { color: '#fff', fontWeight: '800', fontSize: 26 },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   kicker: { fontSize: 9, fontWeight: '700', letterSpacing: 1.8 },
-  sponsorBadge: { backgroundColor: '#FFB830', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  sponsorBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   sponsorText: { color: '#fff', fontSize: 8, fontWeight: '800', letterSpacing: 1 },
   name: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginTop: 4 },
   location: { fontSize: 12, fontWeight: '500', marginTop: 4 },

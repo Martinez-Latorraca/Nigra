@@ -274,12 +274,13 @@ function AdminPanel() {
     ];
 
     const PLAN_OPTIONS = [
-        { value: 'ally', label: 'Ally (gratis)' },
-        { value: 'sponsor_basic', label: 'Socio Basic' },
-        { value: 'sponsor_pro', label: 'Socio Pro' },
-        { value: 'sponsor_nation', label: 'Socio Nation' },
+        { value: 'ally', label: 'Ally (gratis)', color: null },
+        { value: 'sponsor_basic', label: 'Socio Mimo ⭐ (Basic)', color: '#FF5C6C' },
+        { value: 'sponsor_pro', label: 'Socio Mimo ⭐ (Pro)', color: '#9B6DFF' },
+        { value: 'sponsor_nation', label: 'Socio Mimo ⭐ (Nation)', color: '#FFB830' },
     ];
     const PLAN_LABEL = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, o.label]));
+    const PLAN_COLOR = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, o.color]));
 
     const formatDate = (d) => new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -612,9 +613,18 @@ function AdminPanel() {
                                                 <span className="text-xs text-gray-400">{v.owner_email}</span>
                                             </td>
                                             <td className="py-3 pr-4">
-                                                <span className={`text-xs px-2 py-1 rounded-full ${v.plan === 'ally' ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                    {PLAN_LABEL[v.plan] || v.plan}
-                                                </span>
+                                                {PLAN_COLOR[v.plan] ? (
+                                                    <span
+                                                        style={{ backgroundColor: PLAN_COLOR[v.plan] }}
+                                                        className="text-xs px-2 py-1 rounded-full text-white font-semibold"
+                                                    >
+                                                        {PLAN_LABEL[v.plan]}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
+                                                        {PLAN_LABEL[v.plan] || v.plan}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-3">
                                                 <select

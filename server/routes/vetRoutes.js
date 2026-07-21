@@ -12,7 +12,9 @@ import {
     nearbyVets,
     getVetBySlug,
     listPendingVets,
+    listActiveVets,
     setVetApproval,
+    setVetPlan,
 } from '../controllers/vetController.js';
 import { authenticateToken } from '../middlewares/auth.js';
 import { requireAdmin } from '../middlewares/adminAuth.js';
@@ -35,7 +37,9 @@ router.get('/nearby', validate(nearbyVetsSchema, 'query'), nearbyVets);
 
 // Admin (montado antes de /:slug para no colisionar).
 router.get('/admin/pending', authenticateToken, requireAdmin, listPendingVets);
+router.get('/admin/active', authenticateToken, requireAdmin, listActiveVets);
 router.patch('/admin/:id/approve', authenticateToken, requireAdmin, setVetApproval);
+router.patch('/admin/:id/plan', authenticateToken, requireAdmin, setVetPlan);
 
 // Owner: /me antes de /:slug para no colisionar.
 router.post('/', authenticateToken, validate(createVetSchema), createVet);

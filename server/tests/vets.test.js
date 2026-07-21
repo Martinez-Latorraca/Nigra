@@ -421,5 +421,48 @@ describe('Vets', () => {
             const res = await asUser(request(buildApp()).patch('/api/vets/admin/5/approve')).send({ approved: true });
             expect(res.status).toBe(403);
         });
+
+        it('GET /admin/active — lista aprobadas ordenadas por tier DESC', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({
+                rows: [
+                    { id: 1, name: 'Vet Pro', plan: 'sponsor_pro' },
+                    { id: 2, name: 'Vet Ally', plan: 'ally' },
+                ],
+            });
+            const res = await asAdmin(request(buildApp()).get('/api/vets/admin/active'));
+            expect(res.status).toBe(200);
+            expect(res.body.vets).toHaveLength(2);
+            // La 1a query es requireAdmin (SELECT role), la 2a es la real.
+            const sql = pool.query.mock.calls[1][0];
+            expect(sql).toMatch(/v\.approved = TRUE/);
+            expect(sql).toMatch(/sponsor_nation.*THEN 3/s);
+        });
+
+        it('PATCH /admin/:id/plan — cambia el plan y setea verified_at si sponsor', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({
+                rows: [{ id: 5, slug: 'v', name: 'V', plan: 'sponsor_pro', verified_at: '2026-07-21' }],
+            });
+            const res = await asAdmin(request(buildApp()).patch('/api/vets/admin/5/plan')).send({ plan: 'sponsor_pro' });
+            expect(res.status).toBe(200);
+            expect(res.body.plan).toBe('sponsor_pro');
+            const [sql, params] = pool.query.mock.calls[1];
+            expect(sql).toMatch(/SET plan = \$1/);
+            expect(params).toEqual(['sponsor_pro', true, '5']);
+        });
+
+        it('PATCH /admin/:id/plan — 400 si plan inválido', async () => {
+            mockAdminRole();
+            const res = await asAdmin(request(buildApp()).patch('/api/vets/admin/5/plan')).send({ plan: 'premium_diamond' });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(/plan inválido/i);
+        });
+
+        it('PATCH /admin/:id/plan — 403 para non-admin', async () => {
+            mockNonAdminRole();
+            const res = await asUser(request(buildApp()).patch('/api/vets/admin/5/plan')).send({ plan: 'sponsor_pro' });
+            expect(res.status).toBe(403);
+        });
     });
 });

@@ -465,6 +465,74 @@ export const listPendingVets = async (_req, res) => {
     }
 };
 
+// Planes válidos. El admin promueve/degrada moviendo entre estos valores.
+// El ranking del feed de ads (listVetAds) trata a los sponsor_* con pesos:
+//   sponsor_nation=3 > sponsor_pro=2 > sponsor_basic=1 > ally=0
+export const VALID_PLANS = ['ally', 'sponsor_basic', 'sponsor_pro', 'sponsor_nation'];
+
+// GET /api/vets/admin/active — todas las vets aprobadas (admin), con plan
+// actual + owner. Se usa desde el AdminPanel para gestionar upgrades.
+export const listActiveVets = async (_req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT v.id, v.slug, v.name, v.email, v.city, v.plan, v.created_at,
+                    v.approved_at, v.owner_user_id,
+                    u.name AS owner_name, u.email AS owner_email
+             FROM vets v
+             LEFT JOIN users u ON u.id = v.owner_user_id
+             WHERE v.approved = TRUE AND v.deleted_at IS NULL
+             ORDER BY
+                CASE v.plan
+                    WHEN 'sponsor_nation' THEN 3
+                    WHEN 'sponsor_pro'    THEN 2
+                    WHEN 'sponsor_basic'  THEN 1
+                    ELSE 0
+                END DESC,
+                v.approved_at DESC NULLS LAST`
+        );
+        res.json({ vets: rows });
+    } catch (error) {
+        console.error('listActiveVets error:', error);
+        res.status(500).json({ error: 'Error listando vets activas.' });
+    }
+};
+
+// PATCH /api/vets/admin/:id/plan — cambia el plan de una vet (admin).
+// El alta de un sponsor es MANUAL: la vet contacta a Nico, arreglan pago
+// afuera, y él sube el plan desde este endpoint.
+// Ver [[project-vet-sponsor-model]].
+export const setVetPlan = async (req, res) => {
+    try {
+        const { plan } = req.body || {};
+        if (!VALID_PLANS.includes(plan)) {
+            return res.status(400).json({
+                error: `plan inválido. Válidos: ${VALID_PLANS.join(', ')}.`,
+            });
+        }
+        // verified_at marca a la vet como "socio" para el badge dorado en el
+        // directorio y en las cards. Se setea la primera vez que sube a
+        // sponsor_* y se limpia si vuelve a ally.
+        const isSponsor = plan !== 'ally';
+        const { rows } = await pool.query(
+            `UPDATE vets
+             SET plan = $1,
+                 verified_at = CASE
+                    WHEN $2 = TRUE AND verified_at IS NULL THEN NOW()
+                    WHEN $2 = FALSE THEN NULL
+                    ELSE verified_at
+                 END
+             WHERE id = $3
+             RETURNING id, slug, name, plan, verified_at`,
+            [plan, isSponsor, req.params.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Veterinaria no encontrada.' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('setVetPlan error:', error);
+        res.status(500).json({ error: 'No se pudo cambiar el plan.' });
+    }
+};
+
 // PATCH /api/vets/admin/:id/approve — aprobar o desaprobar (admin).
 export const setVetApproval = async (req, res) => {
     try {

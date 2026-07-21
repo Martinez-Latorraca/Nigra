@@ -69,17 +69,6 @@ export default function Find() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [contactInfo, setContactInfo] = useState('');
-  // Vet del user (si tiene una aprobada): habilita el toggle para publicar en
-  // nombre de la vet (badge visible + registered_by_vet_id en el pet).
-  const [myVet, setMyVet] = useState(null);
-  const [asVet, setAsVet] = useState(false);
-
-  useEffect(() => {
-    api.get('/api/vets/me')
-      .then(({ data }) => { if (data.approved) setMyVet(data); })
-      .catch(() => {});
-  }, []);
-
   const isLost = situation === 'lost';
 
   const openPicker = async (source) => {
@@ -204,7 +193,6 @@ export default function Find() {
       formData.append('lat', String(position.lat));
       formData.append('lng', String(position.lng));
       if (isLost && name.trim()) formData.append('name', name.trim());
-      if (asVet && myVet) formData.append('on_behalf_of_vet', 'true');
 
       const { data } = await api.post('/api/pets/report-pet', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -413,37 +401,6 @@ export default function Find() {
               placeholderTextColor={c.label}
               keyboardType="phone-pad"
             />
-
-            {myVet ? (
-              <Pressable
-                onPress={() => setAsVet((v) => !v)}
-                style={[
-                  styles.vetToggle,
-                  {
-                    backgroundColor: c.card,
-                    borderColor: asVet ? '#FFB830' : c.cardBorder,
-                    borderWidth: asVet ? 1.5 : 1,
-                  },
-                ]}
-              >
-                <View style={styles.vetToggleTextWrap}>
-                  <Text style={[styles.vetToggleTitle, { color: c.title }]}>
-                    Publicar como {myVet.name}
-                  </Text>
-                  <Text style={[styles.vetToggleSub, { color: c.subtitle }]}>
-                    El reporte va a mostrar el badge de tu veterinaria.
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.vetToggleCheck,
-                    { backgroundColor: asVet ? '#FFB830' : 'transparent', borderColor: asVet ? '#FFB830' : c.cardBorder },
-                  ]}
-                >
-                  {asVet ? <Text style={styles.vetToggleCheckText}>✓</Text> : null}
-                </View>
-              </Pressable>
-            ) : null}
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 

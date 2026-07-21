@@ -340,11 +340,6 @@ export const reportPet = async (req, res) => {
     try {
         // 1. Agregamos lat y lng a la extracción de datos
         const { description, status, contact_info, type, color, lat, lng, name } = req.body;
-        // Flag "reportar en nombre de mi veterinaria": si viene true, el pet
-        // queda vinculado a la vet del user (registered_by_vet_id) además del
-        // user_id. Requiere que el user tenga una vet aprobada.
-        const onBehalfOfVet = req.body.on_behalf_of_vet === true
-            || req.body.on_behalf_of_vet === 'true';
 
         console.log(req.files)
 
@@ -355,25 +350,6 @@ export const reportPet = async (req, res) => {
 
         const imageBuffer = req.files['image'][0].buffer;
         const user_id = req.user.id;
-
-        let registeredByVetId = null;
-        if (onBehalfOfVet) {
-            const { rows: vetRows } = await pool.query(
-                'SELECT id, approved FROM vets WHERE owner_user_id = $1',
-                [user_id]
-            );
-            if (vetRows.length === 0) {
-                return res.status(403).json({
-                    error: 'No tenés una veterinaria registrada.',
-                });
-            }
-            if (!vetRows[0].approved) {
-                return res.status(403).json({
-                    error: 'Tu veterinaria todavía no está aprobada. Un admin tiene que aprobarla antes de que puedas publicar en su nombre.',
-                });
-            }
-            registeredByVetId = vetRows[0].id;
-        }
 
         const vector = await generateEmbedding(imageBuffer);
         const vectorString = JSON.stringify(vector);
@@ -402,12 +378,10 @@ export const reportPet = async (req, res) => {
         const query = `
           INSERT INTO pets (
             description, status, contact_info, photo_url,
-            embedding, type, color, user_id, lat, lng, name, extra_photos, address,
-            registered_by_vet_id
+            embedding, type, color, user_id, lat, lng, name, extra_photos, address
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-          RETURNING id, description, status, photo_url, name, extra_photos, created_at, address,
-                    registered_by_vet_id;
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          RETURNING id, description, status, photo_url, name, extra_photos, created_at, address;
         `;
 
         // 3. Pasamos las coordenadas convertidas a números decimales
@@ -425,7 +399,6 @@ export const reportPet = async (req, res) => {
             name,
             extraPhotosJson,
             address,
-            registeredByVetId,
         ]);
 
         res.json({ success: true, pet: result.rows[0] });

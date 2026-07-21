@@ -178,29 +178,33 @@ export const getMyVetDashboard = async (req, res) => {
         const vet = vetRows[0];
         const isSponsor = !!vet.verified_at;
 
-        // Métricas agregadas: pets publicados on-behalf-of, resueltos, alertas.
+        // Modelo mental: vet = user + plus. Todo lo que reporta el owner de
+        // la vet cuenta como reporte "de la vet" — no hay un flag
+        // registered_by_vet_id que dependa de una UI de "reportar como vet".
+        // La vet reporta como cualquier user; su dashboard agrega esas
+        // publicaciones automáticamente.
         const { rows: statsRows } = await pool.query(
             `SELECT
-                (SELECT COUNT(*) FROM pets WHERE registered_by_vet_id = $1) AS total_pets,
-                (SELECT COUNT(*) FROM pets WHERE registered_by_vet_id = $1 AND resolved_at IS NOT NULL) AS resolved_pets,
+                (SELECT COUNT(*) FROM pets WHERE user_id = $1) AS total_pets,
+                (SELECT COUNT(*) FROM pets WHERE user_id = $1 AND resolved_at IS NOT NULL) AS resolved_pets,
                 (SELECT COUNT(*) FROM notifications
-                    WHERE user_id = $2 AND type IN ('nearby_vet_lost', 'nearby_vet_found')) AS total_alerts,
+                    WHERE user_id = $1 AND type IN ('nearby_vet_lost', 'nearby_vet_found')) AS total_alerts,
                 (SELECT COUNT(*) FROM notifications
-                    WHERE user_id = $2 AND type IN ('nearby_vet_lost', 'nearby_vet_found')
+                    WHERE user_id = $1 AND type IN ('nearby_vet_lost', 'nearby_vet_found')
                           AND read_at IS NULL) AS unread_alerts`,
-            [vet.id, req.user.id]
+            [req.user.id]
         );
         const stats = statsRows[0];
 
-        // Últimos pets publicados por la vet (max 5).
+        // Últimos pets publicados por el owner (max 5).
         const { rows: recentPets } = await pool.query(
             `SELECT id, status, photo_url, name, description, address,
                     resolved_at, created_at
              FROM pets
-             WHERE registered_by_vet_id = $1
+             WHERE user_id = $1
              ORDER BY created_at DESC
              LIMIT 5`,
-            [vet.id]
+            [req.user.id]
         );
 
         // Últimas alertas recibidas por la vet (max 5).
@@ -240,27 +244,20 @@ export const getMyVetDashboard = async (req, res) => {
 };
 
 // PATCH /api/vets/me/alerts — config de alertas por radio.
-// Gate por plan: ally = radio máximo 5km. Sponsors escalan según plan.
+// El radio es de push notifications, no depende del plan de sponsor. El
+// schema Joi ya lo limita a 1-50 km. Cualquier vet puede elegir libremente
+// dentro de ese rango (igual que un user).
 export const updateMyVetAlerts = async (req, res) => {
     try {
         const { receives_lost, receives_found, alert_radius_km } = req.body;
         const { rows: existingRows } = await pool.query(
-            'SELECT id, plan FROM vets WHERE owner_user_id = $1',
+            'SELECT id FROM vets WHERE owner_user_id = $1',
             [req.user.id]
         );
         if (existingRows.length === 0) {
             return res.status(404).json({ error: 'No tenés una veterinaria registrada.' });
         }
         const vet = existingRows[0];
-
-        if (alert_radius_km !== undefined) {
-            const cap = vet.plan === 'ally' ? 5 : 50;
-            if (alert_radius_km > cap) {
-                return res.status(403).json({
-                    error: `Tu plan actual permite un radio máximo de ${cap} km.`,
-                });
-            }
-        }
 
         const sets = [];
         const values = [];

@@ -676,9 +676,9 @@ function Profile() {
     const successRate = vetDash && vetDash.stats.total_pets > 0
         ? Math.round((vetDash.stats.resolved_pets / vetDash.stats.total_pets) * 100)
         : null;
-    // El slider tiene cap si es una vet en plan ally (gate comercial).
-    // Para users normales el radio no depende de ningún plan → 50 km máx.
-    const maxRadius = isVet && vet?.plan === 'ally' ? 5 : 50;
+    // Radio de alertas: 50km máx para todos. El sponsor NO desbloquea
+    // radio extendido — es una preferencia de push libre, igual que para user.
+    const maxRadius = 50;
 
     return (
         <div className="min-h-screen bg-mimo-muted text-mimo-noche">
@@ -749,7 +749,6 @@ function Profile() {
                         <StatTile
                             label="Radio de alerta"
                             value={`${vet.alert_radius_km} km`}
-                            hint={vet.plan === 'ally' ? 'Ally · máx 5' : 'Socio Mimo'}
                             accent="#9B6DFF"
                         />
                     </div>
@@ -1009,11 +1008,6 @@ function Profile() {
                                         onChange={(e) => setRadius(Number(e.target.value))}
                                         className="mt-3 w-full accent-mimo-coral"
                                     />
-                                    {isVet && vet?.plan === 'ally' ? (
-                                        <div className="mt-2 text-[11px] text-mimo-quiet">
-                                            Plan gratis: hasta 5 km. <span className="font-bold text-mimo-solDark">Socio Mimo extiende a 50 km.</span>
-                                        </div>
-                                    ) : null}
                                 </div>
                             </div>
 

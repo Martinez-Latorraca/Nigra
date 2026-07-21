@@ -25,8 +25,9 @@ import LinkedAccounts from '../src/components/LinkedAccounts';
 import MapPicker from '../src/components/MapPicker';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
-const RADIUS_PRESETS_USER = [5, 15, 25, 50];
-const RADIUS_PRESETS_VET = [5, 15, 50];
+// Radio de push notifications, mismos presets para user y vet — sponsor no
+// cambia el rango. Ver [[project_vet_sponsor_model]] en memoria.
+const RADIUS_PRESETS = [5, 15, 25, 50];
 
 // Debe coincidir con el catálogo del web (client SERVICE_CATALOG) y del
 // directorio (mobile/app/vets/index.js).
@@ -584,12 +585,6 @@ export default function Profile() {
   const successRate = vetDash && vetDash.stats.total_pets > 0
     ? Math.round((vetDash.stats.resolved_pets / vetDash.stats.total_pets) * 100)
     : null;
-  // Solo aplica cap si es una vet en plan ally. Para user normal el radio
-  // no depende de ningún plan.
-  const radiusPresets = isVet && vet
-    ? RADIUS_PRESETS_VET
-    : RADIUS_PRESETS_USER;
-  const maxRadius = isVet && vet?.plan === 'ally' ? 5 : 50;
 
   const header = (
     <View>
@@ -672,7 +667,6 @@ export default function Profile() {
           />
           <StatTile c={c} accent="#9B6DFF" label="RADIO"
             value={`${vet.alert_radius_km} km`}
-            hint={vet.plan === 'ally' ? 'Ally' : 'Socio Mimo'}
           />
         </View>
       ) : null}
@@ -753,20 +747,17 @@ export default function Profile() {
             <Text style={styles.radiusValue}>{radius} km</Text>
           </View>
           <View style={styles.radiusPresets}>
-            {radiusPresets.map((r) => {
-              const disabled = r > maxRadius;
+            {RADIUS_PRESETS.map((r) => {
               const active = radius === r;
               return (
                 <Pressable
                   key={r}
-                  onPress={() => !disabled && setRadius(r)}
-                  disabled={disabled}
+                  onPress={() => setRadius(r)}
                   style={[
                     styles.radiusPreset,
                     {
                       backgroundColor: active ? '#FF5C6C' : c.bg,
                       borderColor: active ? '#FF5C6C' : c.cardBorder,
-                      opacity: disabled ? 0.3 : 1,
                     },
                   ]}
                 >
@@ -777,11 +768,6 @@ export default function Profile() {
               );
             })}
           </View>
-          {isVet && vet?.plan === 'ally' ? (
-            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
-              Ally · máx 5 km. Socio Mimo extiende hasta 50 km.
-            </Text>
-          ) : null}
         </View>
 
         <Pressable onPress={saveAlerts} disabled={savingAlerts} style={[styles.saveBtn, savingAlerts && { opacity: 0.5 }]}>

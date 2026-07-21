@@ -325,20 +325,15 @@ describe('Vets', () => {
             expect(res.body.alert_radius_km).toBe(5);
         });
 
-        it('ally no puede setear radio > 5km (403)', async () => {
-            pool.query.mockResolvedValueOnce({ rows: [{ id: 5, plan: 'ally' }] });
-            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ alert_radius_km: 15 });
-            expect(res.status).toBe(403);
-        });
-
-        it('sponsor puede setear radio hasta 50km', async () => {
+        it('ally puede setear radio hasta 50km (sin gate por plan)', async () => {
+            // El radio de alertas es una pref de push, no un beneficio de
+            // sponsor. Cualquier vet elige libremente 1-50.
             pool.query
-                .mockResolvedValueOnce({ rows: [{ id: 5, plan: 'sponsor_pro' }] })
-                .mockResolvedValueOnce({ rows: [{ id: 5, alert_radius_km: 50, plan: 'sponsor_pro' }] });
-
-            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ alert_radius_km: 50 });
+                .mockResolvedValueOnce({ rows: [{ id: 5 }] })
+                .mockResolvedValueOnce({ rows: [{ id: 5, alert_radius_km: 30, plan: 'ally' }] });
+            const res = await asUser(request(buildApp()).patch('/api/vets/me/alerts')).send({ alert_radius_km: 30 });
             expect(res.status).toBe(200);
-            expect(res.body.alert_radius_km).toBe(50);
+            expect(res.body.alert_radius_km).toBe(30);
         });
 
         it('404 si el user no tiene vet', async () => {

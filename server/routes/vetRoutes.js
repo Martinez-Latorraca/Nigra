@@ -15,6 +15,9 @@ import {
     listActiveVets,
     setVetApproval,
     setVetPlan,
+    trackAdClick,
+    trackContactClick,
+    trackImpressions,
 } from '../controllers/vetController.js';
 import { authenticateToken } from '../middlewares/auth.js';
 import { requireAdmin } from '../middlewares/adminAuth.js';
@@ -26,6 +29,7 @@ import {
     updateVetAlertsSchema,
     nearbyVetsSchema,
     listVetsSchema,
+    trackImpressionsSchema,
 } from '../schemas/vetSchemas.js';
 
 const router = express.Router();
@@ -34,6 +38,12 @@ const router = express.Router();
 router.get('/', validate(listVetsSchema, 'query'), listVets);
 router.get('/ads', listVetAds);
 router.get('/nearby', validate(nearbyVetsSchema, 'query'), nearbyVets);
+
+// Tracking público. No auth: analytics no debe forzar login del user.
+// Ver [[project-vet-sponsor-model]].
+router.post('/events/impressions', validate(trackImpressionsSchema), trackImpressions);
+router.post('/:id/click', trackAdClick);
+router.post('/:id/contact-click', trackContactClick);
 
 // Admin (montado antes de /:slug para no colisionar).
 router.get('/admin/pending', authenticateToken, requireAdmin, listPendingVets);

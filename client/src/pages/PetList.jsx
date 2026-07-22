@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css';
 import { translateColor, translateType } from '../utils/translations';
 import { tierOf } from '../utils/sponsorTiers';
 import SponsorBadge from '../components/SponsorBadge';
+import { trackAdClick } from '../utils/vetTracking';
+import { useTrackImpression } from '../utils/useTrackImpressions';
 
 const API = import.meta.env.VITE_API_URL || '';
 const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
@@ -14,9 +16,12 @@ const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
 function VetAdCard({ vet }) {
     const tier = tierOf(vet);
     const color = tier?.color || '#FF5C6C'; // fallback si por algún motivo no matchea
+    const impressionRef = useTrackImpression(vet.id);
     return (
         <Link
             to={`/vets/${vet.slug}`}
+            onClick={() => trackAdClick(vet.id)}
+            ref={impressionRef}
             style={{ borderColor: color, boxShadow: `0 15px 40px ${color}2E` }}
             className="group bg-mimo-warm rounded-[40px] p-5 flex flex-col gap-5 border-2 transition-all duration-500"
         >

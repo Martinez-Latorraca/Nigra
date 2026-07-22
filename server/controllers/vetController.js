@@ -220,6 +220,26 @@ export const getMyVetDashboard = async (req, res) => {
             [req.user.id]
         );
 
+        // Métricas de publicidad (últimos 30 días). Solo tiene sentido para
+        // sponsors: los ally no aparecen como ad ni tienen tracking meaningful.
+        // Devolvemos 0s para ally para que el frontend no rompa; oculta la
+        // sección con is_sponsor.
+        const { rows: adRows } = await pool.query(
+            `SELECT kind, COUNT(*)::int AS n
+             FROM vet_events
+             WHERE vet_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
+             GROUP BY kind`,
+            [vet.id]
+        );
+        const adStats = {
+            impressions: 0, ad_clicks: 0, contact_clicks: 0,
+        };
+        for (const row of adRows) {
+            if (row.kind === 'impression') adStats.impressions = row.n;
+            else if (row.kind === 'ad_click') adStats.ad_clicks = row.n;
+            else if (row.kind === 'contact_click') adStats.contact_clicks = row.n;
+        }
+
         res.json({
             vet: {
                 id: vet.id, name: vet.name, slug: vet.slug, plan: vet.plan,
@@ -234,6 +254,7 @@ export const getMyVetDashboard = async (req, res) => {
                 total_alerts: Number(stats.total_alerts),
                 unread_alerts: Number(stats.unread_alerts),
             },
+            ad_stats_30d: adStats,
             recent_pets: recentPets,
             recent_alerts: recentAlerts,
         });
@@ -567,6 +588,69 @@ export const setVetPlan = async (req, res) => {
     } catch (error) {
         console.error('setVetPlan error:', error);
         res.status(500).json({ error: 'No se pudo cambiar el plan.' });
+    }
+};
+
+// POST /api/vets/:id/click — trackea un tap en la ad card del feed.
+// Público (no auth): el user puede o no estar logueado. Un abusive script
+// puede inflar counts, pero para MVP no hay dedupe ni rate limit.
+export const trackAdClick = async (req, res) => {
+    try {
+        const vetId = Number(req.params.id);
+        if (!Number.isInteger(vetId) || vetId <= 0) {
+            return res.status(400).json({ error: 'vet_id inválido.' });
+        }
+        await pool.query(
+            `INSERT INTO vet_events (vet_id, kind) VALUES ($1, 'ad_click')`,
+            [vetId]
+        );
+        res.status(204).end();
+    } catch (error) {
+        console.error('trackAdClick error:', error);
+        // Analytics no debe romper UX. Devolvemos 204 igual.
+        res.status(204).end();
+    }
+};
+
+// POST /api/vets/:id/contact-click — tap en un contacto del perfil (WA / tel / IG / web).
+// Mismo tratamiento que trackAdClick.
+export const trackContactClick = async (req, res) => {
+    try {
+        const vetId = Number(req.params.id);
+        if (!Number.isInteger(vetId) || vetId <= 0) {
+            return res.status(400).json({ error: 'vet_id inválido.' });
+        }
+        await pool.query(
+            `INSERT INTO vet_events (vet_id, kind) VALUES ($1, 'contact_click')`,
+            [vetId]
+        );
+        res.status(204).end();
+    } catch (error) {
+        console.error('trackContactClick error:', error);
+        res.status(204).end();
+    }
+};
+
+// POST /api/vets/events/impressions — batch de impresiones (cards que entraron
+// al viewport). Body: { vet_ids: [1,2,3] }. Frontend deduplica por sesión.
+export const trackImpressions = async (req, res) => {
+    try {
+        const { vet_ids: vetIds } = req.body || {};
+        if (!Array.isArray(vetIds) || vetIds.length === 0) return res.status(204).end();
+        const clean = vetIds
+            .map((n) => Number(n))
+            .filter((n) => Number.isInteger(n) && n > 0);
+        if (clean.length === 0) return res.status(204).end();
+        // unnest: 1 fila por vet_id sin armar N placeholders.
+        await pool.query(
+            `INSERT INTO vet_events (vet_id, kind)
+             SELECT UNNEST($1::int[]), 'impression'`,
+            [clean]
+        );
+        res.status(204).end();
+    } catch (error) {
+        console.error('trackImpressions error:', error);
+        res.status(204).end();
     }
 };
 

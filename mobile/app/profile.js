@@ -671,6 +671,28 @@ export default function Profile() {
         </View>
       ) : null}
 
+      {/* Métricas de publicidad (solo sponsors — ally no aparece como ad) */}
+      {isVet && vet?.is_sponsor && vetDash?.ad_stats_30d ? (
+        <View style={{ marginTop: 8 }}>
+          <View style={styles.adStatsHeader}>
+            <Text style={[styles.adStatsKicker, { color: c.subtitle }]}>MÉTRICAS DE PUBLICIDAD</Text>
+            <Text style={[styles.adStatsSub, { color: c.subtitle }]}>Últimos 30 días</Text>
+          </View>
+          <View style={styles.statsGrid}>
+            <StatTile c={c} accent="#9B6DFF" label="IMPRESIONES"
+              value={String(vetDash.ad_stats_30d.impressions)}
+            />
+            <StatTile c={c} accent="#FF5C6C" label="CLICKS EN TU CARD"
+              value={String(vetDash.ad_stats_30d.ad_clicks)}
+            />
+            <StatTile c={c} accent="#3ECFB2" label="CONTACTOS"
+              value={String(vetDash.ad_stats_30d.contact_clicks)}
+              hint="WA · tel · web · IG"
+            />
+          </View>
+        </View>
+      ) : null}
+
       {/* Reportes activos (user) — solo si NO es vet, para no duplicar con stats */}
       {!isVet ? (
         <View style={[styles.statCard, { backgroundColor: c.primary }]}>
@@ -938,6 +960,9 @@ const styles = StyleSheet.create({
   editBtnText: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
+  adStatsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
+  adStatsKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  adStatsSub: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
   stat: {
     flex: 1,
     minWidth: '46%',

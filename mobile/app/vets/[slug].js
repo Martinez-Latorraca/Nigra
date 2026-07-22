@@ -16,6 +16,7 @@ import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
 import { tierOf } from '../../src/lib/sponsorTiers';
 import SponsorBadge from '../../src/components/SponsorBadge';
+import { trackContactClick } from '../../src/lib/vetTracking';
 
 const HOURS_ORDER = [
   ['mon', 'Lunes'],
@@ -88,8 +89,12 @@ export default function VetProfile() {
     ? `https://wa.me/${String(vet.whatsapp).replace(/[^\d]/g, '')}`
     : null;
 
+  // Handler que trackea el tap y abre el link. Cada ContactRow con href
+  // pasa por acá — WA / tel / email / web / IG.
   const openLink = (url) => () => {
-    if (url) Linking.openURL(url).catch(() => {});
+    if (!url) return;
+    trackContactClick(vet.id);
+    Linking.openURL(url).catch(() => {});
   };
 
   return (

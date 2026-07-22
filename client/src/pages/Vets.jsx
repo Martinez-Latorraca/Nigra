@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { tierOf } from '../utils/sponsorTiers';
 import SponsorBadge from '../components/SponsorBadge';
+import { trackAdClick } from '../utils/vetTracking';
+import { useTrackImpression } from '../utils/useTrackImpressions';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -21,6 +23,45 @@ const SERVICE_CATALOG = [
     'Adiestramiento',
     'Atención a domicilio',
 ];
+
+// Item del banner "Nuestros socios" — se separa como componente para que
+// cada card pueda tener su propio observer de impresión.
+function SponsorBannerItem({ vet }) {
+    const tier = tierOf(vet);
+    const style = tier
+        ? { borderColor: tier.color, boxShadow: `0 15px 40px ${tier.color}2E` }
+        : {};
+    const impressionRef = useTrackImpression(vet.id);
+    return (
+        <Link
+            to={`/vets/${vet.slug}`}
+            onClick={() => trackAdClick(vet.id)}
+            ref={impressionRef}
+            style={style}
+            className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 bg-mimo-warm p-4 transition-all"
+        >
+            <div className="flex items-center gap-3">
+                {vet.logo_url ? (
+                    <img src={vet.logo_url} alt="" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
+                ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-xl flex-shrink-0">
+                        {vet.name.charAt(0)}
+                    </div>
+                )}
+                <div className="min-w-0 flex-1">
+                    <div className="font-display font-black text-sm text-mimo-noche truncate">{vet.name}</div>
+                    {vet.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {vet.city}</div> : null}
+                </div>
+            </div>
+            {tier && (
+                <div className="mt-3">
+                    <SponsorBadge vet={vet} width={95} />
+                </div>
+            )}
+            {vet.bio ? <p className="mt-2 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{vet.bio}</p> : null}
+        </Link>
+    );
+}
 
 function VetCard({ vet }) {
     // Ring/borde/badge en el color del tier del sponsor. Ally = sin destacar.
@@ -317,40 +358,7 @@ export default function Vets() {
                         </span>
                     </div>
                     <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-                        {ads.map((v) => {
-                            const tier = tierOf(v);
-                            const style = tier
-                                ? { borderColor: tier.color, boxShadow: `0 15px 40px ${tier.color}2E` }
-                                : {};
-                            return (
-                            <Link
-                                key={v.id}
-                                to={`/vets/${v.slug}`}
-                                style={style}
-                                className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 bg-mimo-warm p-4 transition-all"
-                            >
-                                <div className="flex items-center gap-3">
-                                    {v.logo_url ? (
-                                        <img src={v.logo_url} alt="" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
-                                    ) : (
-                                        <div className="w-14 h-14 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-xl flex-shrink-0">
-                                            {v.name.charAt(0)}
-                                        </div>
-                                    )}
-                                    <div className="min-w-0 flex-1">
-                                        <div className="font-display font-black text-sm text-mimo-noche truncate">{v.name}</div>
-                                        {v.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {v.city}</div> : null}
-                                    </div>
-                                </div>
-                                {tier && (
-                                    <div className="mt-3">
-                                        <SponsorBadge vet={v} width={95} />
-                                    </div>
-                                )}
-                                {v.bio ? <p className="mt-2 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}
-                            </Link>
-                            );
-                        })}
+                        {ads.map((v) => <SponsorBannerItem key={v.id} vet={v} />)}
                     </div>
                 </div>
             ) : null}

@@ -754,6 +754,38 @@ function Profile() {
                     </div>
                 ) : null}
 
+                {/* -------------- VET AD STATS (solo sponsors) -------------- */}
+                {isVet && vet?.is_sponsor && vetDash?.ad_stats_30d ? (
+                    <div className="mb-8">
+                        <div className="mb-3 flex items-center justify-between">
+                            <span className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] text-mimo-quiet">
+                                Métricas de publicidad
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
+                                Últimos 30 días
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                            <StatTile
+                                label="Impresiones"
+                                value={vetDash.ad_stats_30d.impressions.toLocaleString('es-UY')}
+                                accent="#9B6DFF"
+                            />
+                            <StatTile
+                                label="Clicks en tu card"
+                                value={vetDash.ad_stats_30d.ad_clicks.toLocaleString('es-UY')}
+                                accent="#FF5C6C"
+                            />
+                            <StatTile
+                                label="Contactos"
+                                value={vetDash.ad_stats_30d.contact_clicks.toLocaleString('es-UY')}
+                                hint="WA · tel · web · IG"
+                                accent="#3ECFB2"
+                            />
+                        </div>
+                    </div>
+                ) : null}
+
                 {/* -------------------------- SPONSOR CTA -------------------------- */}
                 {isVet && vet && !vet.is_sponsor ? (
                     <div className="rounded-[32px] p-8 mb-8 text-mimo-warm bg-gradient-to-br from-mimo-sol to-mimo-coral shadow-mimo">

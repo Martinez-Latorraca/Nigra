@@ -18,6 +18,7 @@ import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
 import { tierOf } from '../../src/lib/sponsorTiers';
 import SponsorBadge from '../../src/components/SponsorBadge';
+import { trackAdClick, trackImpressionOnce } from '../../src/lib/vetTracking';
 
 const PAGE_LIMIT = 20;
 
@@ -105,6 +106,13 @@ function VetCard({ vet, onPress, c }) {
     </Pressable>
   );
 }
+
+// FlatList requiere que estas refs no cambien entre renders o tira warning
+// "Changing onViewableItemsChanged on the fly is not supported".
+const AD_VIEWABILITY = { itemVisiblePercentThreshold: 50 };
+const onAdsViewable = ({ viewableItems }) => {
+  for (const v of viewableItems) if (v.item?.id) trackImpressionOnce(v.item.id);
+};
 
 export default function VetsList() {
   const c = useTheme();
@@ -254,12 +262,14 @@ export default function VetsList() {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(v) => String(v.id)}
             contentContainerStyle={{ gap: 10, paddingRight: 8 }}
+            onViewableItemsChanged={onAdsViewable}
+            viewabilityConfig={AD_VIEWABILITY}
             renderItem={({ item: v }) => {
               const t = tierOf(v);
               const borderColor = t?.color || '#FF5C6C';
               return (
                 <Pressable
-                  onPress={() => router.push(`/vets/${v.slug}`)}
+                  onPress={() => { trackAdClick(v.id); router.push(`/vets/${v.slug}`); }}
                   style={[styles.adBannerItem, { backgroundColor: c.card, borderColor }]}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

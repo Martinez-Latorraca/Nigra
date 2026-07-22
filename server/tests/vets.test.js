@@ -325,7 +325,8 @@ describe('Vets', () => {
                     rows: [{ total_pets: '3', resolved_pets: '1', total_alerts: '10', unread_alerts: '2' }],
                 }) // stats
                 .mockResolvedValueOnce({ rows: [{ id: 100 }, { id: 101 }] }) // recent_pets
-                .mockResolvedValueOnce({ rows: [{ id: 200, type: 'nearby_vet_lost' }] }); // recent_alerts
+                .mockResolvedValueOnce({ rows: [{ id: 200, type: 'nearby_vet_lost' }] }) // recent_alerts
+                .mockResolvedValueOnce({ rows: [] }); // ad_stats_30d
 
             const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
             expect(res.status).toBe(200);
@@ -349,6 +350,7 @@ describe('Vets', () => {
                     }],
                 })
                 .mockResolvedValueOnce({ rows: [{ total_pets: '0', resolved_pets: '0', total_alerts: '0', unread_alerts: '0' }] })
+                .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] });
 
@@ -481,6 +483,120 @@ describe('Vets', () => {
             mockNonAdminRole();
             const res = await asUser(request(buildApp()).patch('/api/vets/admin/5/plan')).send({ plan: 'sponsor_pro' });
             expect(res.status).toBe(403);
+        });
+    });
+
+    describe('Analytics / tracking', () => {
+        it('POST /:id/click inserta un ad_click y devuelve 204', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp()).post('/api/vets/12/click');
+            expect(res.status).toBe(204);
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/INSERT INTO vet_events/);
+            expect(sql).toMatch(/'ad_click'/);
+            expect(params).toEqual([12]);
+        });
+
+        it('POST /:id/contact-click inserta un contact_click y devuelve 204', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp()).post('/api/vets/7/contact-click');
+            expect(res.status).toBe(204);
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/'contact_click'/);
+            expect(params).toEqual([7]);
+        });
+
+        it('POST /:id/click con id inválido devuelve 400', async () => {
+            const res = await request(buildApp()).post('/api/vets/abc/click');
+            expect(res.status).toBe(400);
+            expect(pool.query).not.toHaveBeenCalled();
+        });
+
+        it('POST /:id/click 204 aún si el INSERT tira error (analytics no rompe UX)', async () => {
+            pool.query.mockRejectedValueOnce(new Error('db down'));
+            const res = await request(buildApp()).post('/api/vets/12/click');
+            expect(res.status).toBe(204);
+        });
+
+        it('POST /events/impressions inserta batch con UNNEST', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/vets/events/impressions')
+                .send({ vet_ids: [1, 2, 3] });
+            expect(res.status).toBe(204);
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/UNNEST/);
+            expect(sql).toMatch(/'impression'/);
+            expect(params).toEqual([[1, 2, 3]]);
+        });
+
+        it('POST /events/impressions rechaza body sin vet_ids', async () => {
+            const res = await request(buildApp())
+                .post('/api/vets/events/impressions')
+                .send({});
+            expect(res.status).toBe(400);
+        });
+
+        it('POST /events/impressions cap 50 vet_ids', async () => {
+            const many = Array.from({ length: 51 }, (_, i) => i + 1);
+            const res = await request(buildApp())
+                .post('/api/vets/events/impressions')
+                .send({ vet_ids: many });
+            expect(res.status).toBe(400);
+        });
+
+        it('GET /me/dashboard incluye ad_stats_30d agregado por kind', async () => {
+            pool.query
+                // 1) vet del owner
+                .mockResolvedValueOnce({ rows: [{
+                    id: 3, name: 'Vet X', slug: 'vet-x', plan: 'sponsor_pro',
+                    verified_at: '2026-06-01', approved: true,
+                    receives_lost: true, receives_found: false, alert_radius_km: 15,
+                    logo_url: null,
+                }] })
+                // 2) stats de pets/alertas
+                .mockResolvedValueOnce({ rows: [{
+                    total_pets: '2', resolved_pets: '1',
+                    total_alerts: '5', unread_alerts: '2',
+                }] })
+                // 3) recent pets
+                .mockResolvedValueOnce({ rows: [] })
+                // 4) recent alerts
+                .mockResolvedValueOnce({ rows: [] })
+                // 5) ad_stats_30d
+                .mockResolvedValueOnce({ rows: [
+                    { kind: 'impression', n: 1247 },
+                    { kind: 'ad_click', n: 47 },
+                    { kind: 'contact_click', n: 12 },
+                ] });
+
+            const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
+            expect(res.status).toBe(200);
+            expect(res.body.ad_stats_30d).toEqual({
+                impressions: 1247, ad_clicks: 47, contact_clicks: 12,
+            });
+        });
+
+        it('GET /me/dashboard con 0 eventos devuelve 0s (no rompe si nada trackeado)', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{
+                    id: 3, name: 'Vet Y', slug: 'vet-y', plan: 'ally',
+                    verified_at: null, approved: true,
+                    receives_lost: false, receives_found: false, alert_radius_km: 5,
+                    logo_url: null,
+                }] })
+                .mockResolvedValueOnce({ rows: [{
+                    total_pets: '0', resolved_pets: '0', total_alerts: '0', unread_alerts: '0',
+                }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] });
+
+            const res = await asUser(request(buildApp()).get('/api/vets/me/dashboard'));
+            expect(res.status).toBe(200);
+            expect(res.body.ad_stats_30d).toEqual({
+                impressions: 0, ad_clicks: 0, contact_clicks: 0,
+            });
         });
     });
 });

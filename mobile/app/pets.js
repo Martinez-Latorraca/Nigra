@@ -19,6 +19,7 @@ import PetCard from '../src/components/PetCard';
 import MenuButton from '../src/components/MenuButton';
 import { tierOf } from '../src/lib/sponsorTiers';
 import SponsorBadge from '../src/components/SponsorBadge';
+import { trackAdClick, trackImpressionOnce } from '../src/lib/vetTracking';
 
 const FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -26,6 +27,15 @@ const FILTERS = [
   { key: 'found', label: 'Encontrados' },
 ];
 const AD_INTERVAL = 6;
+
+// FlatList exige que la ref no cambie entre renders. Al ser module-level
+// no captura closure sobre estados del componente.
+const AD_VIEWABILITY = { itemVisiblePercentThreshold: 50 };
+const onFeedViewable = ({ viewableItems }) => {
+  for (const v of viewableItems) {
+    if (v.item?.__kind === 'ad' && v.item?.id) trackImpressionOnce(v.item.id);
+  }
+};
 
 // Card de publicidad de un vet sponsor. Estilo distinto del PetCard (borde
 // dorado + label "Publicidad") para no confundir con contenido orgánico.
@@ -135,6 +145,11 @@ export default function Pets() {
     setRefreshing(false);
   };
 
+  const handleAdPress = (item) => {
+    trackAdClick(item.id);
+    router.push(`/vets/${item.slug}`);
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
       <View style={styles.header}>
@@ -199,7 +214,7 @@ export default function Pets() {
               <VetAdCard
                 vet={item}
                 c={c}
-                onPress={() => router.push(`/vets/${item.slug}`)}
+                onPress={() => handleAdPress(item)}
                 style={numColumns > 1 ? styles.gridCard : undefined}
               />
             ) : (
@@ -210,6 +225,8 @@ export default function Pets() {
               />
             )
           )}
+          onViewableItemsChanged={onFeedViewable}
+          viewabilityConfig={AD_VIEWABILITY}
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.title} />

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { tierOf } from '../utils/sponsorTiers';
 import SponsorBadge from '../components/SponsorBadge';
+import { trackContactClick } from '../utils/vetTracking';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -15,7 +16,7 @@ const HOURS_ORDER = [
     ['sun', 'Domingo'],
 ];
 
-function ContactRow({ icon, label, value, href }) {
+function ContactRow({ icon, label, value, href, onClick }) {
     if (!value) return null;
     const content = (
         <div className="flex items-center gap-3 rounded-2xl border border-mimo-muted bg-mimo-warm px-4 py-3 transition-all hover:border-mimo-muted">
@@ -30,7 +31,7 @@ function ContactRow({ icon, label, value, href }) {
     );
     if (!href) return content;
     return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="block">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="block" onClick={onClick}>
             {content}
         </a>
     );
@@ -196,24 +197,28 @@ export default function VetProfile() {
                         label="Teléfono"
                         value={vet.phone}
                         href={vet.phone ? `tel:${vet.phone}` : null}
+                        onClick={() => trackContactClick(vet.id)}
                     />
                     <ContactRow
                         icon="💬"
                         label="WhatsApp"
                         value={vet.whatsapp}
                         href={whatsappHref}
+                        onClick={() => trackContactClick(vet.id)}
                     />
                     <ContactRow
                         icon="✉️"
                         label="Email"
                         value={vet.email}
                         href={vet.email ? `mailto:${vet.email}` : null}
+                        onClick={() => trackContactClick(vet.id)}
                     />
                     <ContactRow
                         icon="🌐"
                         label="Sitio web"
                         value={vet.website}
                         href={vet.website}
+                        onClick={() => trackContactClick(vet.id)}
                     />
                     <ContactRow
                         icon="📸"
@@ -224,6 +229,7 @@ export default function VetProfile() {
                                 ? `https://instagram.com/${String(vet.instagram).replace(/^@/, '')}`
                                 : null
                         }
+                        onClick={() => trackContactClick(vet.id)}
                     />
                 </div>
             </div>

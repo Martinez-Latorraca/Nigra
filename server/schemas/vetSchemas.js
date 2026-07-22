@@ -69,3 +69,9 @@ export const updateVetAlertsSchema = Joi.object({
     // Ally: 5km fijo. Sponsor: 15/50 según plan. El controller gate por plan.
     alert_radius_km: Joi.number().integer().min(1).max(50).optional(),
 }).min(1);
+
+// Batch de impresiones. Cap alto para tolerar scrolls largos sin partir en
+// varias requests, pero sin ser abusable.
+export const trackImpressionsSchema = Joi.object({
+    vet_ids: Joi.array().items(Joi.number().integer().positive()).min(1).max(50).required(),
+});

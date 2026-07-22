@@ -59,7 +59,7 @@ function VetCard({ vet, onPress, c }) {
     >
       {tier && (
         <View style={styles.sponsorBadge}>
-          <SponsorBadge vet={vet} width={120} />
+          <SponsorBadge vet={vet} width={95} />
         </View>
       )}
       <View style={styles.cardRow}>
@@ -275,7 +275,7 @@ export default function VetsList() {
                       {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
                     </View>
                   </View>
-                  <SponsorBadge vet={v} width={100} style={{ marginTop: 4 }} />
+                  <SponsorBadge vet={v} width={95} style={{ marginTop: 4 }} />
                   {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
                 </Pressable>
               );

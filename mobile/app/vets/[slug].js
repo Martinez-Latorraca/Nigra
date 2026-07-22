@@ -120,7 +120,7 @@ export default function VetProfile() {
             <View style={{ flex: 1 }}>
               <View style={styles.badgeRow}>
                 <Text style={[styles.kicker, { color: c.subtitle }]}>VETERINARIA</Text>
-                {tier && <SponsorBadge vet={vet} width={140} />}
+                {tier && <SponsorBadge vet={vet} width={110} />}
               </View>
               <Text style={[styles.name, { color: c.title }]}>{vet.name}</Text>
               {(vet.city || vet.address) && (

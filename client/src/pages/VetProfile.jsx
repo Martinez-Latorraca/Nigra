@@ -111,7 +111,7 @@ export default function VetProfile() {
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
                                     Veterinaria
                                 </span>
-                                {tier && <SponsorBadge vet={vet} width={160} />}
+                                {tier && <SponsorBadge vet={vet} width={110} />}
                             </div>
                             <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche md:text-5xl leading-none">
                                 {vet.name}

@@ -44,7 +44,7 @@ function VetAdCard({ vet }) {
                     </span>
                 </div>
                 <div className="absolute bottom-4 left-4">
-                    <SponsorBadge vet={vet} width={140} />
+                    <SponsorBadge vet={vet} width={110} />
                 </div>
             </div>
             <div className="px-2">

@@ -68,7 +68,7 @@ function VetAdCard({ vet, c, onPress, style }) {
         )}
       </View>
       <View style={styles.adBody}>
-        <SponsorBadge vet={vet} width={130} />
+        <SponsorBadge vet={vet} width={110} />
         <Text style={[styles.adName, { color: c.title }]} numberOfLines={2}>{vet.name}</Text>
         {vet.city ? <Text style={[styles.adCity, { color: c.subtitle }]}>📍 {vet.city}</Text> : null}
         {vet.bio ? <Text style={[styles.adBio, { color: c.subtitle }]} numberOfLines={2}>{vet.bio}</Text> : null}

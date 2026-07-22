@@ -47,7 +47,7 @@ function VetCard({ vet }) {
                 ) : null}
                 {tier && (
                     <div className="absolute right-3 top-3">
-                        <SponsorBadge vet={vet} width={130} />
+                        <SponsorBadge vet={vet} width={95} />
                     </div>
                 )}
             </div>
@@ -344,7 +344,7 @@ export default function Vets() {
                                 </div>
                                 {tier && (
                                     <div className="mt-3">
-                                        <SponsorBadge vet={v} width={110} />
+                                        <SponsorBadge vet={v} width={95} />
                                     </div>
                                 )}
                                 {v.bio ? <p className="mt-2 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}

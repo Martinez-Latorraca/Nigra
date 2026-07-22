@@ -205,10 +205,13 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
     try {
         const oppositeStatus = status === 'lost' ? 'found' : 'lost';
         const radioKm = 50;
+        // deleted_at + email vienen del user del pet matcheado. Si está borrado,
+        // en vez de notificarle a un buzón huérfano alertamos al admin con el
+        // email histórico para que pueda contactarlo por fuera de la app.
         const sql = `
             SELECT p.id, p.user_id, p.name, p.description,
                 (p.embedding <=> $7) AS visual_distance,
-                u.push_token
+                u.push_token, u.deleted_at, u.email AS original_email
             FROM pets p
             JOIN users u ON p.user_id = u.id
             WHERE p.type = $3
@@ -234,6 +237,16 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
                 description: newPet.description,
                 match_name: m.name,
             };
+            // Branch: dueño del pet matcheado tiene deleted_at → alerta al admin.
+            if (m.deleted_at) {
+                await notifyAdminsOfDeletedUserMatch({
+                    newPet,
+                    originalPet: { id: m.id, name: m.name, description: m.description },
+                    originalUserEmail: m.original_email,
+                    io,
+                });
+                continue;
+            }
             // 1) Persistimos la notificación para que aparezca en el inbox.
             let inserted = null;
             try {
@@ -268,6 +281,44 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
         }
     } catch (error) {
         console.error('notifyMatchesForReport error:', error.message);
+    }
+}
+
+// Cuando el AI matchea con un pet cuyo dueño se dio de baja, la notif normal
+// no aplica (el buzón está huérfano). Genera 1 notif tipo
+// `admin_deleted_user_match` por cada admin activo con el email histórico
+// del ex-user para que puedan contactarlo por fuera de la app. Ver
+// [[project-admin-alert-deleted-user-match]].
+async function notifyAdminsOfDeletedUserMatch({ newPet, originalPet, originalUserEmail, io }) {
+    try {
+        const { rows: admins } = await pool.query(
+            `SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL`
+        );
+        if (admins.length === 0) return;
+        const payload = {
+            new_pet_id: newPet.id,
+            new_pet_photo: newPet.photo_url,
+            new_pet_name: newPet.name,
+            new_pet_status: newPet.status,
+            original_pet_id: originalPet.id,
+            original_pet_name: originalPet.name,
+            original_user_email: originalUserEmail,
+        };
+        for (const admin of admins) {
+            try {
+                const { rows } = await pool.query(
+                    `INSERT INTO notifications (user_id, type, data) VALUES ($1, 'admin_deleted_user_match', $2::jsonb)
+                     RETURNING id, user_id, type, data, read_at, created_at`,
+                    [admin.id, JSON.stringify(payload)]
+                );
+                if (io) io.to(`user_${admin.id}`).emit('new_admin_notification', rows[0]);
+            } catch (e) {
+                console.error('No se pudo persistir admin_deleted_user_match:', e.message);
+            }
+        }
+        console.log(`🔔 admin_deleted_user_match para ${admins.length} admin(s) — new pet ${newPet.id} matchea con original ${originalPet.id} de ${originalUserEmail}`);
+    } catch (error) {
+        console.error('notifyAdminsOfDeletedUserMatch error:', error.message);
     }
 }
 

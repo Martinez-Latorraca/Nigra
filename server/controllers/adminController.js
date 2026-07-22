@@ -357,3 +357,41 @@ export const backfillEmbeddings = async (req, res) => {
         res.status(500).json({ error: 'Error en backfill' });
     }
 };
+
+// GET /api/admin/deleted-user-matches — inbox admin de matches donde el
+// dueño del pet original tiene deleted_at. Filtra las notifs
+// `admin_deleted_user_match` del admin logueado. Ver
+// [[project-admin-alert-deleted-user-match]].
+export const listDeletedUserMatches = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `SELECT id, data, read_at, created_at
+             FROM notifications
+             WHERE user_id = $1 AND type = 'admin_deleted_user_match'
+             ORDER BY created_at DESC
+             LIMIT 100`,
+            [req.user.id]
+        );
+        res.json({ items: rows });
+    } catch (error) {
+        console.error('listDeletedUserMatches error:', error);
+        res.status(500).json({ error: 'Error listando alertas.' });
+    }
+};
+
+// PATCH /api/admin/deleted-user-matches/:id/read — marca una notif como leída.
+export const markDeletedUserMatchRead = async (req, res) => {
+    try {
+        const { rows } = await pool.query(
+            `UPDATE notifications SET read_at = NOW()
+             WHERE id = $1 AND user_id = $2 AND type = 'admin_deleted_user_match'
+             RETURNING id, read_at`,
+            [req.params.id, req.user.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'No encontrada.' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('markDeletedUserMatchRead error:', error);
+        res.status(500).json({ error: 'Error marcando como leída.' });
+    }
+};

@@ -289,4 +289,47 @@ describe('Admin', () => {
             expect(res.status).toBe(404);
         });
     });
+
+    describe('deleted user match alerts', () => {
+        it('GET /deleted-user-matches devuelve las notifs del admin logueado', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({
+                rows: [
+                    { id: 1, data: { new_pet_id: 10, original_user_email: 'x@y.com' }, read_at: null, created_at: '2026-07-22' },
+                ],
+            });
+            const res = await request(buildApp())
+                .get('/api/admin/deleted-user-matches')
+                .set('x-test-user', '1');
+            expect(res.status).toBe(200);
+            expect(res.body.items).toHaveLength(1);
+            const [sql, params] = pool.query.mock.calls[1];
+            expect(sql).toMatch(/type = 'admin_deleted_user_match'/);
+            expect(params).toEqual([1]);
+        });
+
+        it('PATCH /deleted-user-matches/:id/read marca leída solo si es del admin logueado', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 5, read_at: '2026-07-22' }] });
+            const res = await request(buildApp())
+                .patch('/api/admin/deleted-user-matches/5/read')
+                .set('x-test-user', '1');
+            expect(res.status).toBe(200);
+            const [sql, params] = pool.query.mock.calls[1];
+            // Guardrail: chequea que el WHERE incluya el user_id (no puede
+            // marcar leídas notifs de otros admins).
+            expect(sql).toMatch(/user_id = \$2/);
+            expect(sql).toMatch(/type = 'admin_deleted_user_match'/);
+            expect(params).toEqual(['5', 1]);
+        });
+
+        it('PATCH devuelve 404 si la notif no existe o no es del admin', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .patch('/api/admin/deleted-user-matches/999/read')
+                .set('x-test-user', '1');
+            expect(res.status).toBe(404);
+        });
+    });
 });

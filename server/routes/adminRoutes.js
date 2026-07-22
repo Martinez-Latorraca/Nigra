@@ -14,6 +14,8 @@ import {
     adminGetConversationMessages,
     adminDeleteMessage,
     backfillEmbeddings,
+    listDeletedUserMatches,
+    markDeletedUserMatchRead,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -40,5 +42,9 @@ router.delete('/messages/:id', adminDeleteMessage);
 
 // Mantenimiento
 router.post('/backfill-embeddings', backfillEmbeddings);
+
+// Alertas: matches de mascotas cuyos dueños se dieron de baja.
+router.get('/deleted-user-matches', listDeletedUserMatches);
+router.patch('/deleted-user-matches/:id/read', markDeletedUserMatchRead);
 
 export default router;

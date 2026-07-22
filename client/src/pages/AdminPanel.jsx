@@ -16,6 +16,7 @@ function AdminPanel() {
     const [conversations, setConversations] = useState([]);
     const [pendingVets, setPendingVets] = useState([]);
     const [activeVets, setActiveVets] = useState([]);
+    const [deletedUserMatches, setDeletedUserMatches] = useState([]);
     const [activeConversation, setActiveConversation] = useState(null);
     const [conversationMessages, setConversationMessages] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -130,6 +131,32 @@ function AdminPanel() {
         if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
     }, [authHeaders]);
 
+    const fetchDeletedUserMatches = useCallback(async (isTabChange = false) => {
+        if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
+        try {
+            const res = await fetch(`${API}/api/admin/deleted-user-matches`, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok) setDeletedUserMatches(data.items || []);
+        } catch (err) {
+            console.error(err);
+        }
+        if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
+    }, [authHeaders]);
+
+    const markDeletedUserMatchRead = async (id) => {
+        try {
+            const res = await fetch(`${API}/api/admin/deleted-user-matches/${id}/read`, {
+                method: 'PATCH',
+                headers: authHeaders(),
+            });
+            if (res.ok) {
+                setDeletedUserMatches((prev) => prev.map((n) => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchConversationMessages = async (conv) => {
         setActiveConversation(conv);
         setLoadingQuery(true);
@@ -153,6 +180,7 @@ function AdminPanel() {
         if (tab === 'messages') fetchConversations(1, '', true);
         if (tab === 'vets') fetchPendingVets(true);
         if (tab === 'vets_active') fetchActiveVets(true);
+        if (tab === 'alerts') fetchDeletedUserMatches(true);
     };
 
     // Initial fetch on mount
@@ -271,6 +299,7 @@ function AdminPanel() {
         { id: 'messages', label: 'Mensajes' },
         { id: 'vets', label: 'Vets pendientes' },
         { id: 'vets_active', label: 'Vets activas' },
+        { id: 'alerts', label: 'Alertas' },
     ];
 
     const PLAN_OPTIONS = [
@@ -308,7 +337,7 @@ function AdminPanel() {
             </div>
 
             {/* Search bar (no aplica a dashboard ni al listado de vets pendientes) */}
-            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && !loadingTab && (
+            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'alerts' && !loadingTab && (
                 <div className="mb-6 flex flex-wrap gap-4 items-end">
                     <div className="space-y-2">
                         <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Buscar</label>
@@ -714,8 +743,72 @@ function AdminPanel() {
                     </div>
                 )}
 
+                {/* ─── ALERTS TAB ────────────────────────────── */}
+                {activeTab === 'alerts' && !loadingTab && !loadingQuery && (
+                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Matches del AI donde el dueño del pet original se dio de baja de la app.
+                            Contactalos por el email histórico para coordinar por fuera.
+                        </p>
+                        {deletedUserMatches.length === 0 ? (
+                            <p className="text-center text-gray-400 py-8">Sin alertas por ahora.</p>
+                        ) : (
+                            deletedUserMatches.map((n) => {
+                                const d = n.data || {};
+                                const isUnread = !n.read_at;
+                                return (
+                                    <div
+                                        key={n.id}
+                                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+                                            isUnread ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
+                                        }`}
+                                    >
+                                        {d.new_pet_photo && (
+                                            <img src={d.new_pet_photo} alt="" className="w-14 h-14 rounded-xl object-cover" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                                Match {d.new_pet_status === 'lost' ? 'perdida' : 'encontrada'} #{d.new_pet_id} ↔ original #{d.original_pet_id}
+                                            </p>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                Ex-dueño: <span className="font-mono">{d.original_user_email || 'sin email'}</span>
+                                                {d.original_pet_name ? ` · original: ${d.original_pet_name}` : ''}
+                                            </p>
+                                            <p className="text-[10px] text-gray-400 mt-1">{formatDate(n.created_at)}</p>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            {d.original_user_email && (
+                                                <a
+                                                    href={`mailto:${d.original_user_email}?subject=Posible%20coincidencia%20de%20tu%20mascota%20en%20Mimo`}
+                                                    className="px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs font-medium hover:bg-gray-700"
+                                                >
+                                                    Contactar
+                                                </a>
+                                            )}
+                                            <Link
+                                                to={`/pet/${d.new_pet_id}`}
+                                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
+                                            >
+                                                Ver match
+                                            </Link>
+                                            {isUnread && (
+                                                <button
+                                                    onClick={() => markDeletedUserMatchRead(n.id)}
+                                                    className="text-[10px] text-gray-500 hover:text-gray-900"
+                                                >
+                                                    Marcar leída
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+
                 {/* ─── PAGINATION ────────────────────────────── */}
-                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
+                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'alerts' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
                         {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
                             <button

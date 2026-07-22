@@ -156,21 +156,21 @@ describe('Vets', () => {
             await request(buildApp()).get('/api/vets?lat=-34.9&lng=-56.16&radius_km=10');
             const [sql, params] = pool.query.mock.calls[0];
             expect(sql).toMatch(/6371 \* acos/);
-            // Sponsors primero, distancia después.
-            expect(sql).toMatch(/ORDER BY \(plan <> 'ally'\) DESC, \(6371 \* acos/);
+            // Nation > Pro > Basic > Ally, después distancia.
+            expect(sql).toMatch(/ORDER BY CASE plan[\s\S]*sponsor_nation[\s\S]*sponsor_pro[\s\S]*sponsor_basic[\s\S]*END DESC, \(6371 \* acos/);
             expect(params[0]).toBe(-34.9);
             expect(params[1]).toBe(-56.16);
             expect(params[2]).toBe(10);
         });
 
-        it('sin geoloc: sponsors primero, después verified_at + created_at', async () => {
+        it('sin geoloc: tier ranking primero, después verified_at + created_at', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [{ total: 0 }] });
 
             await request(buildApp()).get('/api/vets');
             const sql = pool.query.mock.calls[0][0];
-            expect(sql).toMatch(/ORDER BY \(plan <> 'ally'\) DESC, verified_at DESC/);
+            expect(sql).toMatch(/ORDER BY CASE plan[\s\S]*sponsor_nation[\s\S]*END DESC, verified_at DESC/);
         });
 
         it('400 si viene lat sin lng (validation: and)', async () => {

@@ -320,13 +320,19 @@ export const listVets = async (req, res) => {
             where += ` AND lat IS NOT NULL AND lng IS NOT NULL AND (6371 * acos(cos(radians($${iLat})) * cos(radians(lat)) * cos(radians(lng) - radians($${iLng})) + sin(radians($${iLat})) * sin(radians(lat)))) <= $${iRad}`;
         }
 
-        // Los sponsors (plan != 'ally') aparecen primero en cualquier orden —
-        // es uno de los benefits del tier pago. Ver [[project-vet-sponsor-model]].
-        // Cuando hay geoloc, el segundo criterio es distancia; sin geoloc, es
-        // verified_at DESC + created_at DESC.
+        // Ranking por tier: nation > pro > basic > ally. Los sponsors del
+        // tier más alto aparecen primero — es el benefit principal del plan
+        // pago. Ver [[project-vet-sponsor-model]]. Cuando hay geoloc, el
+        // segundo criterio es distancia; sin geoloc, verified_at + created_at.
+        const tierRank = `CASE plan
+            WHEN 'sponsor_nation' THEN 3
+            WHEN 'sponsor_pro'    THEN 2
+            WHEN 'sponsor_basic'  THEN 1
+            ELSE 0
+        END`;
         const orderClause = (lat != null && lng != null)
-            ? `ORDER BY (plan <> 'ally') DESC, (6371 * acos(cos(radians($${filterParams.length - 2})) * cos(radians(lat)) * cos(radians(lng) - radians($${filterParams.length - 1})) + sin(radians($${filterParams.length - 2})) * sin(radians(lat)))) ASC`
-            : `ORDER BY (plan <> 'ally') DESC, verified_at DESC NULLS LAST, created_at DESC`;
+            ? `ORDER BY ${tierRank} DESC, (6371 * acos(cos(radians($${filterParams.length - 2})) * cos(radians(lat)) * cos(radians(lng) - radians($${filterParams.length - 1})) + sin(radians($${filterParams.length - 2})) * sin(radians(lat)))) ASC`
+            : `ORDER BY ${tierRank} DESC, verified_at DESC NULLS LAST, created_at DESC`;
 
         const listParams = [...filterParams, limit, offset];
         const { rows } = await pool.query(

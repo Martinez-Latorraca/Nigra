@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { tierOf } from '../utils/sponsorTiers';
+import SponsorBadge from '../components/SponsorBadge';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -45,12 +46,8 @@ function VetCard({ vet }) {
                     />
                 ) : null}
                 {tier && (
-                    <div
-                        style={{ backgroundColor: tier.color }}
-                        className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white shadow-md"
-                    >
-                        <span>⭐</span>
-                        <span>{tier.label}</span>
+                    <div className="absolute right-3 top-3">
+                        <SponsorBadge vet={vet} width={130} />
                     </div>
                 )}
             </div>
@@ -344,9 +341,13 @@ export default function Vets() {
                                         <div className="font-display font-black text-sm text-mimo-noche truncate">{v.name}</div>
                                         {v.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {v.city}</div> : null}
                                     </div>
-                                    {tier && <span style={{ color: tier.color }} className="text-lg">⭐</span>}
                                 </div>
-                                {v.bio ? <p className="mt-3 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}
+                                {tier && (
+                                    <div className="mt-3">
+                                        <SponsorBadge vet={v} width={110} />
+                                    </div>
+                                )}
+                                {v.bio ? <p className="mt-2 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{v.bio}</p> : null}
                             </Link>
                             );
                         })}

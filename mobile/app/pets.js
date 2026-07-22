@@ -18,6 +18,7 @@ import { useTheme } from '../src/lib/theme';
 import PetCard from '../src/components/PetCard';
 import MenuButton from '../src/components/MenuButton';
 import { tierOf } from '../src/lib/sponsorTiers';
+import SponsorBadge from '../src/components/SponsorBadge';
 
 const FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -48,8 +49,8 @@ function VetAdCard({ vet, c, onPress, style }) {
         style,
       ]}
     >
-      <View style={[styles.adBadge, { backgroundColor: color }]}>
-        <Text style={styles.adBadgeText}>⭐ PUBLICIDAD</Text>
+      <View style={styles.adBadge}>
+        <Text style={styles.adBadgeText}>Publicidad</Text>
       </View>
       <View style={styles.adCoverWrap}>
         {vet.cover_url ? (
@@ -67,11 +68,11 @@ function VetAdCard({ vet, c, onPress, style }) {
         )}
       </View>
       <View style={styles.adBody}>
-        <Text style={[styles.adKicker, { color }]}>SOCIO MIMO ⭐</Text>
+        <SponsorBadge vet={vet} width={130} />
         <Text style={[styles.adName, { color: c.title }]} numberOfLines={2}>{vet.name}</Text>
         {vet.city ? <Text style={[styles.adCity, { color: c.subtitle }]}>📍 {vet.city}</Text> : null}
         {vet.bio ? <Text style={[styles.adBio, { color: c.subtitle }]} numberOfLines={2}>{vet.bio}</Text> : null}
-        <Text style={styles.adCta}>Ver perfil →</Text>
+        <Text style={[styles.adCta, { color }]}>Ver perfil →</Text>
       </View>
     </Pressable>
   );
@@ -248,7 +249,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   adBadge: {
-    // backgroundColor viene inline por tier del sponsor
     position: 'absolute',
     top: 20,
     left: 20,
@@ -256,6 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     zIndex: 10,
+    backgroundColor: 'rgba(26,26,46,0.75)',
   },
   adBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
   adCoverWrap: { borderRadius: 18, overflow: 'hidden', aspectRatio: 4 / 3, backgroundColor: '#F0EBE8' },
@@ -264,10 +265,9 @@ const styles = StyleSheet.create({
   adCenterLogo: { width: 96, height: 96, borderRadius: 24 },
   adCenterFallback: { width: 96, height: 96, borderRadius: 24, backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
   adCenterFallbackText: { color: '#fff', fontSize: 40, fontWeight: '900' },
-  adBody: { padding: 8, gap: 4 },
-  adKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5 },
+  adBody: { padding: 8, gap: 6 },
   adName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
   adCity: { fontSize: 11, fontWeight: '600' },
   adBio: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  adCta: { color: '#FF5C6C', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8 },
+  adCta: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8 },
 });

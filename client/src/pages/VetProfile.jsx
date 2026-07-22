@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { tierOf } from '../utils/sponsorTiers';
+import SponsorBadge from '../components/SponsorBadge';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -110,14 +111,7 @@ export default function VetProfile() {
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
                                     Veterinaria
                                 </span>
-                                {tier && (
-                                    <span
-                                        style={{ backgroundColor: tier.color }}
-                                        className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white"
-                                    >
-                                        ⭐ {tier.label}
-                                    </span>
-                                )}
+                                {tier && <SponsorBadge vet={vet} width={160} />}
                             </div>
                             <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche md:text-5xl leading-none">
                                 {vet.name}

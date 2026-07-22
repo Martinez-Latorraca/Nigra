@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { translateColor, translateType } from '../utils/translations';
 import { tierOf } from '../utils/sponsorTiers';
+import SponsorBadge from '../components/SponsorBadge';
 
 const API = import.meta.env.VITE_API_URL || '';
 const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
@@ -38,17 +39,16 @@ function VetAdCard({ vet }) {
                     </div>
                 )}
                 <div className="absolute top-4 left-4">
-                    <span
-                        style={{ backgroundColor: color }}
-                        className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg text-white"
-                    >
-                        ⭐ Publicidad
+                    <span className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg bg-mimo-noche/70 text-white">
+                        Publicidad
                     </span>
+                </div>
+                <div className="absolute bottom-4 left-4">
+                    <SponsorBadge vet={vet} width={140} />
                 </div>
             </div>
             <div className="px-2">
-                <div className="flex justify-between items-center mb-2">
-                    <span style={{ color }} className="text-[9px] font-display font-extrabold uppercase tracking-[0.2em]">Socio Mimo ⭐</span>
+                <div className="flex justify-end items-center mb-2">
                     {vet.city ? (
                         <span className="text-[9px] font-bold text-mimo-quiet uppercase tracking-widest">{vet.city}</span>
                     ) : null}

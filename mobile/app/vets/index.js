@@ -17,6 +17,7 @@ import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import MenuButton from '../../src/components/MenuButton';
 import { tierOf } from '../../src/lib/sponsorTiers';
+import SponsorBadge from '../../src/components/SponsorBadge';
 
 const PAGE_LIMIT = 20;
 
@@ -57,8 +58,8 @@ function VetCard({ vet, onPress, c }) {
       ]}
     >
       {tier && (
-        <View style={[styles.sponsorBadge, { backgroundColor: tier.color }]}>
-          <Text style={styles.sponsorText}>⭐ SOCIO MIMO</Text>
+        <View style={styles.sponsorBadge}>
+          <SponsorBadge vet={vet} width={120} />
         </View>
       )}
       <View style={styles.cardRow}>
@@ -255,11 +256,11 @@ export default function VetsList() {
             contentContainerStyle={{ gap: 10, paddingRight: 8 }}
             renderItem={({ item: v }) => {
               const t = tierOf(v);
-              const color = t?.color || '#FF5C6C';
+              const borderColor = t?.color || '#FF5C6C';
               return (
                 <Pressable
                   onPress={() => router.push(`/vets/${v.slug}`)}
-                  style={[styles.adBannerItem, { backgroundColor: c.card, borderColor: color }]}
+                  style={[styles.adBannerItem, { backgroundColor: c.card, borderColor }]}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     {v.logo_url ? (
@@ -273,8 +274,8 @@ export default function VetsList() {
                       <Text style={[styles.adBannerName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
                       {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
                     </View>
-                    <Text style={{ color, fontSize: 16 }}>⭐</Text>
                   </View>
+                  <SponsorBadge vet={v} width={100} style={{ marginTop: 4 }} />
                   {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
                 </Pressable>
               );
@@ -425,15 +426,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   sponsorBadge: {
-    // backgroundColor viene inline por tier
     position: 'absolute',
-    top: 12,
-    right: 12,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    top: 10,
+    right: 10,
   },
-  sponsorText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 },
   logo: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#E5E7EB' },
   logoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },

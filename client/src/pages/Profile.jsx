@@ -7,6 +7,7 @@ import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
 import MimoLogo from '../components/MimoLogo';
 import MapSelector from '../components/MapSelector';
+import { adRadiusOf } from '../utils/sponsorTiers';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -760,6 +761,11 @@ function Profile() {
                         <div className="mb-3 flex items-center justify-between">
                             <span className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] text-mimo-quiet">
                                 Métricas de publicidad
+                                {adRadiusOf(vet) ? (
+                                    <span className="ml-2 text-mimo-ink normal-case tracking-normal">
+                                        · alcance hasta {adRadiusOf(vet)} km
+                                    </span>
+                                ) : null}
                             </span>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
                                 Últimos 30 días

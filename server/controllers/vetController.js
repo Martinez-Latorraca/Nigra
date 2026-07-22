@@ -379,9 +379,9 @@ export const listVets = async (req, res) => {
 
 // GET /api/vets/ads — cards de publicidad para el feed. Solo sponsors
 // (plan != 'ally'), approved + no deleted.
-// - Con lat/lng: ordenados por distancia asc (los más cercanos primero).
-// - Sin coords: ordenados por tier de sponsor DESC, random() como tie-breaker
-//   para rotar impresiones entre sponsors del mismo tier.
+// - Con lat/lng: filtra por radio máx del tier (basic 5 / pro 20 / nation 50)
+//   y ordena por tier DESC, distancia ASC. La vet nation llega más lejos.
+// - Sin coords: no aplica radio, mix ponderado 50/30/20 por tier.
 // Ver [[project-vet-sponsor-model]] para el modelo comercial.
 export const listVetAds = async (req, res) => {
     try {
@@ -407,9 +407,22 @@ export const listVetAds = async (req, res) => {
             END
         `;
 
+        // Cap de alcance por tier (km). Fijo — no configurable por vet.
+        // Debe coincidir con SPONSOR_TIERS.adRadiusKm en el frontend.
+        const tierRadiusExpr = `
+            CASE plan
+                WHEN 'sponsor_nation' THEN 50
+                WHEN 'sponsor_pro'    THEN 20
+                WHEN 'sponsor_basic'  THEN 5
+                ELSE 0
+            END
+        `;
+
         if (hasGeo) {
-            // Con geoloc: cercanía manda sobre tier. La promesa del sponsor
-            // es aparecerle a users cerca, no dominar por pago.
+            // Con geoloc: filtra por cap del tier, después tier DESC + distancia.
+            // Nation ve users hasta 50km, pro 20, basic 5. Con esto un basic
+            // cerca puede aparecer sobre un nation lejano solo si el nation
+            // está fuera de 50km (que ya lo excluye el WHERE de todas formas).
             const { rows } = await pool.query(
                 `SELECT ${PUBLIC_COLUMNS},
                     (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
@@ -417,7 +430,9 @@ export const listVetAds = async (req, res) => {
                  FROM vets
                  ${baseWhere}
                    AND lat IS NOT NULL AND lng IS NOT NULL
-                 ORDER BY distance_km ASC
+                   AND (6371 * acos(cos(radians($1)) * cos(radians(lat)) * cos(radians(lng) - radians($2))
+                        + sin(radians($1)) * sin(radians(lat)))) <= ${tierRadiusExpr}
+                 ORDER BY ${tierRankExpr} DESC, distance_km ASC
                  LIMIT $3`,
                 [Number(lat), Number(lng), cappedLimit]
             );

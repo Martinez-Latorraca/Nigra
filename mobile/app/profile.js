@@ -23,6 +23,7 @@ import { clearCredentials, updateUserData } from '../src/store/userSlice';
 import MenuButton from '../src/components/MenuButton';
 import LinkedAccounts from '../src/components/LinkedAccounts';
 import MapPicker from '../src/components/MapPicker';
+import { adRadiusOf } from '../src/lib/sponsorTiers';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
 // Radio de push notifications, mismos presets para user y vet — sponsor no
@@ -675,7 +676,10 @@ export default function Profile() {
       {isVet && vet?.is_sponsor && vetDash?.ad_stats_30d ? (
         <View style={{ marginTop: 8 }}>
           <View style={styles.adStatsHeader}>
-            <Text style={[styles.adStatsKicker, { color: c.subtitle }]}>MÉTRICAS DE PUBLICIDAD</Text>
+            <Text style={[styles.adStatsKicker, { color: c.subtitle }]}>
+              MÉTRICAS DE PUBLICIDAD
+              {adRadiusOf(vet) ? <Text style={{ color: c.text }}>  ·  alcance {adRadiusOf(vet)} km</Text> : null}
+            </Text>
             <Text style={[styles.adStatsSub, { color: c.subtitle }]}>Últimos 30 días</Text>
           </View>
           <View style={styles.statsGrid}>

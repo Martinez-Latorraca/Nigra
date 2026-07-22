@@ -203,13 +203,16 @@ describe('Vets', () => {
             expect(limitsByPlan.sponsor_basic).toBe(1);
         });
 
-        it('con lat/lng: cercania manda sobre tier (haversine)', async () => {
+        it('con lat/lng: filtra por radio del tier y ordena tier DESC + distancia', async () => {
             pool.query.mockResolvedValueOnce({ rows: [{ id: 1, distance_km: 2.5 }] });
             const res = await request(buildApp()).get('/api/vets/ads?lat=-34.9&lng=-56.16&limit=5');
             expect(res.status).toBe(200);
             const [sql, params] = pool.query.mock.calls[0];
             expect(sql).toMatch(/6371 \* acos/);
-            expect(sql).toMatch(/ORDER BY distance_km ASC/);
+            // Cap por tier: nation 50, pro 20, basic 5.
+            expect(sql).toMatch(/CASE plan[\s\S]*sponsor_nation'\s*THEN 50[\s\S]*sponsor_pro'\s*THEN 20[\s\S]*sponsor_basic'\s*THEN 5/);
+            // Order: tier ranking DESC primero, después distancia.
+            expect(sql).toMatch(/ORDER BY[\s\S]*CASE plan[\s\S]*END\s+DESC,\s*distance_km ASC/);
             expect(params).toEqual([-34.9, -56.16, 5]);
         });
 

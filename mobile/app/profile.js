@@ -733,76 +733,8 @@ export default function Profile() {
         </View>
       ) : null}
 
-      {/* CONFIGURACIÓN DE ALERTAS — mismos 3 controles para user y vet. El
-          endpoint destino cambia en saveAlerts según isVet. El cap del radio
-          (5km) solo aplica si es una vet en plan ally. */}
-      <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-        <Text style={[styles.sectionKicker, { color: c.subtitle }]}>CONFIGURACIÓN DE ALERTAS</Text>
-
-        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas perdidas</Text>
-            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
-              Recibir alerta cuando reporten una perdida en tu radio.
-            </Text>
-          </View>
-          <Switch
-            value={receivesLost}
-            onValueChange={setReceivesLost}
-            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
-          />
-        </View>
-
-        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas encontradas</Text>
-            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
-              Recibir alerta cuando reporten una encontrada.
-            </Text>
-          </View>
-          <Switch
-            value={receivesFound}
-            onValueChange={setReceivesFound}
-            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
-          />
-        </View>
-
-        <View style={[styles.radiusBox, { borderColor: c.cardBorder }]}>
-          <View style={styles.radiusHeader}>
-            <Text style={[styles.toggleTitle, { color: c.title }]}>Radio de alerta</Text>
-            <Text style={styles.radiusValue}>{radius} km</Text>
-          </View>
-          <View style={styles.radiusPresets}>
-            {RADIUS_PRESETS.map((r) => {
-              const active = radius === r;
-              return (
-                <Pressable
-                  key={r}
-                  onPress={() => setRadius(r)}
-                  style={[
-                    styles.radiusPreset,
-                    {
-                      backgroundColor: active ? '#FF5C6C' : c.bg,
-                      borderColor: active ? '#FF5C6C' : c.cardBorder,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.radiusPresetText, { color: active ? '#fff' : c.title }]}>
-                    {r} km
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <Pressable onPress={saveAlerts} disabled={savingAlerts} style={[styles.saveBtn, savingAlerts && { opacity: 0.5 }]}>
-          <Text style={styles.saveBtnText}>{savingAlerts ? 'Guardando…' : 'Guardar cambios'}</Text>
-        </Pressable>
-        {alertsMsg ? <Text style={[styles.savedMsg, { color: c.subtitle }]}>{alertsMsg}</Text> : null}
-      </View>
-
-      {/* ÚLTIMAS PUBLICACIONES vet */}
+      {/* ÚLTIMAS PUBLICACIONES vet — arriba de la config para que el vet
+          vea primero contenido, después setup. */}
       {isVet && vetDash ? (
         <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
           <Text style={[styles.sectionKicker, { color: c.subtitle }]}>ÚLTIMAS PUBLICACIONES</Text>
@@ -889,6 +821,75 @@ export default function Profile() {
           )}
         </View>
       ) : null}
+
+      {/* CONFIGURACIÓN DE ALERTAS — mismos 3 controles para user y vet. El
+          endpoint destino cambia en saveAlerts según isVet. El cap del radio
+          (5km) solo aplica si es una vet en plan ally. */}
+      <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <Text style={[styles.sectionKicker, { color: c.subtitle }]}>CONFIGURACIÓN DE ALERTAS</Text>
+
+        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas perdidas</Text>
+            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
+              Recibir alerta cuando reporten una perdida en tu radio.
+            </Text>
+          </View>
+          <Switch
+            value={receivesLost}
+            onValueChange={setReceivesLost}
+            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
+          />
+        </View>
+
+        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas encontradas</Text>
+            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
+              Recibir alerta cuando reporten una encontrada.
+            </Text>
+          </View>
+          <Switch
+            value={receivesFound}
+            onValueChange={setReceivesFound}
+            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
+          />
+        </View>
+
+        <View style={[styles.radiusBox, { borderColor: c.cardBorder }]}>
+          <View style={styles.radiusHeader}>
+            <Text style={[styles.toggleTitle, { color: c.title }]}>Radio de alerta</Text>
+            <Text style={styles.radiusValue}>{radius} km</Text>
+          </View>
+          <View style={styles.radiusPresets}>
+            {RADIUS_PRESETS.map((r) => {
+              const active = radius === r;
+              return (
+                <Pressable
+                  key={r}
+                  onPress={() => setRadius(r)}
+                  style={[
+                    styles.radiusPreset,
+                    {
+                      backgroundColor: active ? '#FF5C6C' : c.bg,
+                      borderColor: active ? '#FF5C6C' : c.cardBorder,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.radiusPresetText, { color: active ? '#fff' : c.title }]}>
+                    {r} km
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <Pressable onPress={saveAlerts} disabled={savingAlerts} style={[styles.saveBtn, savingAlerts && { opacity: 0.5 }]}>
+          <Text style={styles.saveBtnText}>{savingAlerts ? 'Guardando…' : 'Guardar cambios'}</Text>
+        </Pressable>
+        {alertsMsg ? <Text style={[styles.savedMsg, { color: c.subtitle }]}>{alertsMsg}</Text> : null}
+      </View>
 
       <LinkedAccounts c={c} />
 

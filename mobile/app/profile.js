@@ -733,15 +733,16 @@ export default function Profile() {
         </View>
       ) : null}
 
-      {/* ÚLTIMAS PUBLICACIONES vet — arriba de la config para que el vet
-          vea primero contenido, después setup. */}
-      {isVet && vetDash ? (
+      {/* MIS REPORTES (vet) — lista completa con paginación. Reemplaza al
+          bloque "ÚLTIMAS PUBLICACIONES" de vetDash (que estaba limitado a 5)
+          y también al bloque duplicado "Mis registros" que iba al final. */}
+      {isVet ? (
         <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-          <Text style={[styles.sectionKicker, { color: c.subtitle }]}>ÚLTIMAS PUBLICACIONES</Text>
-          {vetDash.recent_pets.length === 0 ? (
-            <Text style={[styles.empty, { color: c.subtitle }]}>Todavía no publicaste mascotas.</Text>
+          <Text style={[styles.sectionKicker, { color: c.subtitle }]}>MIS REPORTES</Text>
+          {reports.length === 0 ? (
+            <Text style={[styles.empty, { color: c.subtitle }]}>Todavía no publicaste ningún reporte.</Text>
           ) : (
-            vetDash.recent_pets.map((p) => (
+            reports.map((p) => (
               <Pressable
                 key={p.id}
                 onPress={() => router.push(`/pet/${p.id}`)}
@@ -779,6 +780,17 @@ export default function Profile() {
               </Pressable>
             ))
           )}
+          {page < totalPages ? (
+            <Pressable
+              style={[styles.moreBtn, { borderColor: c.cardBorder, marginTop: 12 }]}
+              onPress={() => fetchReports(page + 1, true)}
+              disabled={loadingMore}
+            >
+              <Text style={[styles.moreBtnText, { color: c.text }]}>
+                {loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -900,25 +912,31 @@ export default function Profile() {
         <Text style={styles.deleteBtnText}>Eliminar cuenta</Text>
       </Pressable>
 
-      <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text>
+      {/* "Mis registros" solo para users no-vet — para vets ya se muestra
+          en el bloque MIS REPORTES arriba (en el medio del profile). */}
+      {!isVet ? <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text> : null}
     </View>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
       <FlatList
-        data={reports}
+        // Vet: reports ya se renderiza inline en el header (bloque MIS REPORTES).
+        // Non-vet: data={reports} + ListEmptyComponent + ListFooterComponent como antes.
+        data={isVet ? [] : reports}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         ListHeaderComponent={header}
         contentContainerStyle={styles.scroll}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.subtitle }]}>
-            Todavía no publicaste ningún reporte.
-          </Text>
+          !isVet ? (
+            <Text style={[styles.empty, { color: c.subtitle }]}>
+              Todavía no publicaste ningún reporte.
+            </Text>
+          ) : null
         }
         ListFooterComponent={
-          page < totalPages ? (
+          !isVet && page < totalPages ? (
             <Pressable
               style={[styles.moreBtn, { borderColor: c.cardBorder }]}
               onPress={() => fetchReports(page + 1, true)}

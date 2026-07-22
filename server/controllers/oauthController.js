@@ -237,21 +237,29 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
 
 const respondWithSession = async (res, user) => {
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    // Chequeamos si el user es owner de una vet — el frontend usa has_vet
-    // + vet_approved para decidir el redirect post-login.
-    let hasVet = false;
-    let vetApproved = false;
+    // Chequeamos vet + shelter (mismo motivo que login): el frontend usa
+    // has_vet/has_shelter + _approved para decidir el redirect post-login.
+    let hasVet = false, vetApproved = false;
+    let hasShelter = false, shelterApproved = false;
     try {
-        const { rows } = await pool.query(
+        const { rows: vetRows } = await pool.query(
             'SELECT approved FROM vets WHERE owner_user_id = $1',
             [user.id]
         );
-        if (rows.length > 0) {
+        if (vetRows.length > 0) {
             hasVet = true;
-            vetApproved = !!rows[0].approved;
+            vetApproved = !!vetRows[0].approved;
+        }
+        const { rows: shelterRows } = await pool.query(
+            'SELECT approved FROM shelters WHERE owner_user_id = $1 AND deleted_at IS NULL',
+            [user.id]
+        );
+        if (shelterRows.length > 0) {
+            hasShelter = true;
+            shelterApproved = !!shelterRows[0].approved;
         }
     } catch (e) {
-        console.error('respondWithSession vet check error:', e?.message);
+        console.error('respondWithSession vet/shelter check error:', e?.message);
     }
     res.json({
         success: true,
@@ -264,6 +272,8 @@ const respondWithSession = async (res, user) => {
             avatar_url: user.avatar_url,
             has_vet: hasVet,
             vet_approved: vetApproved,
+            has_shelter: hasShelter,
+            shelter_approved: shelterApproved,
         },
     });
 };

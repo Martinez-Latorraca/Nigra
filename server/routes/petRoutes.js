@@ -2,6 +2,7 @@ import express from 'express';
 import { reportPet, searchPet, getMyReports, deleteReport, getPetById, getAllPets, getAvailableColors, resolvePet } from '../controllers/petController.js';
 import { upload } from '../middlewares/upload.js';
 import { authenticateToken } from '../middlewares/auth.js';
+import { blockIfShelter } from '../middlewares/shelterAuth.js';
 import { searchLimiter, reportLimiter } from '../middlewares/rateLimiter.js';
 import validate from '../middlewares/validate.js';
 import { reportPetSchema, searchPetSchema } from '../schemas/petSchemas.js';
@@ -21,6 +22,6 @@ router.get('/', getAllPets);
 router.delete('/:id', authenticateToken, deleteReport);
 router.patch('/:id/resolve', authenticateToken, resolvePet);
 router.post('/search-pet', searchLimiter, upload.single('image'), validate(searchPetSchema), searchPet);
-router.post('/report-pet', authenticateToken, reportLimiter, reportFields, validate(reportPetSchema), reportPet);
+router.post('/report-pet', authenticateToken, blockIfShelter, reportLimiter, reportFields, validate(reportPetSchema), reportPet);
 
 export default router;

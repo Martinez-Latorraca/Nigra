@@ -195,13 +195,15 @@ export const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // JOIN a vets para decidir el redirect post-login desde el frontend.
-        // has_vet + vet_approved permite al cliente redirigir a /vets/dashboard
-        // vs /app sin llamadas extra.
+        // JOIN a vets + shelters para decidir el redirect post-login desde el
+        // frontend. has_vet + has_shelter (con sus _approved) permite al
+        // cliente redirigir sin llamadas extra.
         const user = await pool.query(
-            `SELECT u.*, v.id AS vet_id, v.approved AS vet_approved
+            `SELECT u.*, v.id AS vet_id, v.approved AS vet_approved,
+                    s.id AS shelter_id, s.approved AS shelter_approved
              FROM users u
              LEFT JOIN vets v ON v.owner_user_id = u.id
+             LEFT JOIN shelters s ON s.owner_user_id = u.id AND s.deleted_at IS NULL
              WHERE u.email = $1`,
             [email]
         );
@@ -246,6 +248,8 @@ export const login = async (req, res) => {
                 avatar_url: row.avatar_url,
                 has_vet: !!row.vet_id,
                 vet_approved: !!row.vet_approved,
+                has_shelter: !!row.shelter_id,
+                shelter_approved: !!row.shelter_approved,
             },
         });
     } catch (error) {

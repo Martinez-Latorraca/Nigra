@@ -19,6 +19,8 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
         // El WHERE NO filtra por push_token: users sin token igual reciben la
         // notification en su inbox (útil para users web-only). Sólo el push
         // real se gate más abajo por presencia de push_token.
+        // NOT EXISTS shelter: los refugios no participan del feed
+        // lost/found, tampoco reciben alertas cerca.
         const sql = `
             SELECT u.id, u.name, u.push_token
             FROM users u
@@ -28,6 +30,10 @@ export async function notifyNearbyUsers({ pool, io, sendExpoPush, newPet, report
               AND u.last_lng IS NOT NULL
               AND u.last_location_at > NOW() - INTERVAL '30 days'
               AND u.id <> $3
+              AND NOT EXISTS (
+                  SELECT 1 FROM shelters s
+                  WHERE s.owner_user_id = u.id AND s.deleted_at IS NULL
+              )
               AND (6371 * acos(cos(radians($1)) * cos(radians(u.last_lat)) * cos(radians(u.last_lng) - radians($2)) + sin(radians($1)) * sin(radians(u.last_lat)))) <= u.notify_radius_km
             LIMIT 100
         `;

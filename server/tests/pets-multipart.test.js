@@ -17,6 +17,12 @@ vi.mock('../middlewares/rateLimiter.js', () => ({
     reportLimiter: (req, res, next) => next(),
     globalLimiter: (req, res, next) => next(),
 }));
+// blockIfShelter hace 1 query a shelters. Para no ensuciar cada test con esa
+// row extra, mockeamos que siempre pasa (el user no es shelter).
+vi.mock('../middlewares/shelterAuth.js', () => ({
+    requireShelter: (req, res, next) => next(),
+    blockIfShelter: (req, res, next) => next(),
+}));
 vi.mock('../utils/geocode.js', () => ({
     reverseGeocode: vi.fn(() => Promise.resolve('Fake, Uruguay')),
     searchAddress: vi.fn(() => Promise.resolve([])),

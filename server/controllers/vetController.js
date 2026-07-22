@@ -176,7 +176,11 @@ export const getMyVetDashboard = async (req, res) => {
             return res.status(404).json({ error: 'No tenés una veterinaria registrada.' });
         }
         const vet = vetRows[0];
-        const isSponsor = !!vet.verified_at;
+        // Source of truth es `plan`, no `verified_at`. Antes usaba
+        // `!!verified_at` pero el setVetPlan no actualiza verified_at si la
+        // vet ya tenía uno, y cualquier UPDATE manual desde la DB salta el
+        // trigger — quedaba is_sponsor=false para vets con plan sponsor_*.
+        const isSponsor = vet.plan && vet.plan !== 'ally';
 
         // Modelo mental: vet = user + plus. Todo lo que reporta el owner de
         // la vet cuenta como reporte "de la vet" — no hay un flag

@@ -9,7 +9,7 @@ import { useDispatch } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../lib/api';
 import { useTheme } from '../lib/theme';
-import { clearCredentials } from '../store/userSlice';
+import { clearCredentials, updateUserData } from '../store/userSlice';
 import MenuButton from './MenuButton';
 import LinkedAccounts from './LinkedAccounts';
 
@@ -370,16 +370,18 @@ export default function ShelterPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  const uploadLogo = async () => {
+  // field = 'logo' | 'cover'. Logo es cuadrado (aspect 1:1), cover es 16:9.
+  const uploadImage = async (field) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return Alert.alert('Permiso necesario', 'Necesitamos acceso a tus fotos.');
-    const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.7 });
+    const aspect = field === 'logo' ? [1, 1] : [16, 9];
+    const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect, quality: 0.7 });
     if (result.canceled) return;
     const asset = result.assets[0];
     try {
       const fd = new FormData();
-      fd.append('image', { uri: asset.uri, name: 'logo.jpg', type: 'image/jpeg' });
-      fd.append('field', 'logo');
+      fd.append('image', { uri: asset.uri, name: `${field}.jpg`, type: 'image/jpeg' });
+      fd.append('field', field);
       await api.post('/api/shelters/me/image', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       load();
     } catch { Alert.alert('Error', 'No se pudo subir la imagen.'); }
@@ -388,6 +390,27 @@ export default function ShelterPanel() {
   const handleLogout = () => {
     dispatch(clearCredentials());
     router.replace('/login');
+  };
+
+  // Soft-delete del refugio. El user sigue existiendo como user regular.
+  const deleteShelter = () => {
+    Alert.alert(
+      'Eliminar refugio',
+      'Se ocultarán tus publicaciones activas del directorio público. Esta acción no se puede deshacer desde la app.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete('/api/shelters/me');
+              dispatch(updateUserData({ has_shelter: false, shelter_approved: false }));
+              router.replace('/profile');
+            } catch { Alert.alert('Error', 'No se pudo eliminar el refugio.'); }
+          },
+        },
+      ]
+    );
   };
 
   const markAdopted = async (id) => {
@@ -425,29 +448,44 @@ export default function ShelterPanel() {
           <MenuButton />
         </View>
 
-        {/* Hero */}
+        {/* Hero: cover como banner + logo abajo. */}
         <View style={[styles.hero, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-          <Pressable onPress={uploadLogo}>
-            {shelter.logo_url ? (
-              <Image source={{ uri: shelter.logo_url }} style={styles.heroLogo} />
+          <Pressable onPress={() => uploadImage('cover')} style={styles.coverBanner}>
+            {shelter.cover_url ? (
+              <Image source={{ uri: shelter.cover_url }} style={styles.coverImg} />
             ) : (
-              <View style={[styles.heroLogo, styles.heroLogoFallback]}>
-                <Text style={styles.heroLogoLetter}>{shelter.name.charAt(0)}</Text>
-              </View>
+              <View style={styles.coverPlaceholder} />
             )}
-            <Text style={[styles.editLogoText, { color: c.subtitle }]}>Cambiar logo</Text>
+            <View style={styles.coverOverlay}>
+              <Text style={styles.coverOverlayText}>
+                {shelter.cover_url ? 'Cambiar cover' : '+ Subir cover'}
+              </Text>
+            </View>
           </Pressable>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.heroName, { color: c.title }]}>{shelter.name}</Text>
-            {shelter.city ? <Text style={[styles.heroCity, { color: c.subtitle }]}>📍 {shelter.city}</Text> : null}
-            {!approved ? (
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingText}>PENDIENTE DE APROBACIÓN</Text>
-              </View>
-            ) : null}
-            <Pressable onPress={() => router.push(`/shelters/${shelter.slug}`)}>
-              <Text style={[styles.viewPublic, { color: c.subtitle }]}>Ver perfil público →</Text>
+
+          <View style={styles.heroBody}>
+            <Pressable onPress={() => uploadImage('logo')} style={styles.heroLogoWrap}>
+              {shelter.logo_url ? (
+                <Image source={{ uri: shelter.logo_url }} style={styles.heroLogo} />
+              ) : (
+                <View style={[styles.heroLogo, styles.heroLogoFallback]}>
+                  <Text style={styles.heroLogoLetter}>{shelter.name.charAt(0)}</Text>
+                </View>
+              )}
+              <Text style={[styles.editLogoText, { color: c.subtitle }]}>Cambiar logo</Text>
             </Pressable>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.heroName, { color: c.title }]}>{shelter.name}</Text>
+              {shelter.city ? <Text style={[styles.heroCity, { color: c.subtitle }]}>📍 {shelter.city}</Text> : null}
+              {!approved ? (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingText}>PENDIENTE DE APROBACIÓN</Text>
+                </View>
+              ) : null}
+              <Pressable onPress={() => router.push(`/shelters/${shelter.slug}`)}>
+                <Text style={[styles.viewPublic, { color: c.subtitle }]}>Ver perfil público →</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -547,6 +585,9 @@ export default function ShelterPanel() {
         <Pressable onPress={handleLogout} style={[styles.logoutBtn, { borderColor: c.cardBorder }]}>
           <Text style={[styles.logoutBtnText, { color: c.text }]}>Cerrar sesión</Text>
         </Pressable>
+        <Pressable onPress={deleteShelter} style={styles.deleteBtn}>
+          <Text style={styles.deleteBtnText}>Eliminar refugio</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -557,11 +598,21 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   kicker: { fontSize: 10, fontWeight: '800', letterSpacing: 2.5 },
   hero: {
-    borderRadius: 32, borderWidth: 1, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 32, borderWidth: 1, overflow: 'hidden',
   },
-  heroLogo: { width: 80, height: 80, borderRadius: 20, backgroundColor: '#F0EBE8' },
+  coverBanner: { position: 'relative', height: 120, backgroundColor: '#F0EBE8' },
+  coverImg: { width: '100%', height: '100%' },
+  coverPlaceholder: { flex: 1, backgroundColor: '#FFF6F0' },
+  coverOverlay: {
+    position: 'absolute', bottom: 8, right: 8,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  coverOverlayText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  heroBody: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroLogoWrap: { alignItems: 'center' },
+  heroLogo: { width: 72, height: 72, borderRadius: 18, backgroundColor: '#F0EBE8' },
   heroLogoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  heroLogoLetter: { color: '#fff', fontWeight: '800', fontSize: 34 },
+  heroLogoLetter: { color: '#fff', fontWeight: '800', fontSize: 30 },
   editLogoText: { fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 6 },
   heroName: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
   heroCity: { fontSize: 12, fontWeight: '600', marginTop: 3 },
@@ -629,4 +680,9 @@ const styles = StyleSheet.create({
     marginTop: 20, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center',
   },
   logoutBtnText: { fontSize: 13, fontWeight: '700' },
+  deleteBtn: {
+    marginTop: 10, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center',
+    borderColor: '#FECACA',
+  },
+  deleteBtnText: { color: '#EF4444', fontSize: 13, fontWeight: '700' },
 });

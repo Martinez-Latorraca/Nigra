@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearCredentials } from '../store/userSlice';
+import { clearCredentials, updateUserData } from '../store/userSlice';
 import MimoLogo from './MimoLogo';
 import LinkedAccounts from './LinkedAccounts';
 
@@ -369,6 +369,27 @@ export default function ShelterPanel() {
         load();
     };
 
+    // Soft-delete del refugio. El user sigue existiendo — se convierte en un
+    // user regular. Actualizamos has_shelter en Redux y navegamos a /profile
+    // (que ya no re-direcciona acá al ShelterPanel).
+    const deleteShelter = async () => {
+        const confirm1 = confirm('¿Eliminar tu refugio? Se ocultarán tus publicaciones activas del directorio público.');
+        if (!confirm1) return;
+        const confirm2 = confirm('Esta acción no se puede deshacer desde la app (si te arrepentís, contactá al admin). ¿Confirmás?');
+        if (!confirm2) return;
+        try {
+            const res = await fetch(`${API}/api/shelters/me`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error('No se pudo eliminar.');
+            dispatch(updateUserData({ has_shelter: false, shelter_approved: false }));
+            navigate('/profile');
+        } catch (e) {
+            alert(e.message);
+        }
+    };
+
     if (loading || !shelter) {
         return (
             <div className="flex min-h-screen items-center justify-center bg-mimo-muted">
@@ -391,30 +412,41 @@ export default function ShelterPanel() {
                     </Link>
                 </div>
 
-                {/* Hero */}
-                <div className="rounded-[32px] border border-gray-100 bg-white p-6 flex items-center gap-4 mb-6">
-                    <label className="relative h-20 w-20 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer group">
-                        {shelter.logo_url ? (
-                            <img src={shelter.logo_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                            <span className="text-3xl font-bold text-gray-400">{shelter.name.charAt(0)}</span>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity">
-                            Cambiar
+                {/* Hero: cover como banner arriba + logo y meta abajo. */}
+                <div className="rounded-[32px] border border-gray-100 bg-white overflow-hidden mb-6">
+                    <label className="relative block h-40 bg-gradient-to-br from-mimo-warm to-mimo-muted cursor-pointer group">
+                        {shelter.cover_url ? (
+                            <img src={shelter.cover_url} alt="" className="h-full w-full object-cover" />
+                        ) : null}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold uppercase tracking-widest transition-opacity">
+                            {shelter.cover_url ? 'Cambiar cover' : '+ Subir cover'}
                         </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage('logo', e.target.files[0])} />
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage('cover', e.target.files[0])} />
                     </label>
-                    <div className="flex-1">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Refugio</div>
-                        <div className="mt-1 flex items-center gap-2 flex-wrap">
-                            <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche">{shelter.name}</h1>
-                            {!approved ? (
-                                <span className="rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-[9px] font-bold uppercase tracking-widest">
-                                    Pendiente
-                                </span>
-                            ) : null}
+                    <div className="p-6 flex items-center gap-4">
+                        <label className="relative h-20 w-20 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer group -mt-14 ring-4 ring-white shadow-md shrink-0">
+                            {shelter.logo_url ? (
+                                <img src={shelter.logo_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                                <span className="text-3xl font-bold text-gray-400">{shelter.name.charAt(0)}</span>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity">
+                                Cambiar
+                            </div>
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage('logo', e.target.files[0])} />
+                        </label>
+                        <div className="flex-1">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Refugio</div>
+                            <div className="mt-1 flex items-center gap-2 flex-wrap">
+                                <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche">{shelter.name}</h1>
+                                {!approved ? (
+                                    <span className="rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-[9px] font-bold uppercase tracking-widest">
+                                        Pendiente
+                                    </span>
+                                ) : null}
+                            </div>
+                            {shelter.city ? <p className="text-sm font-medium text-gray-500">📍 {shelter.city}</p> : null}
                         </div>
-                        {shelter.city ? <p className="text-sm font-medium text-gray-500">📍 {shelter.city}</p> : null}
                     </div>
                 </div>
 
@@ -522,6 +554,12 @@ export default function ShelterPanel() {
                         className="w-full rounded-full border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                     >
                         Cerrar sesión
+                    </button>
+                    <button
+                        onClick={deleteShelter}
+                        className="w-full rounded-full border border-red-100 bg-white py-3 text-sm font-semibold text-red-500 hover:bg-red-50"
+                    >
+                        Eliminar refugio
                     </button>
                 </div>
             </div>

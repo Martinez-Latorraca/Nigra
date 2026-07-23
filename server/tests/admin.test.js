@@ -52,19 +52,27 @@ describe('Admin', () => {
     });
 
     describe('GET /api/admin/stats', () => {
-        it('devuelve counts y listas recientes', async () => {
+        it('devuelve counts, listas y métricas de refugios', async () => {
             mockAdminRole();
-            // 5 counts en paralelo
+            // Promise.all: 5 counts pets/users + 4 counts shelters/adoptions
+            // + adoptionsBySpecies (rows) + avgDaysToAdopt (rows[0].days)
             pool.query
                 .mockResolvedValueOnce({ rows: [{ count: '10' }] })
                 .mockResolvedValueOnce({ rows: [{ count: '25' }] })
                 .mockResolvedValueOnce({ rows: [{ count: '100' }] })
                 .mockResolvedValueOnce({ rows: [{ count: '15' }] })
                 .mockResolvedValueOnce({ rows: [{ count: '10' }] })
-                // recentPets
+                .mockResolvedValueOnce({ rows: [{ count: '3' }] })  // sheltersActive
+                .mockResolvedValueOnce({ rows: [{ count: '1' }] })  // sheltersPending
+                .mockResolvedValueOnce({ rows: [{ count: '7' }] })  // adoptionsActive
+                .mockResolvedValueOnce({ rows: [{ count: '12' }] }) // adoptionsAdopted
+                .mockResolvedValueOnce({ rows: [{ species: 'dog', n: 5 }, { species: 'cat', n: 2 }] })
+                .mockResolvedValueOnce({ rows: [{ days: 14 }] })
+                // Secuenciales: recentPets, recentUsers, topShelters, recentAdoptions
                 .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Rocky' }] })
-                // recentUsers
-                .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Ana' }] });
+                .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Ana' }] })
+                .mockResolvedValueOnce({ rows: [{ id: 1, slug: 'r1', name: 'Refugio 1', adopted_count: 5, active_count: 3 }] })
+                .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Toby', species: 'dog' }] });
             const res = await request(buildApp()).get('/api/admin/stats').set('x-test-user', '1');
             expect(res.status).toBe(200);
             expect(res.body.totalUsers).toBe(10);
@@ -72,6 +80,14 @@ describe('Admin', () => {
             expect(res.body.totalMessages).toBe(100);
             expect(res.body.totalLost).toBe(15);
             expect(res.body.totalFound).toBe(10);
+            expect(res.body.totalShelters).toBe(3);
+            expect(res.body.pendingShelters).toBe(1);
+            expect(res.body.totalAdoptionsActive).toBe(7);
+            expect(res.body.totalAdopted).toBe(12);
+            expect(res.body.adoptionsBySpecies).toEqual({ dog: 5, cat: 2, other: 0 });
+            expect(res.body.avgDaysToAdopt).toBe(14);
+            expect(res.body.topShelters[0].name).toBe('Refugio 1');
+            expect(res.body.recentAdoptions[0].name).toBe('Toby');
             expect(res.body.recentPets[0].name).toBe('Rocky');
             expect(res.body.recentUsers[0].name).toBe('Ana');
         });

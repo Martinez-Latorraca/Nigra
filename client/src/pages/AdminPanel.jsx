@@ -480,6 +480,81 @@ function AdminPanel() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Refugios & Adopciones — analytics solo para admin. Los refugios
+                            no ven sus propias métricas (decisión de producto: no aporta valor). */}
+                        <div className="mt-12">
+                            <h3 className="text-lg font-semibold mb-4">Refugios & Adopciones</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
+                                {[
+                                    { label: 'Refugios', value: stats.totalShelters, color: 'bg-emerald-50 text-emerald-700' },
+                                    { label: 'Pendientes', value: stats.pendingShelters, color: 'bg-yellow-50 text-yellow-700' },
+                                    { label: 'En adopción', value: stats.totalAdoptionsActive, color: 'bg-pink-50 text-pink-700' },
+                                    { label: 'Adoptadas', value: stats.totalAdopted, color: 'bg-teal-50 text-teal-700' },
+                                    { label: 'Perros / Gatos', value: `${stats.adoptionsBySpecies?.dog ?? 0} / ${stats.adoptionsBySpecies?.cat ?? 0}`, color: 'bg-indigo-50 text-indigo-700' },
+                                    { label: 'Días promedio', value: stats.avgDaysToAdopt != null ? stats.avgDaysToAdopt : '—', color: 'bg-orange-50 text-orange-700' },
+                                ].map(stat => (
+                                    <div key={stat.label} className={`${stat.color} rounded-2xl p-4`}>
+                                        <p className="text-2xl font-bold">{stat.value}</p>
+                                        <p className="text-sm opacity-70">{stat.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex gap-6 flex-wrap">
+                                <div className="flex-1 min-w-[280px]">
+                                    <h4 className="font-semibold mb-3">Top refugios (adopciones concretadas)</h4>
+                                    <div className="flex flex-col gap-3">
+                                        {stats.topShelters?.length === 0 ? (
+                                            <p className="text-xs text-gray-400">Todavía no hay refugios activos.</p>
+                                        ) : (
+                                            stats.topShelters?.map((s) => (
+                                                <Link key={s.id} to={`/shelters/${s.slug}`}
+                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
+                                                    {s.logo_url ? (
+                                                        <img src={s.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-mimo-coral text-white flex items-center justify-center font-bold">{s.name.charAt(0)}</div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium truncate">{s.name}</p>
+                                                        <p className="text-xs text-gray-400">{s.city || 'Sin ciudad'}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-xs font-semibold text-teal-600">{s.adopted_count} adoptadas</p>
+                                                        <p className="text-xs text-gray-400">{s.active_count} activas</p>
+                                                    </div>
+                                                </Link>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 min-w-[280px]">
+                                    <h4 className="font-semibold mb-3">Últimas publicaciones</h4>
+                                    <div className="flex flex-col gap-3">
+                                        {stats.recentAdoptions?.length === 0 ? (
+                                            <p className="text-xs text-gray-400">Todavía no hay publicaciones activas.</p>
+                                        ) : (
+                                            stats.recentAdoptions?.map((ap) => (
+                                                <Link key={ap.id} to={`/adoptions/${ap.id}`}
+                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
+                                                    {ap.photos?.[0] ? (
+                                                        <img src={ap.photos[0]} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">🐾</div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium truncate">{ap.name || 'Sin nombre'}</p>
+                                                        <p className="text-xs text-gray-400 truncate">{ap.shelter_name} · {formatDate(ap.created_at)}</p>
+                                                    </div>
+                                                </Link>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
 

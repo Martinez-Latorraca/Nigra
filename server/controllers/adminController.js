@@ -4,12 +4,33 @@ import { generateEmbedding } from '../ai.js';
 // ─── DASHBOARD STATS ────────────────────────────────────────
 export const getDashboardStats = async (req, res) => {
     try {
-        const [usersCount, petsCount, messagesCount, petsLost, petsFound] = await Promise.all([
+        const [
+            usersCount, petsCount, messagesCount, petsLost, petsFound,
+            sheltersActive, sheltersPending,
+            adoptionsActive, adoptionsAdopted,
+            adoptionsBySpecies, avgDaysToAdopt,
+        ] = await Promise.all([
             pool.query('SELECT COUNT(*) FROM users'),
             pool.query('SELECT COUNT(*) FROM pets'),
             pool.query('SELECT COUNT(*) FROM messages'),
             pool.query("SELECT COUNT(*) FROM pets WHERE status = 'lost'"),
             pool.query("SELECT COUNT(*) FROM pets WHERE status = 'found'"),
+            pool.query('SELECT COUNT(*) FROM shelters WHERE approved = TRUE AND deleted_at IS NULL'),
+            pool.query('SELECT COUNT(*) FROM shelters WHERE approved = FALSE AND deleted_at IS NULL'),
+            pool.query('SELECT COUNT(*) FROM adoption_pets WHERE adopted_at IS NULL AND deleted_at IS NULL'),
+            pool.query('SELECT COUNT(*) FROM adoption_pets WHERE adopted_at IS NOT NULL'),
+            pool.query(
+                `SELECT species, COUNT(*)::int AS n
+                 FROM adoption_pets
+                 WHERE adopted_at IS NULL AND deleted_at IS NULL
+                 GROUP BY species`
+            ),
+            // Promedio en días de created_at → adopted_at. NULL si aún no hay adopciones.
+            pool.query(
+                `SELECT ROUND(AVG(EXTRACT(EPOCH FROM (adopted_at - created_at)) / 86400))::int AS days
+                 FROM adoption_pets
+                 WHERE adopted_at IS NOT NULL`
+            ),
         ]);
 
         const recentPets = await pool.query(
@@ -24,12 +45,51 @@ export const getDashboardStats = async (req, res) => {
             `SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC LIMIT 5`
         );
 
+        // Top 5 refugios por cantidad de adopciones concretadas.
+        const topShelters = await pool.query(
+            `SELECT s.id, s.slug, s.name, s.city, s.logo_url,
+                    COUNT(ap.id) FILTER (WHERE ap.adopted_at IS NOT NULL)::int AS adopted_count,
+                    COUNT(ap.id) FILTER (WHERE ap.adopted_at IS NULL AND ap.deleted_at IS NULL)::int AS active_count
+             FROM shelters s
+             LEFT JOIN adoption_pets ap ON ap.shelter_id = s.id
+             WHERE s.approved = TRUE AND s.deleted_at IS NULL
+             GROUP BY s.id
+             ORDER BY adopted_count DESC, active_count DESC
+             LIMIT 5`
+        );
+
+        // Últimas 5 adopciones activas (para preview).
+        const recentAdoptions = await pool.query(
+            `SELECT ap.id, ap.name, ap.species, ap.photos, ap.created_at,
+                    s.name AS shelter_name, s.slug AS shelter_slug
+             FROM adoption_pets ap
+             JOIN shelters s ON s.id = ap.shelter_id
+             WHERE ap.deleted_at IS NULL AND ap.adopted_at IS NULL
+               AND s.approved = TRUE AND s.deleted_at IS NULL
+             ORDER BY ap.created_at DESC LIMIT 5`
+        );
+
+        // adoptionsBySpecies pivot a objeto {dog, cat, other} para el frontend.
+        const speciesMap = { dog: 0, cat: 0, other: 0 };
+        for (const r of adoptionsBySpecies.rows) speciesMap[r.species] = r.n;
+
         res.json({
             totalUsers: parseInt(usersCount.rows[0].count),
             totalPets: parseInt(petsCount.rows[0].count),
             totalMessages: parseInt(messagesCount.rows[0].count),
             totalLost: parseInt(petsLost.rows[0].count),
             totalFound: parseInt(petsFound.rows[0].count),
+            // Refugios & adopciones — solo visible al admin. Los shelters NO
+            // ven sus propias métricas (decisión: no aporta valor al refugio,
+            // sí al operador).
+            totalShelters: parseInt(sheltersActive.rows[0].count),
+            pendingShelters: parseInt(sheltersPending.rows[0].count),
+            totalAdoptionsActive: parseInt(adoptionsActive.rows[0].count),
+            totalAdopted: parseInt(adoptionsAdopted.rows[0].count),
+            adoptionsBySpecies: speciesMap,
+            avgDaysToAdopt: avgDaysToAdopt.rows[0]?.days ?? null,
+            topShelters: topShelters.rows,
+            recentAdoptions: recentAdoptions.rows,
             recentPets: recentPets.rows,
             recentUsers: recentUsers.rows,
         });

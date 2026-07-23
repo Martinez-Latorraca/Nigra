@@ -26,6 +26,11 @@ const SIZE_FILTERS = [
   { key: 'medium', label: 'Mediano' },
   { key: 'large', label: 'Grande' },
 ];
+const SEX_FILTERS = [
+  { key: '', label: 'Cualquier sexo' },
+  { key: 'male', label: 'Macho' },
+  { key: 'female', label: 'Hembra' },
+];
 
 function PetCard({ pet, c, onPress }) {
   const photo = pet.photos?.[0];
@@ -73,30 +78,33 @@ export default function Adoptions() {
   const [page, setPage] = useState(1);
   const [species, setSpecies] = useState('');
   const [size, setSize] = useState('');
+  const [sex, setSex] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchPets = useCallback(async (nextPage = 1, sp = species, sz = size, append = false) => {
+  const fetchPets = useCallback(async (nextPage = 1, sp = species, sz = size, sx = sex, append = false) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
       const params = { page: nextPage, limit: PAGE_LIMIT };
       if (sp) params.species = sp;
       if (sz) params.size = sz;
+      if (sx) params.sex = sx;
       const { data } = await api.get('/api/adoption-pets', { params });
       setPets((prev) => (append ? [...prev, ...(data.pets || [])] : data.pets || []));
       setTotal(data.total || 0);
       setPage(nextPage);
     } catch { /* silencioso */ }
     finally { setLoading(false); setLoadingMore(false); }
-  }, [species, size]);
+  }, [species, size, sex]);
 
-  useEffect(() => { fetchPets(1, '', ''); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { fetchPets(1, '', '', ''); /* eslint-disable-next-line */ }, []);
 
-  const setFilter = (sp, sz) => {
+  const setFilter = (sp, sz, sx) => {
     setSpecies(sp);
     setSize(sz);
-    fetchPets(1, sp, sz);
+    setSex(sx);
+    fetchPets(1, sp, sz, sx);
   };
 
   const hasMore = pets.length < total;
@@ -121,7 +129,7 @@ export default function Adoptions() {
           return (
             <Pressable
               key={f.key || 'all_sp'}
-              onPress={() => setFilter(f.key, size)}
+              onPress={() => setFilter(f.key, size, sex)}
               style={[
                 styles.chip,
                 active
@@ -140,11 +148,30 @@ export default function Adoptions() {
           return (
             <Pressable
               key={f.key || 'all_sz'}
-              onPress={() => setFilter(species, f.key)}
+              onPress={() => setFilter(species, f.key, sex)}
               style={[
                 styles.chip,
                 active
                   ? { backgroundColor: '#1A1A2E', borderColor: '#1A1A2E' }
+                  : { backgroundColor: c.card, borderColor: c.cardBorder },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: active ? '#fff' : c.title }]}>{f.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={styles.filtersRow}>
+        {SEX_FILTERS.map((f) => {
+          const active = sex === f.key;
+          return (
+            <Pressable
+              key={f.key || 'all_sx'}
+              onPress={() => setFilter(species, size, f.key)}
+              style={[
+                styles.chip,
+                active
+                  ? { backgroundColor: '#9B6DFF', borderColor: '#9B6DFF' }
                   : { backgroundColor: c.card, borderColor: c.cardBorder },
               ]}
             >
@@ -184,7 +211,7 @@ export default function Adoptions() {
           ListFooterComponent={
             hasMore ? (
               <Pressable
-                onPress={() => fetchPets(page + 1, species, size, true)}
+                onPress={() => fetchPets(page + 1, species, size, sex, true)}
                 disabled={loadingMore}
                 style={[styles.moreBtn, { borderColor: c.cardBorder }]}
               >

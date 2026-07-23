@@ -56,7 +56,7 @@ export default function Adoptions() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({ species: '', size: '', age_group: '', city: '' });
+    const [filters, setFilters] = useState({ species: '', sex: '', size: '', age_group: '', city: '' });
 
     const fetchPets = async (nextPage = 1, f = filters) => {
         setLoading(true);
@@ -122,6 +122,15 @@ export default function Adoptions() {
                         <option value="small">Chico</option>
                         <option value="medium">Mediano</option>
                         <option value="large">Grande</option>
+                    </select>
+                    <select
+                        value={filters.sex}
+                        onChange={(e) => updateFilter('sex', e.target.value)}
+                        className="rounded-full border border-mimo-muted bg-mimo-warm px-4 py-2 text-xs font-bold text-mimo-ink focus:outline-none"
+                    >
+                        <option value="">Cualquier sexo</option>
+                        <option value="male">Macho</option>
+                        <option value="female">Hembra</option>
                     </select>
                     <select
                         value={filters.age_group}

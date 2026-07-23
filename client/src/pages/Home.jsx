@@ -95,29 +95,36 @@ function Home() {
                     </div>
                 </Link>
 
-                {/* 3. Explorar (Ancho Completo) */}
-                <Link to="/pets" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
-                    <div className="flex-1">
+                {/* 3. Explorar + Adopciones (dos cards al lado) */}
+                <Link to="/pets" className="md:col-span-6 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col justify-between gap-6 hover:shadow-xl transition-all">
+                    <div>
                         <h2 className="text-3xl font-semibold tracking-tight mb-2">Explorar Comunidad.</h2>
-                        <p className="text-gray-400 text-lg leading-tight">Navegá por la base de datos completa de reportes activos en tu zona.</p>
+                        <p className="text-gray-400 text-lg leading-tight">Reportes activos de mascotas perdidas y encontradas.</p>
                     </div>
+                    <span className="w-fit text-xs font-bold py-3 px-6 bg-mimo-coral text-white rounded-full uppercase tracking-widest group-hover:bg-mimo-coralDark transition-colors">
+                        Ver reportes
+                    </span>
+                </Link>
 
-                    {/* Stack de Mascotas */}
-                    <div className="flex -space-x-5">
-                        {[
-                            "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=150&h=150&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=150&h=150&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?q=80&w=150&h=150&auto=format&fit=crop",
-                            "https://images.unsplash.com/photo-1472491235688-bdc81a63246e?q=80&w=150&h=150&auto=format&fit=crop"
-                        ].map((url, i) => (
-                            <div key={i} className="w-16 h-16 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg transition-transform group-hover:translate-y-[-5px]" style={{ transitionDelay: `${i * 50}ms` }}>
-                                <img src={url} alt="pet avatar" className="w-full h-full object-cover" />
-                            </div>
-                        ))}
-                        <div className="w-16 h-16 rounded-full border-4 border-white bg-black flex items-center justify-center text-white text-[10px] font-bold shadow-lg">
-                            +150
-                        </div>
+                <Link to="/adoptions" className="md:col-span-6 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col justify-between gap-6 hover:shadow-xl transition-all">
+                    <div>
+                        <h2 className="text-3xl font-semibold tracking-tight mb-2">En adopción.</h2>
+                        <p className="text-gray-400 text-lg leading-tight">Mascotas que buscan familia en refugios aliados.</p>
                     </div>
+                    <span className="w-fit text-xs font-bold py-3 px-6 bg-black text-white rounded-full uppercase tracking-widest group-hover:bg-gray-800 transition-colors">
+                        Ver adopciones
+                    </span>
+                </Link>
+
+                {/* 4. Refugios */}
+                <Link to="/shelters" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
+                    <div className="flex-1">
+                        <h2 className="text-3xl font-semibold tracking-tight mb-2">Refugios aliados.</h2>
+                        <p className="text-gray-400 text-lg leading-tight">Protectoras que promueven adopciones responsables.</p>
+                    </div>
+                    <span className="w-fit text-xs font-bold py-4 px-8 bg-mimo-muted text-black rounded-full uppercase tracking-widest group-hover:bg-gray-200 transition-colors">
+                        Ver directorio
+                    </span>
                 </Link>
             </div>
 

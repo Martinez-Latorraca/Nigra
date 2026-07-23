@@ -75,18 +75,55 @@ app.use('/api/notifications', notificationsRoutes);
 // 4. SITEMAP DINÁMICO
 app.get('/sitemap.xml', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, created_at FROM pets ORDER BY created_at DESC');
+        // Paralelizamos 4 queries: pets, vets, shelters, adoption_pets. Todas
+        // filtradas por lo que Google debería indexar (aprobado + no borrado).
+        const [petsRes, vetsRes, sheltersRes, adoptionsRes] = await Promise.all([
+            pool.query('SELECT id, created_at FROM pets ORDER BY created_at DESC'),
+            pool.query(
+                `SELECT slug, updated_at FROM vets
+                 WHERE approved = TRUE AND deleted_at IS NULL
+                 ORDER BY updated_at DESC`
+            ),
+            pool.query(
+                `SELECT slug, updated_at FROM shelters
+                 WHERE approved = TRUE AND deleted_at IS NULL
+                 ORDER BY updated_at DESC`
+            ),
+            pool.query(
+                `SELECT ap.id, ap.updated_at
+                 FROM adoption_pets ap
+                 JOIN shelters s ON s.id = ap.shelter_id
+                 WHERE ap.deleted_at IS NULL AND ap.adopted_at IS NULL
+                   AND s.approved = TRUE AND s.deleted_at IS NULL
+                 ORDER BY ap.created_at DESC`
+            ),
+        ]);
         const baseUrl = BASE_URL;
 
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>${baseUrl}/pets</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>${baseUrl}/vets</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>${baseUrl}/shelters</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>${baseUrl}/adoptions</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>${baseUrl}/buscar</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>`;
 
-        for (const pet of result.rows) {
+        for (const pet of petsRes.rows) {
             const lastmod = new Date(pet.created_at).toISOString().split('T')[0];
             xml += `\n  <url><loc>${baseUrl}/pet/${pet.id}</loc><lastmod>${lastmod}</lastmod><priority>0.6</priority></url>`;
+        }
+        for (const v of vetsRes.rows) {
+            const lastmod = new Date(v.updated_at).toISOString().split('T')[0];
+            xml += `\n  <url><loc>${baseUrl}/vets/${v.slug}</loc><lastmod>${lastmod}</lastmod><priority>0.5</priority></url>`;
+        }
+        for (const s of sheltersRes.rows) {
+            const lastmod = new Date(s.updated_at).toISOString().split('T')[0];
+            xml += `\n  <url><loc>${baseUrl}/shelters/${s.slug}</loc><lastmod>${lastmod}</lastmod><priority>0.5</priority></url>`;
+        }
+        for (const ap of adoptionsRes.rows) {
+            const lastmod = new Date(ap.updated_at).toISOString().split('T')[0];
+            xml += `\n  <url><loc>${baseUrl}/adoptions/${ap.id}</loc><lastmod>${lastmod}</lastmod><priority>0.6</priority></url>`;
         }
 
         xml += '\n</urlset>';

@@ -18,6 +18,22 @@ function Navbar() {
                 <MimoLogo variant="wordmark" size={110} />
             </Link>
 
+            {/* Nav central — se oculta en pantallas chicas para no romper el layout */}
+            <div className="hidden md:flex gap-6 items-center">
+                <Link to="/pets" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    Explorar
+                </Link>
+                <Link to="/adoptions" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    Adopciones
+                </Link>
+                <Link to="/shelters" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    Refugios
+                </Link>
+                <Link to="/vets" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                    Veterinarias
+                </Link>
+            </div>
+
             <div className="flex gap-4 items-center">
                 {token ? (
                     <div className="flex items-center gap-4">

@@ -419,8 +419,21 @@ export default function ShelterPanel() {
                 </div>
 
                 {!approved ? (
-                    <div className="mb-6 rounded-2xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
-                        Tu refugio está pendiente de aprobación por un admin. Podés completar tus datos y agregar publicaciones — se van a mostrar en el directorio público apenas te aprueben.
+                    <div className="mb-6 rounded-[24px] bg-yellow-50 border border-yellow-200 p-6">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-yellow-800 mb-3">
+                            📋 Verificación pendiente
+                        </div>
+                        <p className="text-sm leading-relaxed text-yellow-900 mb-3">
+                            Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
+                            Enviá a{' '}
+                            <a href="mailto:somos.mimo.app@gmail.com?subject=Verificaci%C3%B3n%20de%20refugio%20Mimo"
+                                className="font-semibold underline">somos.mimo.app@gmail.com</a>{' '}
+                            los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
+                            redes sociales, etc.) desde el email de tu cuenta.
+                        </p>
+                        <p className="text-[13px] leading-relaxed text-yellow-800">
+                            Mientras tanto podés completar los datos de tu refugio. Un admin te aprueba y ya podés empezar a publicar.
+                        </p>
                     </div>
                 ) : null}
 
@@ -443,50 +456,54 @@ export default function ShelterPanel() {
                     ) : null}
                 </div>
 
-                {/* Adopciones */}
-                <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-display font-black text-2xl text-mimo-noche">Publicaciones activas</h2>
-                        {!creatingPet && !editingPet ? (
-                            <button
-                                onClick={() => setCreatingPet(true)}
-                                className="rounded-full bg-mimo-coral px-5 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-white hover:bg-mimo-coralDark"
-                            >
-                                + Nueva
-                            </button>
-                        ) : null}
+                {/* Adopciones — solo visibles si el refugio está aprobado.
+                    El server también gate-a con requireShelter.approved, pero
+                    escondemos el UI para evitar botones que van a devolver 403. */}
+                {approved ? (
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="font-display font-black text-2xl text-mimo-noche">Publicaciones activas</h2>
+                            {!creatingPet && !editingPet ? (
+                                <button
+                                    onClick={() => setCreatingPet(true)}
+                                    className="rounded-full bg-mimo-coral px-5 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-white hover:bg-mimo-coralDark"
+                                >
+                                    + Nueva
+                                </button>
+                            ) : null}
+                        </div>
+
+                        {creatingPet ? (
+                            <AdoptionPetForm
+                                pet={null}
+                                token={token}
+                                onCancel={() => setCreatingPet(false)}
+                                onSaved={() => { setCreatingPet(false); load(); }}
+                            />
+                        ) : editingPet ? (
+                            <AdoptionPetForm
+                                pet={editingPet}
+                                token={token}
+                                onCancel={() => setEditingPet(null)}
+                                onSaved={() => { setEditingPet(null); load(); }}
+                            />
+                        ) : (
+                            <>
+                                {active.length === 0 ? (
+                                    <p className="text-sm text-gray-500 text-center py-8">Todavía no publicaste ninguna mascota en adopción.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {active.map((p) => (
+                                            <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </div>
+                ) : null}
 
-                    {creatingPet ? (
-                        <AdoptionPetForm
-                            pet={null}
-                            token={token}
-                            onCancel={() => setCreatingPet(false)}
-                            onSaved={() => { setCreatingPet(false); load(); }}
-                        />
-                    ) : editingPet ? (
-                        <AdoptionPetForm
-                            pet={editingPet}
-                            token={token}
-                            onCancel={() => setEditingPet(null)}
-                            onSaved={() => { setEditingPet(null); load(); }}
-                        />
-                    ) : (
-                        <>
-                            {active.length === 0 ? (
-                                <p className="text-sm text-gray-500 text-center py-8">Todavía no publicaste ninguna mascota en adopción.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {active.map((p) => (
-                                        <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
-                                    ))}
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                {historical.length > 0 && !creatingPet && !editingPet ? (
+                {approved && historical.length > 0 && !creatingPet && !editingPet ? (
                     <div className="mb-6">
                         <h2 className="font-display font-black text-lg text-gray-500 mb-3">Historial</h2>
                         <div className="space-y-3">

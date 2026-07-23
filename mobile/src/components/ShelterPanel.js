@@ -453,8 +453,14 @@ export default function ShelterPanel() {
 
         {!approved ? (
           <View style={styles.pendingCard}>
+            <Text style={styles.pendingKicker}>📋 VERIFICACIÓN PENDIENTE</Text>
             <Text style={styles.pendingCardText}>
-              Tu refugio está pendiente de aprobación por un admin. Podés completar datos y agregar publicaciones — se van a mostrar en el directorio público apenas te aprueben.
+              Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
+              Enviá a somos.mimo.app@gmail.com los comprobantes que tengas
+              (papeles de la ONG, cuenta bancaria a nombre del refugio, redes sociales, etc.)
+              desde el email de tu cuenta.
+              {'\n\n'}
+              Mientras tanto podés completar los datos del refugio. Un admin te aprueba y ya podés publicar.
             </Text>
           </View>
         ) : null}
@@ -478,49 +484,52 @@ export default function ShelterPanel() {
           </View>
         ) : null}
 
-        {/* Adopciones */}
-        <View style={{ marginTop: 24 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={[styles.sectionTitle, { color: c.title }]}>Publicaciones activas</Text>
-            {!creatingPet && !editingPet ? (
-              <Pressable onPress={() => setCreatingPet(true)} style={styles.newBtn}>
-                <Text style={styles.newBtnText}>+ Nueva</Text>
-              </Pressable>
-            ) : null}
+        {/* Adopciones — solo visible si el refugio está aprobado. El server
+            también bloquea con requireShelter.approved. */}
+        {approved ? (
+          <View style={{ marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={[styles.sectionTitle, { color: c.title }]}>Publicaciones activas</Text>
+              {!creatingPet && !editingPet ? (
+                <Pressable onPress={() => setCreatingPet(true)} style={styles.newBtn}>
+                  <Text style={styles.newBtnText}>+ Nueva</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {creatingPet ? (
+              <AdoptionPetForm
+                pet={null}
+                c={c}
+                onCancel={() => setCreatingPet(false)}
+                onSaved={() => { setCreatingPet(false); load(); }}
+              />
+            ) : editingPet ? (
+              <AdoptionPetForm
+                pet={editingPet}
+                c={c}
+                onCancel={() => setEditingPet(null)}
+                onSaved={() => { setEditingPet(null); load(); }}
+              />
+            ) : (
+              <>
+                {active.length === 0 ? (
+                  <Text style={[styles.empty, { color: c.subtitle }]}>
+                    Todavía no publicaste ninguna mascota en adopción.
+                  </Text>
+                ) : (
+                  <View style={{ gap: 10 }}>
+                    {active.map((p) => (
+                      <PetRow key={p.id} pet={p} c={c} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
           </View>
+        ) : null}
 
-          {creatingPet ? (
-            <AdoptionPetForm
-              pet={null}
-              c={c}
-              onCancel={() => setCreatingPet(false)}
-              onSaved={() => { setCreatingPet(false); load(); }}
-            />
-          ) : editingPet ? (
-            <AdoptionPetForm
-              pet={editingPet}
-              c={c}
-              onCancel={() => setEditingPet(null)}
-              onSaved={() => { setEditingPet(null); load(); }}
-            />
-          ) : (
-            <>
-              {active.length === 0 ? (
-                <Text style={[styles.empty, { color: c.subtitle }]}>
-                  Todavía no publicaste ninguna mascota en adopción.
-                </Text>
-              ) : (
-                <View style={{ gap: 10 }}>
-                  {active.map((p) => (
-                    <PetRow key={p.id} pet={p} c={c} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
-                  ))}
-                </View>
-              )}
-            </>
-          )}
-        </View>
-
-        {historical.length > 0 && !creatingPet && !editingPet ? (
+        {approved && historical.length > 0 && !creatingPet && !editingPet ? (
           <View style={{ marginTop: 24 }}>
             <Text style={[styles.sectionTitle, { color: c.subtitle, fontSize: 14 }]}>Historial</Text>
             <View style={{ gap: 10, marginTop: 12 }}>
@@ -566,7 +575,8 @@ const styles = StyleSheet.create({
     marginTop: 12, backgroundColor: '#FEF3C7', borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: '#FCD34D',
   },
-  pendingCardText: { color: '#92400E', fontSize: 12, lineHeight: 18 },
+  pendingKicker: { color: '#92400E', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8 },
+  pendingCardText: { color: '#78350F', fontSize: 12, lineHeight: 18 },
   toggleBtn: {
     marginTop: 16, borderRadius: 999, borderWidth: 1, paddingVertical: 12, alignItems: 'center',
   },

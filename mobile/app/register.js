@@ -75,6 +75,17 @@ export default function Register() {
       : `Te mandamos un link a ${email} para confirmar tu cuenta. Después de tocarlo, iniciá sesión.`;
     return (
       <AuthScreen title={title} subtitle={subtitle}>
+        {accountType === 'shelter' && !restored ? (
+          <View style={styles.shelterNotice}>
+            <Text style={styles.shelterNoticeKicker}>📋 UN PASO MÁS</Text>
+            <Text style={styles.shelterNoticeText}>
+              Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
+              Enviá a somos.mimo.app@gmail.com los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes, etc.) desde el email de tu cuenta.
+              {'\n\n'}
+              Mientras tanto podés editar el perfil. Un admin te aprueba y ya podés publicar.
+            </Text>
+          </View>
+        ) : null}
         <Pressable
           style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
           onPress={() => router.replace('/login')}
@@ -262,4 +273,16 @@ const styles = StyleSheet.create({
   buttonText: { fontWeight: '600', fontSize: 16 },
   footerText: { fontSize: 14, fontWeight: '500' },
   footerLink: { fontWeight: '700' },
+  shelterNotice: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  shelterNoticeKicker: {
+    color: '#92400E', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8,
+  },
+  shelterNoticeText: { color: '#78350F', fontSize: 12, lineHeight: 18 },
 });

@@ -92,6 +92,25 @@ function Register() {
                     <div className="text-5xl mb-4">📬</div>
                     <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">{title}</h2>
                     <p className="text-gray-500 leading-relaxed mb-8">{body}</p>
+
+                    {accountType === 'shelter' && !restored ? (
+                        <div className="mb-8 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-left">
+                            <div className="text-xs font-bold uppercase tracking-widest text-yellow-800 mb-2">
+                                📋 Un paso más
+                            </div>
+                            <p className="text-[13px] leading-relaxed text-yellow-900">
+                                Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
+                                Enviá a <a href="mailto:somos.mimo.app@gmail.com" className="font-semibold underline">somos.mimo.app@gmail.com</a> los
+                                comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
+                                redes sociales, etc.) desde el email de tu cuenta.
+                            </p>
+                            <p className="text-[12px] leading-relaxed text-yellow-800 mt-2">
+                                Mientras tanto podés editar el perfil de tu refugio.
+                                Un admin te aprueba y ya podés empezar a publicar.
+                            </p>
+                        </div>
+                    ) : null}
+
                     <Link
                         to="/login"
                         className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all shadow-sm"

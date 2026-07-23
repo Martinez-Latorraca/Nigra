@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearCredentials, updateUserData } from '../store/userSlice';
+import { clearCredentials } from '../store/userSlice';
 import MimoLogo from './MimoLogo';
 import LinkedAccounts from './LinkedAccounts';
 
@@ -369,22 +369,23 @@ export default function ShelterPanel() {
         load();
     };
 
-    // Soft-delete del refugio. El user sigue existiendo — se convierte en un
-    // user regular. Actualizamos has_shelter en Redux y navegamos a /profile
-    // (que ya no re-direcciona acá al ShelterPanel).
-    const deleteShelter = async () => {
-        const confirm1 = confirm('¿Eliminar tu refugio? Se ocultarán tus publicaciones activas del directorio público.');
+    // Eliminar cuenta = soft-delete del user (que en cascade soft-deletea
+    // vet + shelter). Un shelter que "elimina su refugio" está cerrando la
+    // cuenta entera — no queda como user regular. Reactivable via re-registro
+    // con el mismo email.
+    const deleteAccount = async () => {
+        const confirm1 = confirm('¿Eliminar tu cuenta? Se ocultarán tus publicaciones activas y el perfil público del refugio.');
         if (!confirm1) return;
-        const confirm2 = confirm('Esta acción no se puede deshacer desde la app (si te arrepentís, contactá al admin). ¿Confirmás?');
+        const confirm2 = confirm('Esta acción cierra la cuenta. Si te arrepentís, podés recuperarla registrándote de nuevo con el mismo email. ¿Confirmás?');
         if (!confirm2) return;
         try {
-            const res = await fetch(`${API}/api/shelters/me`, {
+            const res = await fetch(`${API}/api/users/me`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
-            if (!res.ok) throw new Error('No se pudo eliminar.');
-            dispatch(updateUserData({ has_shelter: false, shelter_approved: false }));
-            navigate('/profile');
+            if (!res.ok) throw new Error('No se pudo eliminar la cuenta.');
+            dispatch(clearCredentials());
+            navigate('/login');
         } catch (e) {
             alert(e.message);
         }
@@ -556,10 +557,10 @@ export default function ShelterPanel() {
                         Cerrar sesión
                     </button>
                     <button
-                        onClick={deleteShelter}
+                        onClick={deleteAccount}
                         className="w-full rounded-full border border-red-100 bg-white py-3 text-sm font-semibold text-red-500 hover:bg-red-50"
                     >
-                        Eliminar refugio
+                        Eliminar cuenta
                     </button>
                 </div>
             </div>

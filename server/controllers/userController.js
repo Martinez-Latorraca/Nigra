@@ -105,10 +105,11 @@ export const updateMe = async (req, res) => {
 };
 
 // DELETE /api/users/me — soft delete. Marca users.deleted_at y, si el user
-// era owner de una vet, también marca vets.deleted_at (queda oculta del
-// directorio). Los pets y mensajes NO se tocan: la mascota puede seguir
-// necesitando la visibilidad. Volver a loguearse o registrarse con el mismo
-// email reactiva todo.
+// era owner de una vet o refugio, también marca *.deleted_at (queda oculta
+// del directorio). Los pets y mensajes NO se tocan: la mascota puede seguir
+// necesitando la visibilidad. Las adoption_pets tampoco — quedan colgando
+// del shelter soft-deleted (invisibles al público via JOIN filter). Volver
+// a loguearse o registrarse con el mismo email reactiva todo.
 export const deleteMe = async (req, res) => {
     try {
         await pool.query(
@@ -117,6 +118,10 @@ export const deleteMe = async (req, res) => {
         );
         await pool.query(
             'UPDATE vets SET deleted_at = NOW() WHERE owner_user_id = $1 AND deleted_at IS NULL',
+            [req.user.id]
+        );
+        await pool.query(
+            'UPDATE shelters SET deleted_at = NOW() WHERE owner_user_id = $1 AND deleted_at IS NULL',
             [req.user.id]
         );
         res.json({ success: true });

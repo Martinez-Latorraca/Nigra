@@ -9,7 +9,7 @@ import { useDispatch } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../lib/api';
 import { useTheme } from '../lib/theme';
-import { clearCredentials, updateUserData } from '../store/userSlice';
+import { clearCredentials } from '../store/userSlice';
 import MenuButton from './MenuButton';
 import LinkedAccounts from './LinkedAccounts';
 
@@ -392,21 +392,23 @@ export default function ShelterPanel() {
     router.replace('/login');
   };
 
-  // Soft-delete del refugio. El user sigue existiendo como user regular.
-  const deleteShelter = () => {
+  // Eliminar cuenta = soft-delete del user (server cascade a vet + shelter).
+  // Un shelter que "elimina su refugio" está cerrando la cuenta entera.
+  // Reactivable via re-registro con el mismo email.
+  const deleteAccount = () => {
     Alert.alert(
-      'Eliminar refugio',
-      'Se ocultarán tus publicaciones activas del directorio público. Esta acción no se puede deshacer desde la app.',
+      'Eliminar cuenta',
+      'Se ocultarán tus publicaciones y el perfil público del refugio. Podés recuperar la cuenta registrándote de nuevo con el mismo email.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar', style: 'destructive',
           onPress: async () => {
             try {
-              await api.delete('/api/shelters/me');
-              dispatch(updateUserData({ has_shelter: false, shelter_approved: false }));
-              router.replace('/profile');
-            } catch { Alert.alert('Error', 'No se pudo eliminar el refugio.'); }
+              await api.delete('/api/users/me');
+              dispatch(clearCredentials());
+              router.replace('/login');
+            } catch { Alert.alert('Error', 'No se pudo eliminar la cuenta.'); }
           },
         },
       ]
@@ -585,8 +587,8 @@ export default function ShelterPanel() {
         <Pressable onPress={handleLogout} style={[styles.logoutBtn, { borderColor: c.cardBorder }]}>
           <Text style={[styles.logoutBtnText, { color: c.text }]}>Cerrar sesión</Text>
         </Pressable>
-        <Pressable onPress={deleteShelter} style={styles.deleteBtn}>
-          <Text style={styles.deleteBtnText}>Eliminar refugio</Text>
+        <Pressable onPress={deleteAccount} style={styles.deleteBtn}>
+          <Text style={styles.deleteBtnText}>Eliminar cuenta</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

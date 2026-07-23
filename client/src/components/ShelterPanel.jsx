@@ -49,7 +49,9 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
 
     const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
 
-    const uploadPhoto = async (file) => {
+    // Sube una foto al server. Si replaceIndex viene, reemplaza la foto en
+    // esa posición del array; si no, la agrega al final.
+    const uploadPhoto = async (file, replaceIndex = null) => {
         setUploading(true);
         setError('');
         try {
@@ -62,7 +64,12 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo subir la foto.');
-            setPhotos((p) => [...p, data.url]);
+            setPhotos((p) => {
+                if (replaceIndex === null) return [...p, data.url];
+                const next = [...p];
+                next[replaceIndex] = data.url;
+                return next;
+            });
         } catch (err) {
             setError(err.message);
         } finally {
@@ -70,7 +77,14 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
         }
     };
 
-    const removePhoto = (url) => setPhotos((p) => p.filter((x) => x !== url));
+    const removePhotoAt = (i) => setPhotos((p) => p.filter((_, idx) => idx !== i));
+    const movePhoto = (i, dir) => setPhotos((p) => {
+        const j = i + dir;
+        if (j < 0 || j >= p.length) return p;
+        const next = [...p];
+        [next[i], next[j]] = [next[j], next[i]];
+        return next;
+    });
 
     const submit = async (e) => {
         e.preventDefault();
@@ -109,20 +123,59 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
 
             <Field label="Fotos" required hint={`Hasta ${MAX_PHOTOS}. La primera es la principal.`}>
                 <div className="flex flex-wrap gap-3">
-                    {photos.map((url) => (
-                        <div key={url} className="relative h-24 w-24 rounded-2xl overflow-hidden group">
+                    {photos.map((url, i) => (
+                        <div key={`${url}-${i}`} className="relative h-28 w-28 rounded-2xl overflow-hidden group border border-gray-100">
                             <img src={url} alt="" className="h-full w-full object-cover" />
-                            <button
-                                type="button"
-                                onClick={() => removePhoto(url)}
-                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition-opacity"
-                            >
-                                Quitar
-                            </button>
+                            {i === 0 ? (
+                                <span className="absolute top-1 left-1 rounded-full bg-mimo-noche/85 text-white text-[8px] font-bold uppercase tracking-widest px-2 py-0.5">
+                                    Principal
+                                </span>
+                            ) : null}
+                            {/* Barra de acciones — visible en hover */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col justify-between p-1 transition-opacity">
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => removePhotoAt(i)}
+                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 text-white text-xs font-bold flex items-center justify-center"
+                                        title="Quitar"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <div className="flex items-center justify-between gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => movePhoto(i, -1)}
+                                        disabled={i === 0}
+                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 text-white text-sm font-bold flex items-center justify-center"
+                                        title="Mover a la izquierda"
+                                    >
+                                        ‹
+                                    </button>
+                                    <label className="h-6 flex-1 rounded-full bg-white/20 hover:bg-white/40 text-white text-[10px] font-bold flex items-center justify-center cursor-pointer" title="Reemplazar">
+                                        Reemplazar
+                                        <input
+                                            type="file" accept="image/*" className="hidden"
+                                            disabled={uploading}
+                                            onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0], i)}
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => movePhoto(i, 1)}
+                                        disabled={i === photos.length - 1}
+                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 text-white text-sm font-bold flex items-center justify-center"
+                                        title="Mover a la derecha"
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ))}
                     {photos.length < MAX_PHOTOS ? (
-                        <label className="h-24 w-24 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-400 hover:border-gray-400 hover:text-gray-600 cursor-pointer">
+                        <label className="h-28 w-28 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-400 hover:border-gray-400 hover:text-gray-600 cursor-pointer">
                             {uploading ? '…' : '+ Foto'}
                             <input
                                 type="file"

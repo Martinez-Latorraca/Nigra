@@ -86,7 +86,9 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
 
   const upd = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const pickPhoto = async () => {
+  // Si replaceIndex viene, la foto seleccionada reemplaza esa posición;
+  // sino se agrega al final.
+  const pickPhoto = async (replaceIndex = null) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Permiso necesario', 'Necesitamos acceso a tus fotos.');
@@ -107,7 +109,12 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
       const { data } = await api.post('/api/adoption-pets/upload-photo', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setPhotos((p) => [...p, data.url]);
+      setPhotos((p) => {
+        if (replaceIndex === null) return [...p, data.url];
+        const next = [...p];
+        next[replaceIndex] = data.url;
+        return next;
+      });
     } catch (e) {
       setError(e.response?.data?.error || 'No se pudo subir la foto.');
     } finally {
@@ -115,7 +122,14 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
     }
   };
 
-  const removePhoto = (url) => setPhotos((p) => p.filter((x) => x !== url));
+  const removePhotoAt = (i) => setPhotos((p) => p.filter((_, idx) => idx !== i));
+  const movePhoto = (i, dir) => setPhotos((p) => {
+    const j = i + dir;
+    if (j < 0 || j >= p.length) return p;
+    const next = [...p];
+    [next[i], next[j]] = [next[j], next[i]];
+    return next;
+  });
 
   const save = async () => {
     if (photos.length === 0) return setError('Subí al menos una foto.');
@@ -148,19 +162,44 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
       </View>
 
       <Text style={[styles.label, { color: c.subtitle }]}>FOTOS *</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-        {photos.map((url) => (
-          <Pressable key={url} onPress={() => removePhoto(url)} style={styles.photoWrap}>
-            <Image source={{ uri: url }} style={styles.photoImg} />
-            <View style={styles.photoRemove}>
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>×</Text>
+      <Text style={[styles.hint, { color: c.subtitle }]}>Hasta {MAX_PHOTOS}. La primera es la principal.</Text>
+      <View style={{ marginTop: 8, gap: 8 }}>
+        {photos.map((url, i) => (
+          <View key={`${url}-${i}`} style={[styles.photoRow, { backgroundColor: c.bg, borderColor: c.cardBorder }]}>
+            <Image source={{ uri: url }} style={styles.photoRowImg} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.photoRowLabel, { color: c.title }]}>
+                {i === 0 ? 'Principal' : `Foto ${i + 1}`}
+              </Text>
             </View>
-          </Pressable>
+            <Pressable
+              onPress={() => movePhoto(i, -1)}
+              disabled={i === 0}
+              style={[styles.photoIconBtn, i === 0 && { opacity: 0.3 }]}
+              hitSlop={6}
+            >
+              <Text style={[styles.photoIconText, { color: c.title }]}>↑</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => movePhoto(i, 1)}
+              disabled={i === photos.length - 1}
+              style={[styles.photoIconBtn, i === photos.length - 1 && { opacity: 0.3 }]}
+              hitSlop={6}
+            >
+              <Text style={[styles.photoIconText, { color: c.title }]}>↓</Text>
+            </Pressable>
+            <Pressable onPress={() => pickPhoto(i)} disabled={uploading} style={styles.photoIconBtn} hitSlop={6}>
+              <Text style={[styles.photoIconText, { color: c.title }]}>⟳</Text>
+            </Pressable>
+            <Pressable onPress={() => removePhotoAt(i)} style={styles.photoIconBtn} hitSlop={6}>
+              <Text style={[styles.photoIconText, { color: '#EF4444' }]}>×</Text>
+            </Pressable>
+          </View>
         ))}
         {photos.length < MAX_PHOTOS ? (
-          <Pressable onPress={pickPhoto} disabled={uploading} style={[styles.photoAdd, { borderColor: c.cardBorder }]}>
+          <Pressable onPress={() => pickPhoto()} disabled={uploading} style={[styles.photoAdd, { borderColor: c.cardBorder }]}>
             <Text style={[styles.photoAddText, { color: c.subtitle }]}>
-              {uploading ? '…' : '+ Foto'}
+              {uploading ? '…' : '+ Agregar foto'}
             </Text>
           </Pressable>
         ) : null}
@@ -656,17 +695,22 @@ const styles = StyleSheet.create({
   textarea: { minHeight: 100, textAlignVertical: 'top' },
   chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   chipText: { fontSize: 12, fontWeight: '700' },
-  photoWrap: { width: 88, height: 88, borderRadius: 14, overflow: 'hidden', position: 'relative' },
-  photoImg: { width: '100%', height: '100%' },
-  photoRemove: {
-    position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
+  hint: { fontSize: 11, marginTop: 4 },
+  photoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 8, borderRadius: 14, borderWidth: 1,
   },
+  photoRowImg: { width: 56, height: 56, borderRadius: 10 },
+  photoRowLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  photoIconBtn: {
+    width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+  },
+  photoIconText: { fontSize: 18, fontWeight: '800' },
   photoAdd: {
-    width: 88, height: 88, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 14, borderWidth: 2, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', paddingVertical: 16,
   },
-  photoAddText: { fontSize: 11, fontWeight: '700' },
+  photoAddText: { fontSize: 12, fontWeight: '700' },
   switchRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12,
   },

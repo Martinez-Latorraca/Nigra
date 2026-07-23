@@ -23,6 +23,7 @@ import { clearCredentials, updateUserData } from '../src/store/userSlice';
 import MenuButton from '../src/components/MenuButton';
 import LinkedAccounts from '../src/components/LinkedAccounts';
 import MapPicker from '../src/components/MapPicker';
+import ShelterPanel from '../src/components/ShelterPanel';
 import { adRadiusOf } from '../src/lib/sponsorTiers';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
@@ -414,6 +415,7 @@ export default function Profile() {
   const dispatch = useDispatch();
 
   const isVet = !!user?.has_vet;
+  const isShelter = !!user?.has_shelter;
 
   // Reports
   const [reports, setReports] = useState([]);
@@ -579,6 +581,9 @@ export default function Profile() {
   }
 
   if (!user) return null;
+
+  // Shelter: vista aparte (sin reports, sin alertas nearby, sin chat).
+  if (isShelter) return <ShelterPanel />;
 
   const vet = vetDash?.vet;
   const displayName = isVet && vet?.name ? vet.name : (user?.name || 'Usuario');

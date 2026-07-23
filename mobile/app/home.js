@@ -107,7 +107,7 @@ export default function Home() {
           </View>
         </Pressable>
 
-        {/* Explorar */}
+        {/* Explorar + Adopciones */}
         <View style={styles.row}>
           <Pressable
             style={[styles.smallCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
@@ -118,7 +118,29 @@ export default function Home() {
               Navegá los reportes activos de la comunidad.
             </Text>
           </Pressable>
+          <Pressable
+            style={[styles.smallCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
+            onPress={() => router.push('/adoptions')}
+          >
+            <Text style={[styles.smallCardTitle, { color: c.title }]}>En adopción.</Text>
+            <Text style={[styles.smallCardSub, { color: c.subtitle }]}>
+              Mascotas que esperan una familia en refugios aliados.
+            </Text>
+          </Pressable>
         </View>
+
+        {/* Refugios */}
+        <Pressable
+          style={[styles.vetsCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}
+          onPress={() => router.push('/shelters')}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.smallCardTitle, { color: c.title }]}>Refugios aliados.</Text>
+            <Text style={[styles.smallCardSub, { color: c.subtitle }]}>
+              Protectoras que promueven adopciones responsables.
+            </Text>
+          </View>
+        </Pressable>
 
         {/* Reencuentros */}
         <Text style={[styles.sectionKicker, { color: '#22C55E' }]}>HISTORIAS CON FINAL FELIZ</Text>

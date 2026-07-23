@@ -17,6 +17,12 @@ const ACCOUNT_TYPES = [
     title: 'Represento una veterinaria',
     desc: 'Publico mascotas encontradas y recibo alertas.',
   },
+  {
+    id: 'shelter',
+    emoji: '🏡',
+    title: 'Represento un refugio',
+    desc: 'Publico mascotas en adopción y las promociono.',
+  },
 ];
 
 export default function Register() {
@@ -133,7 +139,7 @@ export default function Register() {
       </View>
 
       <Text style={[styles.label, { color: c.label }]}>
-        {accountType === 'vet' ? 'Nombre del responsable' : 'Nombre completo'}
+        {(accountType === 'vet' || accountType === 'shelter') ? 'Nombre del responsable' : 'Nombre completo'}
       </Text>
       <TextInput
         style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
@@ -205,7 +211,7 @@ export default function Register() {
           <ActivityIndicator color={c.primaryText} />
         ) : (
           <Text style={[styles.buttonText, { color: c.primaryText }]}>
-            {accountType === 'vet' ? 'Crear cuenta y continuar' : 'Crear cuenta'}
+            {(accountType === 'vet' || accountType === 'shelter') ? 'Crear cuenta y continuar' : 'Crear cuenta'}
           </Text>
         )}
       </Pressable>

@@ -45,7 +45,10 @@ export default function Login() {
   const handleSocialSuccess = (data) => {
     dispatch(setCredentials({ user: data.user, token: data.token }));
     setLoadingProvider(null);
-    if (data.user?.has_vet && !data.user.vet_approved) {
+    if (data.user?.has_shelter) {
+      // Refugios (aprobados o no) van directo a su panel.
+      router.replace('/profile');
+    } else if (data.user?.has_vet && !data.user.vet_approved) {
       router.replace('/profile');
     } else {
       router.replace('/home');

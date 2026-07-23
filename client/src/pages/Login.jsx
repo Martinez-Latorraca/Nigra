@@ -52,6 +52,9 @@ function Login() {
                 dispatch(setCredentials({ user: data.user, token: data.token }));
                 if (redirectTo) {
                     navigate(redirectTo);
+                } else if (data.user?.has_shelter) {
+                    // Refugios (aprobados o no) van directo a su panel.
+                    navigate('/profile');
                 } else if (data.user?.has_vet && !data.user.vet_approved) {
                     navigate('/profile');
                 } else {

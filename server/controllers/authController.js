@@ -33,6 +33,7 @@ export const register = async (req, res) => {
     try {
         const { name, email, password, account_type } = req.body;
         const isVet = account_type === 'vet';
+        const isShelter = account_type === 'shelter';
 
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         const existing = userCheck.rows[0];
@@ -59,6 +60,10 @@ export const register = async (req, res) => {
             );
             await pool.query(
                 'UPDATE vets SET deleted_at = NULL WHERE owner_user_id = $1',
+                [existing.id]
+            );
+            await pool.query(
+                'UPDATE shelters SET deleted_at = NULL WHERE owner_user_id = $1',
                 [existing.id]
             );
             // Fire-and-forget: mail de verificación (igual que en signup nuevo).
@@ -107,6 +112,30 @@ export const register = async (req, res) => {
                 );
             } catch (e) {
                 console.error('vet auto-create error:', e?.message);
+            }
+        }
+        // Mismo patrón que vets para refugios: creamos row shelter con datos
+        // mínimos. El owner completa el resto post-verify + login.
+        if (isShelter) {
+            try {
+                // Slug único en shelters. Reuso slugify pero armo el bucle acá
+                // porque ensureUniqueVetSlug apunta específicamente a vets.
+                const base = slugify(name) || 'refugio';
+                let slug = base, n = 1;
+                while (true) {
+                    const { rows } = await pool.query('SELECT 1 FROM shelters WHERE slug = $1', [slug]);
+                    if (rows.length === 0) break;
+                    n += 1;
+                    slug = `${base}-${n}`;
+                    if (n > 999) throw new Error('cannot find unique shelter slug');
+                }
+                await pool.query(
+                    `INSERT INTO shelters (slug, name, owner_user_id, email, approved)
+                     VALUES ($1, $2, $3, $4, FALSE)`,
+                    [slug, name, user.id, email]
+                );
+            } catch (e) {
+                console.error('shelter auto-create error:', e?.message);
             }
         }
 

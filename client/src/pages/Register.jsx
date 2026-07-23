@@ -15,6 +15,12 @@ const ACCOUNT_TYPES = [
         title: 'Represento una veterinaria',
         desc: 'Quiero publicar mascotas encontradas, recibir alertas y sumarme a la red.',
     },
+    {
+        id: 'shelter',
+        emoji: '🏡',
+        title: 'Represento un refugio',
+        desc: 'Publico mascotas en adopción y las promociono en la plataforma.',
+    },
 ];
 
 function Register() {
@@ -161,7 +167,7 @@ function Register() {
                 <form onSubmit={handleRegister} className="flex flex-col gap-5">
                     <div>
                         <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">
-                            {accountType === 'vet' ? 'Nombre del responsable' : 'Nombre completo'}
+                            {accountType === 'vet' || accountType === 'shelter' ? 'Nombre del responsable' : 'Nombre completo'}
                         </label>
                         <input
                             type="text"
@@ -229,7 +235,7 @@ function Register() {
                         disabled={loading}
                         className="w-full py-4 mt-4 bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-full transition-all duration-300 shadow-sm text-lg"
                     >
-                        {loading ? 'Procesando...' : accountType === 'vet' ? 'Crear cuenta y continuar' : 'Crear cuenta'}
+                        {loading ? 'Procesando...' : (accountType === 'vet' || accountType === 'shelter') ? 'Crear cuenta y continuar' : 'Crear cuenta'}
                     </button>
                 </form>
 

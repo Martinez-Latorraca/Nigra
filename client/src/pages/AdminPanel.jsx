@@ -17,6 +17,7 @@ function AdminPanel() {
     const [pendingVets, setPendingVets] = useState([]);
     const [activeVets, setActiveVets] = useState([]);
     const [deletedUserMatches, setDeletedUserMatches] = useState([]);
+    const [pendingShelters, setPendingShelters] = useState([]);
     const [activeConversation, setActiveConversation] = useState(null);
     const [conversationMessages, setConversationMessages] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -131,6 +132,31 @@ function AdminPanel() {
         if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
     }, [authHeaders]);
 
+    const fetchPendingShelters = useCallback(async (isTabChange = false) => {
+        if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
+        try {
+            const res = await fetch(`${API}/api/shelters/admin/pending`, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok) setPendingShelters(data.shelters || []);
+        } catch (err) {
+            console.error(err);
+        }
+        if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
+    }, [authHeaders]);
+
+    const handleApproveShelter = async (id) => {
+        try {
+            const res = await fetch(`${API}/api/shelters/admin/${id}/approve`, {
+                method: 'PATCH',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ approved: true }),
+            });
+            if (res.ok) fetchPendingShelters();
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchDeletedUserMatches = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
@@ -180,6 +206,7 @@ function AdminPanel() {
         if (tab === 'messages') fetchConversations(1, '', true);
         if (tab === 'vets') fetchPendingVets(true);
         if (tab === 'vets_active') fetchActiveVets(true);
+        if (tab === 'shelters') fetchPendingShelters(true);
         if (tab === 'alerts') fetchDeletedUserMatches(true);
     };
 
@@ -299,6 +326,7 @@ function AdminPanel() {
         { id: 'messages', label: 'Mensajes' },
         { id: 'vets', label: 'Vets pendientes' },
         { id: 'vets_active', label: 'Vets activas' },
+        { id: 'shelters', label: 'Refugios pendientes' },
         { id: 'alerts', label: 'Alertas' },
     ];
 
@@ -337,7 +365,7 @@ function AdminPanel() {
             </div>
 
             {/* Search bar (no aplica a dashboard ni al listado de vets pendientes) */}
-            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'alerts' && !loadingTab && (
+            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && !loadingTab && (
                 <div className="mb-6 flex flex-wrap gap-4 items-end">
                     <div className="space-y-2">
                         <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Buscar</label>
@@ -743,6 +771,42 @@ function AdminPanel() {
                     </div>
                 )}
 
+                {/* ─── SHELTERS PENDIENTES TAB ─────────────────── */}
+                {activeTab === 'shelters' && !loadingTab && !loadingQuery && (
+                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
+                        {pendingShelters.length === 0 ? (
+                            <p className="text-center text-gray-400 py-8">No hay refugios pendientes.</p>
+                        ) : (
+                            pendingShelters.map((s) => (
+                                <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-white">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{s.name}</p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            Owner: {s.owner_name || '—'} · {s.owner_email || s.email || 'sin email'}
+                                            {s.city ? ` · ${s.city}` : ''}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 mt-1">{formatDate(s.created_at)}</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Link
+                                            to={`/shelters/${s.slug}`}
+                                            className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
+                                        >
+                                            Ver
+                                        </Link>
+                                        <button
+                                            onClick={() => handleApproveShelter(s.id)}
+                                            className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800"
+                                        >
+                                            Aprobar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
                 {/* ─── ALERTS TAB ────────────────────────────── */}
                 {activeTab === 'alerts' && !loadingTab && !loadingQuery && (
                     <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
@@ -808,7 +872,7 @@ function AdminPanel() {
                 )}
 
                 {/* ─── PAGINATION ────────────────────────────── */}
-                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'alerts' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
+                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
                         {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
                             <button

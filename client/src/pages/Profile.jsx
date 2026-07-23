@@ -7,6 +7,7 @@ import { markNotificationRead } from '../store/notificationsSlice';
 import LinkedAccounts from '../components/LinkedAccounts';
 import MimoLogo from '../components/MimoLogo';
 import MapSelector from '../components/MapSelector';
+import ShelterPanel from '../components/ShelterPanel';
 import { adRadiusOf } from '../utils/sponsorTiers';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -458,6 +459,7 @@ function Profile() {
     const notifList = useSelector((s) => s.notifications.list);
 
     const isVet = !!user?.has_vet;
+    const isShelter = !!user?.has_shelter;
 
     // --- Reports (user) --- //
     const [reports, setReports] = useState([]);
@@ -670,6 +672,9 @@ function Profile() {
     }
 
     if (!user) return null;
+
+    // Shelter: vista completamente distinta (sin reportes, alertas ni chat).
+    if (isShelter) return <ShelterPanel />;
 
     // ------ Rendering ------ //
     const vet = vetDash?.vet;

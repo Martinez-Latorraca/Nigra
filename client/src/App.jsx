@@ -23,6 +23,10 @@ import AdminPanel from './pages/AdminPanel';
 import Vets from './pages/Vets';
 import VetProfile from './pages/VetProfile';
 import VetRegister from './pages/VetRegister';
+import Shelters from './pages/Shelters';
+import ShelterProfile from './pages/ShelterProfile';
+import Adoptions from './pages/Adoptions';
+import AdoptionDetail from './pages/AdoptionDetail';
 import { ScrollToTop } from './helpers/ScrollToTop';
 
 function App() {
@@ -143,6 +147,10 @@ function App() {
           <Route path="/vets/register" element={<VetRegister />} />
           <Route path="/vets/dashboard" element={<Navigate to="/profile" replace />} />
           <Route path="/vets/:slug" element={<VetProfile />} />
+          <Route path="/shelters" element={<Shelters />} />
+          <Route path="/shelters/:slug" element={<ShelterProfile />} />
+          <Route path="/adoptions" element={<Adoptions />} />
+          <Route path="/adoptions/:id" element={<AdoptionDetail />} />
         </Routes>
         {!isLanding && <ChatWidget socket={socket} />}
         {!isLanding && <NotificationToast socket={socket} />}

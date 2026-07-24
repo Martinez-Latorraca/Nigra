@@ -11,6 +11,7 @@ function AdminPanel() {
 
     const [activeTab, setActiveTab] = useState('dashboard');
     const [stats, setStats] = useState(null);
+    const [donationStats, setDonationStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [pets, setPets] = useState([]);
     const [conversations, setConversations] = useState([]);
@@ -44,9 +45,13 @@ function AdminPanel() {
     const fetchStats = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
-            const res = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
+            const [res, donRes] = await Promise.all([
+                fetch(`${API}/api/admin/stats`, { headers: authHeaders() }),
+                fetch(`${API}/api/donations/stats`, { headers: authHeaders() }),
+            ]);
             const data = await res.json();
             if (res.ok) setStats(data);
+            if (donRes.ok) setDonationStats(await donRes.json());
         } catch (err) {
             console.error(err);
         }
@@ -555,6 +560,49 @@ function AdminPanel() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Donaciones — fase 1: solo clicks en el banner de MP. Aún no
+                            hay tracking de donaciones concretadas (requiere webhook MP). */}
+                        {donationStats ? (
+                            <div className="mt-12">
+                                <h3 className="text-lg font-semibold mb-1">Donaciones</h3>
+                                <p className="text-xs text-gray-400 mb-4">
+                                    Clicks en el botón "Donar por Mercado Pago". Todavía no medimos
+                                    donaciones concretadas (requiere integración con MP).
+                                </p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                    <div className="bg-sky-50 text-sky-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{donationStats.total_clicks}</p>
+                                        <p className="text-sm opacity-70">Clicks totales</p>
+                                    </div>
+                                    <div className="bg-cyan-50 text-cyan-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{donationStats.clicks_30d}</p>
+                                        <p className="text-sm opacity-70">Últimos 30 días</p>
+                                    </div>
+                                </div>
+                                {donationStats.top_pets?.length > 0 ? (
+                                    <div>
+                                        <h4 className="font-semibold mb-3">Casos que más motivan a donar</h4>
+                                        <div className="flex flex-col gap-3 max-w-lg">
+                                            {donationStats.top_pets.map((p) => (
+                                                <Link key={p.pet_id} to={`/pet/${p.pet_id}`}
+                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
+                                                    {p.photo_url ? (
+                                                        <img src={p.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">🐾</div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium truncate">{p.pet_name || `Caso #${p.pet_id}`}</p>
+                                                    </div>
+                                                    <span className="text-xs font-semibold text-sky-600">{p.clicks} clicks</span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
                     </div>
                 )}
 

@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet, Linking, Alert } from 'react-native'
 import { useDispatch } from 'react-redux';
 import { markDismissedTemp, markDismissedPermanent } from '../store/donationSlice';
 import { useTheme } from '../lib/theme';
+import api from '../lib/api';
 
 const MP_URL = 'https://link.mercadopago.com.uy/mimouy';
 
@@ -12,6 +13,9 @@ export default function DonationBanner({ petId, petName }) {
     const dispatch = useDispatch();
 
     const openDonation = async () => {
+        // Fire-and-forget: registra el click (el interceptor de api agrega el
+        // token si hay sesión). No await para no demorar la apertura de MP.
+        api.post('/api/donations/click', { pet_id: petId ?? null }).catch(() => {});
         try {
             const supported = await Linking.canOpenURL(MP_URL);
             if (!supported) {

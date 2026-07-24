@@ -56,7 +56,9 @@ export default function Adoptions() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({ species: '', sex: '', size: '', age_group: '', city: '' });
+    const [filters, setFilters] = useState({ species: '', sex: '', size: '', age_group: '', city: '', shelter_id: '' });
+    // Lista de refugios activos para el dropdown. Se carga una vez.
+    const [shelters, setShelters] = useState([]);
 
     const fetchPets = async (nextPage = 1, f = filters) => {
         setLoading(true);
@@ -78,6 +80,15 @@ export default function Adoptions() {
     };
 
     useEffect(() => { fetchPets(1); /* eslint-disable-line */ }, []);
+
+    // Refugios para el select. Traigo hasta 50 (cap del server) — con más
+    // que eso conviene un dropdown con búsqueda; por ahora alcanza.
+    useEffect(() => {
+        fetch(`${API}/api/shelters?limit=50`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => { if (d) setShelters(d.shelters || []); })
+            .catch(() => {});
+    }, []);
 
     const updateFilter = (k, v) => {
         const next = { ...filters, [k]: v };
@@ -142,6 +153,16 @@ export default function Adoptions() {
                         <option value="young">Joven</option>
                         <option value="adult">Adulto</option>
                         <option value="senior">Senior</option>
+                    </select>
+                    <select
+                        value={filters.shelter_id}
+                        onChange={(e) => updateFilter('shelter_id', e.target.value)}
+                        className="rounded-full border border-mimo-muted bg-mimo-warm px-4 py-2 text-xs font-bold text-mimo-ink focus:outline-none max-w-[220px]"
+                    >
+                        <option value="">Todos los refugios</option>
+                        {shelters.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
                     </select>
                     <input
                         placeholder="Ciudad"

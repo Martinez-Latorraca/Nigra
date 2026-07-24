@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator,
+  View, Text, FlatList, Pressable, Image, TextInput, StyleSheet, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -71,40 +71,52 @@ function PetCard({ pet, c, onPress }) {
   );
 }
 
+const EMPTY_FILTERS = { species: '', size: '', sex: '', city: '', shelter_id: '' };
+
 export default function Adoptions() {
   const c = useTheme();
   const [pets, setPets] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [species, setSpecies] = useState('');
-  const [size, setSize] = useState('');
-  const [sex, setSex] = useState('');
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  // City input tiene draft (typing) + committed (aplicado tras submit).
+  const [cityDraft, setCityDraft] = useState('');
+  // Refugios activos para los chips. Se cargan una vez.
+  const [shelters, setShelters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchPets = useCallback(async (nextPage = 1, sp = species, sz = size, sx = sex, append = false) => {
+  const fetchPets = useCallback(async (nextPage = 1, f = filters, append = false) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
       const params = { page: nextPage, limit: PAGE_LIMIT };
-      if (sp) params.species = sp;
-      if (sz) params.size = sz;
-      if (sx) params.sex = sx;
+      for (const [k, v] of Object.entries(f)) if (v) params[k] = v;
       const { data } = await api.get('/api/adoption-pets', { params });
       setPets((prev) => (append ? [...prev, ...(data.pets || [])] : data.pets || []));
       setTotal(data.total || 0);
       setPage(nextPage);
     } catch { /* silencioso */ }
     finally { setLoading(false); setLoadingMore(false); }
-  }, [species, size, sex]);
+  }, [filters]);
 
-  useEffect(() => { fetchPets(1, '', '', ''); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { fetchPets(1, EMPTY_FILTERS); /* eslint-disable-next-line */ }, []);
 
-  const setFilter = (sp, sz, sx) => {
-    setSpecies(sp);
-    setSize(sz);
-    setSex(sx);
-    fetchPets(1, sp, sz, sx);
+  // Refugios para los chips. Cap 50 (limit del server).
+  useEffect(() => {
+    api.get('/api/shelters', { params: { limit: 50 } })
+      .then(({ data }) => setShelters(data.shelters || []))
+      .catch(() => {});
+  }, []);
+
+  const setFilter = (key, value) => {
+    const next = { ...filters, [key]: value };
+    setFilters(next);
+    fetchPets(1, next);
+  };
+  const submitCity = () => {
+    const trimmed = cityDraft.trim();
+    setFilter('city', trimmed);
   };
 
   const hasMore = pets.length < total;
@@ -125,11 +137,11 @@ export default function Adoptions() {
 
       <View style={styles.filtersRow}>
         {SPECIES_FILTERS.map((f) => {
-          const active = species === f.key;
+          const active = filters.species === f.key;
           return (
             <Pressable
               key={f.key || 'all_sp'}
-              onPress={() => setFilter(f.key, size, sex)}
+              onPress={() => setFilter('species', f.key)}
               style={[
                 styles.chip,
                 active
@@ -144,11 +156,11 @@ export default function Adoptions() {
       </View>
       <View style={styles.filtersRow}>
         {SIZE_FILTERS.map((f) => {
-          const active = size === f.key;
+          const active = filters.size === f.key;
           return (
             <Pressable
               key={f.key || 'all_sz'}
-              onPress={() => setFilter(species, f.key, sex)}
+              onPress={() => setFilter('size', f.key)}
               style={[
                 styles.chip,
                 active
@@ -163,11 +175,11 @@ export default function Adoptions() {
       </View>
       <View style={styles.filtersRow}>
         {SEX_FILTERS.map((f) => {
-          const active = sex === f.key;
+          const active = filters.sex === f.key;
           return (
             <Pressable
               key={f.key || 'all_sx'}
-              onPress={() => setFilter(species, size, f.key)}
+              onPress={() => setFilter('sex', f.key)}
               style={[
                 styles.chip,
                 active
@@ -179,6 +191,49 @@ export default function Adoptions() {
             </Pressable>
           );
         })}
+      </View>
+
+      {/* Refugios: scroll horizontal para no acaparar vertical. */}
+      {shelters.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, paddingVertical: 10 }}
+        >
+          {[{ id: '', name: 'Todos los refugios' }, ...shelters].map((s) => {
+            const active = String(filters.shelter_id) === String(s.id);
+            return (
+              <Pressable
+                key={s.id || 'all_sh'}
+                onPress={() => setFilter('shelter_id', String(s.id || ''))}
+                style={[
+                  styles.chip,
+                  active
+                    ? { backgroundColor: '#3ECFB2', borderColor: '#3ECFB2' }
+                    : { backgroundColor: c.card, borderColor: c.cardBorder },
+                ]}
+              >
+                <Text style={[styles.chipText, { color: active ? '#fff' : c.title }]}>🏡 {s.name}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      {/* Ciudad: text input con submit. */}
+      <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+        <TextInput
+          value={cityDraft}
+          onChangeText={setCityDraft}
+          placeholder="Ciudad (Montevideo, Salto…)"
+          placeholderTextColor={c.subtitle}
+          style={[styles.input, { color: c.title }]}
+          returnKeyType="search"
+          onSubmitEditing={submitCity}
+        />
+        <Pressable onPress={submitCity} style={styles.searchBtn}>
+          <Text style={styles.searchBtnText}>Buscar</Text>
+        </Pressable>
       </View>
 
       <Text style={[styles.count, { color: c.subtitle }]}>
@@ -211,7 +266,7 @@ export default function Adoptions() {
           ListFooterComponent={
             hasMore ? (
               <Pressable
-                onPress={() => fetchPets(page + 1, species, size, sex, true)}
+                onPress={() => fetchPets(page + 1, filters, true)}
                 disabled={loadingMore}
                 style={[styles.moreBtn, { borderColor: c.cardBorder }]}
               >
@@ -238,6 +293,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.8, marginTop: 6 },
   subtitle: { fontSize: 13, marginTop: 10, lineHeight: 19 },
   filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
+  searchBar: {
+    marginTop: 10, borderRadius: 999, borderWidth: 1, padding: 4,
+    flexDirection: 'row', alignItems: 'center',
+  },
+  input: { flex: 1, paddingHorizontal: 18, paddingVertical: 10, fontSize: 14, fontWeight: '500' },
+  searchBtn: { backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
+  searchBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
   chipText: { fontSize: 12, fontWeight: '700' },
   count: { fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginTop: 20, marginBottom: 4 },

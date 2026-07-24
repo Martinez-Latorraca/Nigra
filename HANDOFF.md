@@ -1,22 +1,22 @@
-# Nigra — Handoff / Contexto de Proyecto
+# Mimo — Handoff / Contexto de Proyecto
 
-**Fecha:** 2026-07-01
+**Fecha:** 2026-07-01 (creado) · 2026-07-24 (rebrand tech identifiers Nigra→Mimo)
 **Para qué es este archivo:** pegar el contenido (o referenciarlo) al iniciar una sesión de Claude Code en otra máquina para retomar sin perder contexto.
 
 ---
 
-## Qué es Nigra
-Red civil para conectar mascotas perdidas con sus familias usando visión computacional. Monorepo con **backend** (Express/Node + Postgres/pgvector + Socket.io), **web client** (React + Vite + Tailwind) y **mobile** (Expo SDK 54 / React Native, Android).
+## Qué es Mimo
+Red civil para conectar mascotas perdidas con sus familias, más un vertical de vets aliados y refugios que publican adopciones. Usa visión computacional para matching visual. Monorepo con **backend** (Express/Node + Postgres/pgvector + Socket.io), **web client** (React + Vite + Tailwind) y **mobile** (Expo SDK 54 / React Native, Android).
 
-Repo: `Martinez-Latorraca/Nigra` (GitHub, main branch, solo-repo workflow → commit directo a main, sin PRs).
+Repo: `Martinez-Latorraca/Nigra` (GitHub, main branch, solo-repo workflow → commit directo a main, sin PRs). El directorio del repo sigue llamándose `Nigra` por razones históricas; el proyecto en sí es Mimo.
 
-**Deploy:** Render (`https://nigra-server.onrender.com`) sirve el backend y el build del web client desde un Dockerfile único.
+**Deploy:** Render (`https://mimo-server.onrender.com`) sirve el backend y el build del web client desde un Dockerfile único. El dominio público es `https://mimo.uy`.
 
 ---
 
 ## Estructura del repo
 ```
-Nigra/
+Nigra/                # directorio local, histórico
 ├── server/          # Express + Socket.io + Postgres (Supabase)
 ├── client/          # React + Vite (web)
 ├── mobile/          # Expo SDK 54 (Android dev build)
@@ -119,7 +119,7 @@ Nigra/
 
 ## Referencias útiles
 
-- **Backend logs**: dashboard.render.com → servicio `nigra-server` → Logs.
+- **Backend logs**: dashboard.render.com → servicio `mimo-server` → Logs.
 - **Supabase**: dashboard.supabase.com → proyecto `iflqcomawtwvtilgdjgf`. Se pausa a los 7 días de inactividad; si el server tira `ENOTFOUND ... tenant/user postgres.iflqcomawtwvtilgdjgf not found`, es que Supabase está pausado → resumir desde el dashboard.
 - **Firebase** (para push): `fir-5c8c9` en console.firebase.google.com.
 - **EAS** (Expo): projectId `5ef16804-86c2-49a8-b31d-66607e6f3c1a`.

@@ -50,7 +50,7 @@ const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
 app.use(cors({
-    origin: ["https://mimo.uy", "https://www.mimo.uy", "https://nigra-server.onrender.com", "http://localhost:5173"]
+    origin: ["https://mimo.uy", "https://www.mimo.uy", "https://mimo-server.onrender.com", "http://localhost:5173"]
 }));
 app.use(express.json());
 app.use('/api', globalLimiter);
@@ -180,8 +180,8 @@ app.get('/pet/:id', async (req, res) => {
             .replace(/Mimo - Comunidad de Reencuentro Animal/g, title)
             .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Mimo conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
             .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
-            .replace(/https:\/\/nigra-server\.onrender\.com\/nigra-og\.png/g, image)
-            .replace(/https:\/\/nigra-server\.onrender\.com(?!\/nigra-og)/g, ogUrl)
+            .replace(/https:\/\/mimo\.uy\/mimo-og\.png/g, image)
+            .replace(/https:\/\/mimo\.uy(?!\/mimo-og)/g, ogUrl)
             .replace('</head>', `<script type="application/ld+json">${jsonLd}</script>\n</head>`);
 
         res.send(html);
@@ -264,7 +264,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://mimo.uy", "https://www.mimo.uy", "https://nigra-server.onrender.com", "http://localhost:5173"],
+        origin: ["https://mimo.uy", "https://www.mimo.uy", "https://mimo-server.onrender.com", "http://localhost:5173"],
         methods: ["GET", "POST"]
     }
 });

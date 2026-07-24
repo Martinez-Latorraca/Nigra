@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nigra-backend
+    name: mimo-server
     env: docker
     region: ohio
     plan: free

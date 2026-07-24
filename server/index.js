@@ -50,7 +50,7 @@ const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
 app.use(cors({
-    origin: ["https://mimo.uy", "https://www.mimo.uy", "https://mimo-server.onrender.com", "http://localhost:5173"]
+    origin: ["https://mimo.uy", "https://www.mimo.uy", "http://localhost:5173"]
 }));
 app.use(express.json());
 app.use('/api', globalLimiter);
@@ -264,7 +264,7 @@ app.get(/.*/, (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://mimo.uy", "https://www.mimo.uy", "https://mimo-server.onrender.com", "http://localhost:5173"],
+        origin: ["https://mimo.uy", "https://www.mimo.uy", "http://localhost:5173"],
         methods: ["GET", "POST"]
     }
 });

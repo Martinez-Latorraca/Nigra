@@ -1,7 +1,7 @@
-// Fallback: hostname interno de Render. En prod se overridea con EXPO_PUBLIC_API_URL
-// = https://mimo.uy. Cambio nigra-server → mimo-server tras el rebrand.
+// Fallback provider-agnostic: apunta al dominio custom. Si cambiamos de PaaS,
+// mimo.uy sigue apuntando al backend nuevo y no hay que tocar código.
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'https://mimo-server.onrender.com';
+  process.env.EXPO_PUBLIC_API_URL || 'https://mimo.uy';
 
 // OAuth client IDs — set these in mobile/.env (prefix with EXPO_PUBLIC_)
 // so they get inlined at build time.

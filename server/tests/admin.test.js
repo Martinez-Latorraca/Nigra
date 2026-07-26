@@ -247,28 +247,6 @@ describe('Admin', () => {
         });
     });
 
-    describe('GET /api/admin/conversations', () => {
-        it('lista conversaciones agrupadas', async () => {
-            mockAdminRole();
-            pool.query
-                .mockResolvedValueOnce({ rows: [{ count: '1' }] })
-                .mockResolvedValueOnce({
-                    rows: [{
-                        pet_id: 1, user_a_id: 2, user_b_id: 7,
-                        user_a_name: 'Ana', user_b_name: 'Beto',
-                        pet_name: 'Rocky', message_count: '5',
-                        last_message_at: new Date().toISOString(),
-                    }],
-                });
-            const res = await request(buildApp())
-                .get('/api/admin/conversations')
-                .set('x-test-user', '1');
-            expect(res.status).toBe(200);
-            expect(res.body.conversations).toHaveLength(1);
-            expect(res.body.conversations[0].pet_name).toBe('Rocky');
-        });
-    });
-
     describe('GET /api/admin/conversations/:pet_id/:user_a/:user_b', () => {
         it('devuelve los mensajes de la conversación', async () => {
             mockAdminRole();

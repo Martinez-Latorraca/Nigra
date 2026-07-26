@@ -268,71 +268,10 @@ export const adminDeletePet = async (req, res) => {
 };
 
 // ─── MESSAGES MANAGEMENT ────────────────────────────────────
-export const adminGetConversations = async (req, res) => {
-    try {
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-        const offset = (page - 1) * limit;
-        const search = req.query.search || '';
-
-        let havingClause = '';
-        const params = [];
-        let paramIndex = 1;
-
-        if (search) {
-            havingClause = `HAVING MIN(u1.name) ILIKE $${paramIndex} OR MIN(u2.name) ILIKE $${paramIndex} OR MIN(p.name) ILIKE $${paramIndex}`;
-            params.push(`%${search}%`);
-            paramIndex++;
-        }
-
-        const countQuery = `
-            SELECT COUNT(*) FROM (
-                SELECT 1
-                FROM messages m
-                JOIN users u1 ON u1.id = LEAST(m.sender_id, m.receiver_id)
-                JOIN users u2 ON u2.id = GREATEST(m.sender_id, m.receiver_id)
-                LEFT JOIN pets p ON m.pet_id = p.id
-                GROUP BY m.pet_id, LEAST(m.sender_id, m.receiver_id), GREATEST(m.sender_id, m.receiver_id)
-                ${havingClause}
-            ) sub
-        `;
-        const countResult = await pool.query(countQuery, params);
-        const total = parseInt(countResult.rows[0].count);
-
-        const result = await pool.query(
-            `SELECT
-                m.pet_id,
-                LEAST(m.sender_id, m.receiver_id) AS user_a_id,
-                GREATEST(m.sender_id, m.receiver_id) AS user_b_id,
-                MIN(u1.name) AS user_a_name,
-                MIN(u2.name) AS user_b_name,
-                MIN(p.name) AS pet_name,
-                MIN(p.photo_url) AS pet_photo,
-                COUNT(*) AS message_count,
-                MAX(m.created_at) AS last_message_at
-             FROM messages m
-             JOIN users u1 ON u1.id = LEAST(m.sender_id, m.receiver_id)
-             JOIN users u2 ON u2.id = GREATEST(m.sender_id, m.receiver_id)
-             LEFT JOIN pets p ON m.pet_id = p.id
-             GROUP BY m.pet_id, LEAST(m.sender_id, m.receiver_id), GREATEST(m.sender_id, m.receiver_id)
-             ${havingClause}
-             ORDER BY MAX(m.created_at) DESC
-             LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
-            [...params, limit, offset]
-        );
-
-        res.json({
-            conversations: result.rows,
-            page,
-            totalPages: Math.ceil(total / limit),
-            total,
-        });
-    } catch (error) {
-        console.error('Error obteniendo conversaciones (admin):', error);
-        res.status(500).json({ error: 'Error obteniendo conversaciones' });
-    }
-};
-
+// El browse-all de conversaciones (adminGetConversations) se removió por
+// privacidad: leer todos los DMs sin causa era vigilancia general. La
+// moderación ahora accede a un hilo puntual solo desde una denuncia
+// (adminGetConversationMessages), scopeado a pet + los dos users.
 export const adminGetConversationMessages = async (req, res) => {
     try {
         const { pet_id, user_a, user_b } = req.params;

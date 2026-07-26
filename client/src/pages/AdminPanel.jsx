@@ -14,7 +14,6 @@ function AdminPanel() {
     const [donationStats, setDonationStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [pets, setPets] = useState([]);
-    const [conversations, setConversations] = useState([]);
     const [pendingVets, setPendingVets] = useState([]);
     const [activeVets, setActiveVets] = useState([]);
     const [deletedUserMatches, setDeletedUserMatches] = useState([]);
@@ -87,25 +86,6 @@ function AdminPanel() {
             const data = await res.json();
             if (res.ok) {
                 setPets(data.pets);
-                setPagination({ page: data.page, totalPages: data.totalPages, total: data.total });
-            }
-        } catch (err) {
-            console.error(err);
-        }
-        if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
-    }, [authHeaders]);
-
-    const fetchConversations = useCallback(async (page = 1, searchVal = '', isTabChange = false) => {
-        if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
-        setActiveConversation(null);
-        setConversationMessages([]);
-        try {
-            const params = new URLSearchParams({ page, limit: 20 });
-            if (searchVal) params.set('search', searchVal);
-            const res = await fetch(`${API}/api/admin/conversations?${params}`, { headers: authHeaders() });
-            const data = await res.json();
-            if (res.ok) {
-                setConversations(data.conversations);
                 setPagination({ page: data.page, totalPages: data.totalPages, total: data.total });
             }
         } catch (err) {
@@ -252,7 +232,6 @@ function AdminPanel() {
         if (tab === 'dashboard') fetchStats(true);
         if (tab === 'users') fetchUsers(1, '', true);
         if (tab === 'pets') fetchPets(1, '', { status: 'all', type: 'all' }, true);
-        if (tab === 'messages') fetchConversations(1, '', true);
         if (tab === 'vets') fetchPendingVets(true);
         if (tab === 'vets_active') fetchActiveVets(true);
         if (tab === 'shelters') fetchPendingShelters(true);
@@ -275,7 +254,6 @@ function AdminPanel() {
         debounceRef[1](setTimeout(() => {
             if (activeTab === 'users') fetchUsers(1, value);
             if (activeTab === 'pets') fetchPets(1, value, filters);
-            if (activeTab === 'messages') fetchConversations(1, value);
         }, 400));
     };
 
@@ -355,12 +333,8 @@ function AdminPanel() {
         if (!confirm('Eliminar este mensaje?')) return;
         try {
             const res = await fetch(`${API}/api/admin/messages/${id}`, { method: 'DELETE', headers: authHeaders() });
-            if (res.ok) {
-                if (activeConversation) {
-                    fetchConversationMessages(activeConversation);
-                } else {
-                    fetchConversations(pagination.page, search);
-                }
+            if (res.ok && activeConversation) {
+                fetchConversationMessages(activeConversation);
             }
         } catch (err) {
             console.error(err);
@@ -373,7 +347,6 @@ function AdminPanel() {
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'users', label: 'Usuarios' },
         { id: 'pets', label: 'Reportes' },
-        { id: 'messages', label: 'Mensajes' },
         { id: 'vets', label: 'Vets pendientes' },
         { id: 'vets_active', label: 'Vets activas' },
         { id: 'shelters', label: 'Refugios pendientes' },
@@ -882,66 +855,55 @@ function AdminPanel() {
                     </div>
                 )}
 
-                {/* ─── MESSAGES TAB ──────────────────────────── */}
-                {activeTab === 'messages' && !loadingTab && !loadingQuery && !activeConversation && (
-                    <div className="space-y-2" style={{ width: '100%', maxWidth: '700px' }}>
-                        {conversations.map(c => (
-                            <div
-                                key={`${c.pet_id}-${c.user_a_id}-${c.user_b_id}`}
-                                onClick={() => fetchConversationMessages(c)}
-                                className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-all"
-                            >
-                                {c.pet_photo && <img src={c.pet_photo} alt="" className="w-12 h-12 rounded-xl object-cover" />}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">{c.user_a_name} y {c.user_b_name}</p>
-                                    <p className="text-xs text-gray-400">Mascota: {c.pet_name || `#${c.pet_id}`}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400">{formatDate(c.last_message_at)}</p>
-                                    <p className="text-xs font-medium text-gray-500">{c.message_count} mensajes</p>
-                                </div>
-                            </div>
-                        ))}
-                        {conversations.length === 0 && <p className="text-center text-gray-400 py-8">No hay conversaciones</p>}
-                    </div>
-                )}
-
-                {/* ─── CONVERSATION DETAIL ────────────────────── */}
-                {activeTab === 'messages' && !loadingTab && !loadingQuery && activeConversation && (
-                    <div className="flex flex-col" style={{ width: '700px', maxWidth: '50%' }}>
-                        <div>
-                            <button
-                                onClick={() => { setActiveConversation(null); setConversationMessages([]); }}
-                                className="mb-4 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-                            >
-                                ← Volver a conversaciones
-                            </button>
-                            <div className="flex items-center gap-3 mb-4">
-                                {activeConversation.pet_photo && <img src={activeConversation.pet_photo} alt="" className="w-10 h-10 rounded-xl object-cover" />}
+                {/* ─── MODAL DE CONVERSACIÓN (contexto de una denuncia) ───
+                    Reemplaza la vieja tab "Mensajes" de navegar-todo (privacidad).
+                    Solo se abre desde una denuncia puntual, no hay browse general. */}
+                {activeConversation && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+                        onClick={() => { setActiveConversation(null); setConversationMessages([]); }}
+                    >
+                        <div
+                            className="bg-white rounded-3xl w-full max-w-lg max-h-[80vh] flex flex-col p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-4">
                                 <div>
                                     <p className="text-sm font-semibold">{activeConversation.user_a_name} y {activeConversation.user_b_name}</p>
-                                    <p className="text-xs text-gray-400">Mascota: {activeConversation.pet_name || `#${activeConversation.pet_id}`}</p>
+                                    <p className="text-xs text-gray-400">Caso: {activeConversation.pet_name || `#${activeConversation.pet_id}`}</p>
                                 </div>
+                                <button
+                                    onClick={() => { setActiveConversation(null); setConversationMessages([]); }}
+                                    className="text-gray-400 hover:text-gray-900 text-lg"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                        </div>
-                        <div className="overflow-y-auto p-4 bg-white rounded-2xl border border-gray-100" style={{ maxHeight: 'calc(100vh - 480px)' }}>
-                            {conversationMessages.map(m => (
-                                <div key={m.id} className="mb-4 group">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs font-semibold text-gray-700">{m.sender_name}</span>
-                                        <span className="text-[10px] text-gray-300">{new Date(m.created_at).toLocaleString('es-AR')}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center gap-2">
-                                        <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-4 py-2" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{m.content}</p>
-                                        <button
-                                            onClick={() => handleDeleteMessage(m.id)}
-                                            className="opacity-0 group-hover:opacity-100 shrink-0 text-xs px-4 py-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
+                            <div className="overflow-y-auto flex-1">
+                                {loadingQuery ? (
+                                    <p className="text-center text-gray-400 py-8 text-sm">Cargando…</p>
+                                ) : conversationMessages.length === 0 ? (
+                                    <p className="text-center text-gray-400 py-8 text-sm">Sin mensajes en este hilo.</p>
+                                ) : (
+                                    conversationMessages.map(m => (
+                                        <div key={m.id} className="mb-4 group">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-xs font-semibold text-gray-700">{m.sender_name}</span>
+                                                <span className="text-[10px] text-gray-300">{new Date(m.created_at).toLocaleString('es-AR')}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-4 py-2" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{m.content}</p>
+                                                <button
+                                                    onClick={() => handleDeleteMessage(m.id)}
+                                                    className="opacity-0 group-hover:opacity-100 shrink-0 text-xs px-4 py-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                                                >
+                                                    Eliminar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1099,6 +1061,21 @@ function AdminPanel() {
                                         </div>
                                         <div className="flex flex-wrap gap-2 mt-3">
                                             {r.pet_id ? (
+                                                <button
+                                                    onClick={() => fetchConversationMessages({
+                                                        pet_id: r.pet_id,
+                                                        user_a_id: r.reporter_id,
+                                                        user_b_id: r.reported_user_id,
+                                                        pet_name: null,
+                                                        user_a_name: r.reporter_name,
+                                                        user_b_name: r.reported_name,
+                                                    })}
+                                                    className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
+                                                >
+                                                    Ver conversación
+                                                </button>
+                                            ) : null}
+                                            {r.pet_id ? (
                                                 <Link to={`/pet/${r.pet_id}`} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200">
                                                     Ver caso
                                                 </Link>
@@ -1151,7 +1128,6 @@ function AdminPanel() {
                                 onClick={() => {
                                     if (activeTab === 'users') fetchUsers(p, search);
                                     if (activeTab === 'pets') fetchPets(p, search, filters);
-                                    if (activeTab === 'messages') fetchConversations(p, search);
                                 }}
                                 className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${p === pagination.page
                                     ? 'bg-black text-white'

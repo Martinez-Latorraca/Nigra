@@ -10,7 +10,6 @@ import {
     updateUserRole,
     adminGetAllPets,
     adminDeletePet,
-    adminGetConversations,
     adminGetConversationMessages,
     adminDeleteMessage,
     backfillEmbeddings,
@@ -36,8 +35,8 @@ router.delete('/users/:id', deleteUser);
 router.get('/pets', adminGetAllPets);
 router.delete('/pets/:id', adminDeletePet);
 
-// Mensajes
-router.get('/conversations', adminGetConversations);
+// Mensajes — moderación puntual desde una denuncia. NO hay browse-all de
+// conversaciones (se quitó por privacidad: era vigilancia general de DMs).
 router.get('/conversations/:pet_id/:user_a/:user_b', adminGetConversationMessages);
 router.delete('/messages/:id', adminDeleteMessage);
 

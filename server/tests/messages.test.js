@@ -63,6 +63,7 @@ describe('Messages', () => {
     describe('GET /api/messages/:pet_id/:otherUserId', () => {
         it('devuelve historial reverseado a orden cronológico + meta de paginación', async () => {
             pool.query
+                .mockResolvedValueOnce({ rows: [] }) // block check (no bloqueado)
                 .mockResolvedValueOnce({ rows: [{ count: '3' }] })
                 .mockResolvedValueOnce({
                     rows: [

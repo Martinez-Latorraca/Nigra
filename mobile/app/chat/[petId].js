@@ -18,6 +18,7 @@ import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 import { useSocket } from '../../src/lib/socket';
 import DonationBanner from '../../src/components/DonationBanner';
+import ReportModal from '../../src/components/ReportModal';
 import { resetDismissal, selectDonationVisible } from '../../src/store/donationSlice';
 
 export default function Chat() {
@@ -31,7 +32,10 @@ export default function Chat() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [pet, setPet] = useState(null); // { user_id, resolved_at, resolved_with_user_id, name }
+  const [blocked, setBlocked] = useState(false);
   const [resolving, setResolving] = useState(false);
+  // Denuncia: null = cerrado; { messageId } = abierto (messageId null = denunciar al user).
+  const [reportTarget, setReportTarget] = useState(null);
   const scrollRef = useRef(null);
   const insets = useSafeAreaInsets();
   const [kbHeight, setKbHeight] = useState(0);
@@ -77,6 +81,7 @@ export default function Chat() {
       .then(([msgRes, petRes]) => {
         if (!active) return;
         setMessages(Array.isArray(msgRes.data.messages) ? msgRes.data.messages : []);
+        setBlocked(!!msgRes.data.blocked);
         setPet(petRes.data);
       })
       .catch(() => {})
@@ -154,6 +159,20 @@ export default function Chat() {
     );
   };
 
+  // Tras enviar una denuncia. Si bloqueó, la conversación queda oculta:
+  // refrescamos inbox y volvemos. Si no, solo confirmamos.
+  const onReportDone = (blocked) => {
+    setReportTarget(null);
+    if (blocked) {
+      refreshInbox();
+      Alert.alert('Listo', 'Enviamos tu denuncia y bloqueaste a esta persona.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } else {
+      Alert.alert('Gracias', 'Recibimos tu denuncia. Un admin la va a revisar.');
+    }
+  };
+
   const doResolve = async () => {
     setResolving(true);
     try {
@@ -204,6 +223,15 @@ export default function Chat() {
             </Text>
           </Pressable>
         ) : null}
+        {otherUserId ? (
+          <Pressable
+            onPress={() => setReportTarget({ messageId: null })}
+            hitSlop={10}
+            style={styles.moreBtn}
+          >
+            <Text style={[styles.moreDots, { color: c.subtitle }]}>⋯</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView
@@ -226,7 +254,10 @@ export default function Chat() {
                 key={m.id}
                 style={[styles.bubbleRow, { justifyContent: mine ? 'flex-end' : 'flex-start' }]}
               >
-                <View
+                <Pressable
+                  // Long-press en un mensaje del otro → denunciar ese mensaje.
+                  onLongPress={!mine ? () => setReportTarget({ messageId: m.id }) : undefined}
+                  delayLongPress={350}
                   style={[
                     styles.bubble,
                     mine
@@ -237,7 +268,7 @@ export default function Chat() {
                   <Text style={{ color: mine ? c.primaryText : c.text, fontSize: 15 }}>
                     {m.content}
                   </Text>
-                </View>
+                </Pressable>
               </View>
             );
           })
@@ -254,6 +285,14 @@ export default function Chat() {
             </Text>
           </View>
         ) : null}
+
+        {blocked ? (
+          <View style={[styles.closedNote, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+            <Text style={[styles.closedNoteText, { color: c.subtitle }]}>
+              Bloqueaste a esta persona. No pueden intercambiar mensajes.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View
@@ -267,22 +306,36 @@ export default function Chat() {
         ]}
       >
         <TextInput
-          style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }, isResolved && styles.disabled]}
+          style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }, (isResolved || blocked) && styles.disabled]}
           value={text}
           onChangeText={setText}
-          placeholder={isResolved ? 'Caso cerrado — no se pueden enviar mensajes' : 'Escribí un mensaje…'}
+          placeholder={
+            blocked ? 'Bloqueaste a esta persona'
+              : isResolved ? 'Caso cerrado — no se pueden enviar mensajes'
+              : 'Escribí un mensaje…'
+          }
           placeholderTextColor={c.label}
-          editable={!isResolved}
+          editable={!isResolved && !blocked}
           multiline
         />
         <Pressable
-          style={[styles.sendBtn, { backgroundColor: c.primary }, (!text.trim() || isResolved) && styles.disabled]}
+          style={[styles.sendBtn, { backgroundColor: c.primary }, (!text.trim() || isResolved || blocked) && styles.disabled]}
           onPress={send}
-          disabled={!text.trim() || isResolved}
+          disabled={!text.trim() || isResolved || blocked}
         >
           <Text style={[styles.sendText, { color: c.primaryText }]}>→</Text>
         </Pressable>
       </View>
+
+      <ReportModal
+        visible={reportTarget !== null}
+        onClose={() => setReportTarget(null)}
+        reportedUserId={Number(otherUserId)}
+        reportedName={name}
+        messageId={reportTarget?.messageId ?? null}
+        petId={Number(petId)}
+        onDone={onReportDone}
+      />
     </SafeAreaView>
   );
 }
@@ -307,6 +360,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   closeBtnText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
+  moreBtn: { paddingHorizontal: 4, paddingVertical: 2 },
+  moreDots: { fontSize: 24, fontWeight: '700', marginTop: -6 },
   messages: { padding: 16, gap: 10, flexGrow: 1 },
   empty: { textAlign: 'center', marginTop: 60, fontSize: 14 },
   bubbleRow: { flexDirection: 'row' },

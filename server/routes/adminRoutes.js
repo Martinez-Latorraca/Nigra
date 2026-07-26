@@ -17,6 +17,7 @@ import {
     listDeletedUserMatches,
     markDeletedUserMatchRead,
 } from '../controllers/adminController.js';
+import { adminListReports, adminUpdateReportStatus } from '../controllers/reportController.js';
 
 const router = express.Router();
 
@@ -46,5 +47,9 @@ router.post('/backfill-embeddings', backfillEmbeddings);
 // Alertas: matches de mascotas cuyos dueños se dieron de baja.
 router.get('/deleted-user-matches', listDeletedUserMatches);
 router.patch('/deleted-user-matches/:id/read', markDeletedUserMatchRead);
+
+// Denuncias de usuarios/mensajes (trust & safety).
+router.get('/reports', adminListReports);
+router.patch('/reports/:id', adminUpdateReportStatus);
 
 export default router;

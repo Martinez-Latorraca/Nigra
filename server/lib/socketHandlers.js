@@ -47,6 +47,19 @@ async function verifyChatRelationship(pool, { pet_id, sender_id, receiver_id }) 
     return { ok: true };
 }
 
+// Trust & safety: si hay un bloqueo entre sender y receiver en CUALQUIER
+// dirección, no se entrega el mensaje. El bloqueo es simétrico en el delivery.
+async function isBlockedPair(pool, a, b) {
+    const { rows } = await pool.query(
+        `SELECT 1 FROM user_blocks
+         WHERE (blocker_id = $1 AND blocked_id = $2)
+            OR (blocker_id = $2 AND blocked_id = $1)
+         LIMIT 1`,
+        [a, b]
+    );
+    return rows.length > 0;
+}
+
 // Buscamos senderName en la DB en vez de confiar en lo que mande el cliente
 // (payload spoofable → push notification con títulos maliciosos).
 async function loadSenderProfile(pool, senderId) {
@@ -87,6 +100,12 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
             : 'No podés enviar mensajes sobre esta mascota';
         socket.emit('error_notification', msg);
         return { ok: false, reason: relation.reason };
+    }
+
+    // Bloqueo entre las partes → no se entrega.
+    if (await isBlockedPair(pool, sender_id, receiver_id)) {
+        socket.emit('error_notification', 'No se puede enviar el mensaje a esta persona');
+        return { ok: false, reason: 'blocked' };
     }
 
     const senderProfile = await loadSenderProfile(pool, sender_id);
@@ -158,4 +177,4 @@ export function handleJoinPetChat({ socket, data }) {
 }
 
 // Exportados para tests unitarios directos.
-export { validateMessagePayload, verifyChatRelationship, MAX_CONTENT_LENGTH };
+export { validateMessagePayload, verifyChatRelationship, isBlockedPair, MAX_CONTENT_LENGTH };

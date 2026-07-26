@@ -19,6 +19,7 @@ function AdminPanel() {
     const [activeVets, setActiveVets] = useState([]);
     const [deletedUserMatches, setDeletedUserMatches] = useState([]);
     const [pendingShelters, setPendingShelters] = useState([]);
+    const [reports, setReports] = useState([]);
     const [activeConversation, setActiveConversation] = useState(null);
     const [conversationMessages, setConversationMessages] = useState([]);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
@@ -162,6 +163,49 @@ function AdminPanel() {
         }
     };
 
+    const fetchReports = useCallback(async (isTabChange = false) => {
+        if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
+        try {
+            const res = await fetch(`${API}/api/admin/reports`, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok) setReports(data.reports || []);
+        } catch (err) {
+            console.error(err);
+        }
+        if (isTabChange) setLoadingTab(false); else setLoadingQuery(false);
+    }, [authHeaders]);
+
+    const updateReportStatus = async (id, status) => {
+        try {
+            const res = await fetch(`${API}/api/admin/reports/${id}`, {
+                method: 'PATCH',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status }),
+            });
+            if (res.ok) {
+                setReports((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const deleteReportedMessage = async (messageId, reportId) => {
+        if (!confirm('¿Borrar este mensaje denunciado?')) return;
+        try {
+            const res = await fetch(`${API}/api/admin/messages/${messageId}`, {
+                method: 'DELETE',
+                headers: authHeaders(),
+            });
+            if (res.ok) {
+                // Marcamos la denuncia como revisada tras actuar sobre ella.
+                updateReportStatus(reportId, 'reviewed');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchDeletedUserMatches = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
@@ -213,6 +257,7 @@ function AdminPanel() {
         if (tab === 'vets_active') fetchActiveVets(true);
         if (tab === 'shelters') fetchPendingShelters(true);
         if (tab === 'alerts') fetchDeletedUserMatches(true);
+        if (tab === 'reports') fetchReports(true);
     };
 
     // Initial fetch on mount
@@ -333,7 +378,14 @@ function AdminPanel() {
         { id: 'vets_active', label: 'Vets activas' },
         { id: 'shelters', label: 'Refugios pendientes' },
         { id: 'alerts', label: 'Alertas' },
+        { id: 'reports', label: 'Denuncias' },
     ];
+
+    const REASON_LABEL = {
+        spam: 'Spam', harassment: 'Acoso', scam: 'Estafa / recompensa',
+        inappropriate: 'Contenido inapropiado', other: 'Otro',
+    };
+    const STATUS_LABEL = { pending: 'Pendiente', reviewed: 'Revisada', dismissed: 'Descartada' };
 
     const PLAN_OPTIONS = [
         { value: 'ally', label: 'Ally (gratis)', color: null },
@@ -370,7 +422,7 @@ function AdminPanel() {
             </div>
 
             {/* Search bar (no aplica a dashboard ni al listado de vets pendientes) */}
-            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && !loadingTab && (
+            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && activeTab !== 'reports' && !loadingTab && (
                 <div className="mb-6 flex flex-wrap gap-4 items-end">
                     <div className="space-y-2">
                         <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Buscar</label>
@@ -994,8 +1046,104 @@ function AdminPanel() {
                     </div>
                 )}
 
+                {/* ─── DENUNCIAS TAB ─────────────────────────── */}
+                {activeTab === 'reports' && !loadingTab && !loadingQuery && (
+                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Denuncias de usuarios y mensajes. El reportante ya pudo haber bloqueado a la persona.
+                        </p>
+                        {reports.length === 0 ? (
+                            <p className="text-center text-gray-400 py-8">No hay denuncias.</p>
+                        ) : (
+                            reports.map((r) => {
+                                const pending = r.status === 'pending';
+                                return (
+                                    <div
+                                        key={r.id}
+                                        className={`p-4 rounded-2xl border transition-all ${
+                                            pending ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-900 text-white">
+                                                        {REASON_LABEL[r.reason] || r.reason}
+                                                    </span>
+                                                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
+                                                        r.status === 'pending' ? 'bg-red-100 text-red-700'
+                                                            : r.status === 'reviewed' ? 'bg-green-100 text-green-700'
+                                                            : 'bg-gray-100 text-gray-500'
+                                                    }`}>
+                                                        {STATUS_LABEL[r.status]}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400">{formatDate(r.created_at)}</span>
+                                                </div>
+                                                <p className="text-sm mt-2">
+                                                    <span className="text-gray-400">Denunció</span>{' '}
+                                                    <span className="font-medium">{r.reporter_name}</span>{' '}
+                                                    <span className="text-gray-400">a</span>{' '}
+                                                    <span className="font-medium">{r.reported_name}</span>
+                                                    {r.reported_deleted_at ? <span className="text-[10px] text-red-500 ml-1">(cuenta eliminada)</span> : null}
+                                                </p>
+                                                <p className="text-[11px] text-gray-400 font-mono truncate">{r.reported_email}</p>
+                                                {r.message_snapshot ? (
+                                                    <div className="mt-2 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 border border-gray-100" style={{ overflowWrap: 'anywhere' }}>
+                                                        “{r.message_snapshot}”
+                                                    </div>
+                                                ) : null}
+                                                {r.note ? (
+                                                    <p className="mt-2 text-xs text-gray-500">Nota: {r.note}</p>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {r.pet_id ? (
+                                                <Link to={`/pet/${r.pet_id}`} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200">
+                                                    Ver caso
+                                                </Link>
+                                            ) : null}
+                                            {r.message_id ? (
+                                                <button
+                                                    onClick={() => deleteReportedMessage(r.message_id, r.id)}
+                                                    className="px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100"
+                                                >
+                                                    Borrar mensaje
+                                                </button>
+                                            ) : null}
+                                            {pending ? (
+                                                <>
+                                                    <button
+                                                        onClick={() => updateReportStatus(r.id, 'reviewed')}
+                                                        className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800"
+                                                    >
+                                                        Marcar revisada
+                                                    </button>
+                                                    <button
+                                                        onClick={() => updateReportStatus(r.id, 'dismissed')}
+                                                        className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200"
+                                                    >
+                                                        Descartar
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={() => updateReportStatus(r.id, 'pending')}
+                                                    className="px-3 py-1.5 rounded-full text-gray-400 text-xs font-medium hover:bg-gray-100"
+                                                >
+                                                    Reabrir
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                )}
+
                 {/* ─── PAGINATION ────────────────────────────── */}
-                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
+                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && activeTab !== 'reports' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
                         {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
                             <button

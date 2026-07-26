@@ -71,7 +71,14 @@ export const getMyMessages = async (req, res) => {
             JOIN users u_sender ON m.sender_id = u_sender.id
             JOIN users u_receiver ON m.receiver_id = u_receiver.id
             LEFT JOIN vets v ON v.id = p.registered_by_vet_id
-            WHERE m.sender_id = $1 OR m.receiver_id = $1
+            WHERE (m.sender_id = $1 OR m.receiver_id = $1)
+            -- Trust & safety: ocultar del inbox las conversaciones con users
+            -- bloqueados (en cualquier dirección del bloqueo).
+            AND NOT EXISTS (
+                SELECT 1 FROM user_blocks b
+                WHERE (b.blocker_id = $1 AND b.blocked_id = (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END))
+                   OR (b.blocked_id = $1 AND b.blocker_id = (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END))
+            )
             ORDER BY
                 m.pet_id,
                 CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END,
@@ -103,6 +110,19 @@ export const getChatHistory = async (req, res) => {
     const offset = (page - 1) * limit;
 
     try {
+        // Si hay bloqueo con el otro user (cualquier dirección), devolvemos el
+        // historial vacío + flag. El cliente muestra estado bloqueado.
+        const blockCheck = await pool.query(
+            `SELECT 1 FROM user_blocks
+             WHERE (blocker_id = $1 AND blocked_id = $2)
+                OR (blocker_id = $2 AND blocked_id = $1)
+             LIMIT 1`,
+            [myId, otherUserId]
+        );
+        if (blockCheck.rows.length > 0) {
+            return res.json({ messages: [], page: 1, totalPages: 0, total: 0, blocked: true });
+        }
+
         const countQuery = `
             SELECT COUNT(*) FROM messages
             WHERE pet_id = $1

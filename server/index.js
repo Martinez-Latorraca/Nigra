@@ -1,3 +1,7 @@
+// Sentry PRIMERO — instrumenta http/express/pg antes de que se importen.
+import './instrument.js';
+import * as Sentry from '@sentry/node';
+
 import express from 'express';
 import cors from 'cors';
 import { loadModel } from './ai.js';
@@ -56,6 +60,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/api', globalLimiter);
+
+// Health check liviano — para monitores de uptime / alerting. No toca la DB
+// para no fallar por un cold start de Supabase; solo confirma que el proceso vive.
+app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // 2. Servir archivos estáticos (¡Vital para que React cargue sus JS/CSS!)
 // Asumo que tu carpeta de build se llama 'build' o 'dist'
@@ -264,6 +272,19 @@ app.get(/.*/, (req, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
 });
 
+// Sentry: captura los errores que llegan al error-handling de Express.
+// Va después de todas las rutas. Si SENTRY_DSN no está seteado, es no-op.
+Sentry.setupExpressErrorHandler(app);
+
+// Handler final: responde 500 limpio en JSON sin filtrar el stack al cliente.
+// (Sentry ya capturó el error arriba; acá solo cerramos la respuesta.)
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+    console.error('Unhandled error:', err?.message || err);
+    if (res.headersSent) return;
+    res.status(500).json({ error: 'Error interno del servidor.' });
+});
+
 // --- CONFIGURACIÓN DE SOCKET.IO (Se mantiene igual) ---
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -428,6 +449,7 @@ server.listen(port, async () => {
     await loadModel();
     await ensureSchema();
     console.log(`🚀 Servidor listo en http://localhost:${port}`);
+    console.log(process.env.SENTRY_DSN ? '🛡️  Sentry activo (error tracking).' : '🛡️  Sentry inactivo (sin SENTRY_DSN).');
     backfillAddresses();
     // Cron interno: reminder de "cerrá el caso" al dueño 1h después del
     // último mensaje. En Render free sobrevive mientras no haya cold start.

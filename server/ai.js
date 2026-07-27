@@ -1,6 +1,7 @@
 import { Worker } from 'worker_threads';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import * as Sentry from '@sentry/node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,8 @@ function createWorker() {
 
     worker.on('error', (err) => {
         console.error('❌ [AI Worker] Error crítico:', err);
+        // El AI worker es la joya del producto — si crashea queremos enterarnos.
+        Sentry.captureException(err, { tags: { component: 'ai_worker' } });
         for (const [id, job] of pending.entries()) {
             job.reject(err);
             pending.delete(id);
@@ -46,6 +49,10 @@ function createWorker() {
     worker.on('exit', (code) => {
         if (code !== 0) {
             console.error(`❌ [AI Worker] Salió con código ${code}, recreando...`);
+            Sentry.captureMessage(`AI worker exited with code ${code}`, {
+                level: 'error',
+                tags: { component: 'ai_worker' },
+            });
             workerReady = false;
             createWorker();
         }

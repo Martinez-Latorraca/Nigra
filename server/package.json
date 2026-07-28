@@ -7,9 +7,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "node index.js",
+    "start": "node --import ./instrument.js index.js",
     "build": "cd ../client && npm install && npm run build",
-    "dev": "node --watch index.js"
+    "dev": "node --watch --import ./instrument.js index.js"
   },
   "keywords": [],
   "author": "",

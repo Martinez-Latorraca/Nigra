@@ -37,4 +37,8 @@ USER node
 EXPOSE 10000
 
 WORKDIR /app/server
-CMD ["node", "index.js"]
+# --import ./instrument.js: precarga Sentry ANTES de importar express/pg, para
+# que la auto-instrumentación de ESM funcione (sin esto Sentry avisa "express
+# is not instrumented"). Los errores se capturan igual, pero así llega el
+# contexto de request completo.
+CMD ["node", "--import", "./instrument.js", "index.js"]

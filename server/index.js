@@ -34,12 +34,14 @@ import { authenticateToken } from './middlewares/auth.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
 import { startReminderScheduler } from './lib/resolveReminder.js';
 import { analyticsEnabled, shutdownAnalytics } from './lib/analytics.js';
+import pinoHttp from 'pino-http';
+import logger from './lib/logger.js';
 
 // Fail fast si falta el secreto de firmar JWTs. Sin este check el server
 // arrancaba "funcionando" con jwt.sign(payload, undefined) → firma con la
 // string "undefined", vulnerable a que cualquiera firme tokens del server.
 if (!process.env.JWT_SECRET) {
-    console.error('FATAL: JWT_SECRET no está configurado en el entorno.');
+    logger.fatal('FATAL: JWT_SECRET no está configurado en el entorno.');
     process.exit(1);
 }
 
@@ -56,6 +58,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 1. Middlewares globales
+// Request logging estructurado. Va primero para cubrir todo. Ignoramos el
+// health check y los assets estáticos para no ahogar los logs con ruido.
+// customLogLevel: 5xx→error, 4xx→warn, resto info.
+app.use(pinoHttp({
+    logger,
+    autoLogging: {
+        ignore: (req) => {
+            const url = req.url || '';
+            return url === '/api/health'
+                || url.startsWith('/assets')
+                || url === '/favicon.ico'
+                || /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|map)(\?|$)/.test(url);
+        },
+    },
+    customLogLevel: (_req, res, err) => {
+        if (err || res.statusCode >= 500) return 'error';
+        if (res.statusCode >= 400) return 'warn';
+        return 'info';
+    },
+}));
 app.use(cors({
     origin: ["https://mimo.uy", "https://www.mimo.uy", "http://localhost:5173"]
 }));
@@ -142,7 +164,7 @@ app.get('/sitemap.xml', async (req, res) => {
         xml += '\n</urlset>';
         res.header('Content-Type', 'application/xml').send(xml);
     } catch (error) {
-        console.error('Error sitemap:', error);
+        logger.error({ err: error }, 'sitemap error');
         res.status(500).send('Error generating sitemap');
     }
 });
@@ -200,7 +222,7 @@ app.get('/pet/:id', async (req, res) => {
         res.send(html);
 
     } catch (error) {
-        console.error("Error SEO:", error);
+        logger.error({ err: error }, 'SEO injection error');
         indexHtml ? res.send(indexHtml) : res.status(500).json({ error: 'Error interno' });
     }
 });
@@ -281,7 +303,7 @@ Sentry.setupExpressErrorHandler(app);
 // (Sentry ya capturó el error arriba; acá solo cerramos la respuesta.)
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
-    console.error('Unhandled error:', err?.message || err);
+    (req.log || logger).error({ err }, 'unhandled error');
     if (res.headersSent) return;
     res.status(500).json({ error: 'Error interno del servidor.' });
 });
@@ -317,7 +339,7 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
     // El usuario se une a su propia sala para notificaciones generales
     socket.join(`user_${socket.userId}`);
-    console.log(`👤 Usuario ${socket.userId} conectado y unido a su sala.`);
+    logger.info({ userId: socket.userId }, '👤 usuario conectado y unido a su sala');
 
     socket.on('join_pet_chat', (data) => {
         handleJoinPetChat({ socket, data });
@@ -328,7 +350,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected');
+        logger.info({ userId: socket.userId }, 'usuario desconectado');
     });
 });
 
@@ -342,7 +364,7 @@ async function backfillAddresses() {
             'SELECT id, lat, lng FROM pets WHERE address IS NULL AND lat IS NOT NULL AND lng IS NOT NULL'
         );
         if (rows.length === 0) return;
-        console.log(`📍 Backfill de direcciones: ${rows.length} pendientes`);
+        logger.info(`📍 Backfill de direcciones: ${rows.length} pendientes`);
         for (const pet of rows) {
             const address = await reverseGeocode(pet.lat, pet.lng);
             if (address) {
@@ -350,9 +372,9 @@ async function backfillAddresses() {
             }
             await new Promise((r) => setTimeout(r, 1100));
         }
-        console.log('📍 Backfill de direcciones completado');
+        logger.info('📍 Backfill de direcciones completado');
     } catch (error) {
-        console.error('Error en backfill de direcciones:', error.message);
+        logger.error({ err: error }, 'backfill de direcciones error');
     }
 }
 
@@ -440,18 +462,18 @@ async function ensureSchema() {
             await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
         }
     } catch (error) {
-        console.error('Error en ensureSchema:', error.message);
+        logger.error({ err: error }, 'ensureSchema error');
     }
 }
 
 // 6. INICIALIZACIÓN
 server.listen(port, async () => {
-    console.log('⏳ Cargando IA y arrancando servidor...');
+    logger.info('⏳ Cargando IA y arrancando servidor...');
     await loadModel();
     await ensureSchema();
-    console.log(`🚀 Servidor listo en http://localhost:${port}`);
-    console.log(process.env.SENTRY_DSN ? '🛡️  Sentry activo (error tracking).' : '🛡️  Sentry inactivo (sin SENTRY_DSN).');
-    console.log(analyticsEnabled ? '📊 PostHog activo (product analytics).' : '📊 PostHog inactivo (sin POSTHOG_API_KEY).');
+    logger.info(`🚀 Servidor listo en http://localhost:${port}`);
+    logger.info(process.env.SENTRY_DSN ? '🛡️  Sentry activo (error tracking).' : '🛡️  Sentry inactivo (sin SENTRY_DSN).');
+    logger.info(analyticsEnabled ? '📊 PostHog activo (product analytics).' : '📊 PostHog inactivo (sin POSTHOG_API_KEY).');
     backfillAddresses();
     // Cron interno: reminder de "cerrá el caso" al dueño 1h después del
     // último mensaje. En Render free sobrevive mientras no haya cold start.

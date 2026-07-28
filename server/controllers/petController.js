@@ -265,6 +265,18 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
             } catch (e) {
                 console.error('No se pudo persistir match notification:', e.message);
             }
+
+            // 1b) Log del match para métricas + dataset de ML. No rompe el flujo.
+            try {
+                await pool.query(
+                    `INSERT INTO match_events
+                       (new_pet_id, new_pet_user_id, matched_pet_id, matched_user_id, notification_id, visual_distance)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [newPet.id, reporterId, m.id, m.user_id, inserted?.id ?? null, m.visual_distance]
+                );
+            } catch (e) {
+                console.error('No se pudo persistir match_event:', e.message);
+            }
             // 2) Avisamos en tiempo real al receptor (si está conectado).
             if (io && inserted) {
                 io.to(`user_${m.user_id}`).emit('new_match_notification', inserted);
@@ -609,6 +621,22 @@ export const resolvePet = async (req, res) => {
             [resolvedAt, resolvedWith, petId]
         );
 
+        // Si el reencuentro fue con alguien puntual y ese par tenía un match del
+        // AI pendiente, lo marcamos como reunited (métrica de calidad + label ML).
+        if (resolved && resolvedWith) {
+            try {
+                await pool.query(
+                    `UPDATE match_events SET outcome = 'reunited', outcome_at = NOW()
+                     WHERE outcome = 'pending'
+                       AND ((new_pet_user_id = $1 AND matched_user_id = $2)
+                            OR (new_pet_user_id = $2 AND matched_user_id = $1))`,
+                    [userId, resolvedWith]
+                );
+            } catch (e) {
+                console.error('match_events reunited (resolve) error:', e.message);
+            }
+        }
+
         // Al cerrar el caso, marcamos como leídos TODOS los mensajes pendientes
         // sobre esta mascota (para todos los chats abiertos, incluidos los que
         // el dueño no cerró). El caso terminó → no hay acción pendiente en el
@@ -648,6 +676,129 @@ export const resolvePet = async (req, res) => {
     } catch (error) {
         console.error('Error en resolvePet:', error);
         res.status(500).json({ error: 'Error procesando la solicitud' });
+    }
+};
+
+// POST /api/pets/:id/reunion-outcome — respuesta al follow-up "¿te reuniste?".
+// Solo el dueño de la mascota. Body: { outcome: 'reunited' | 'not_matched' | 'later' }.
+//   reunited    → cierra el caso (con la persona con la que más chateó) + marca
+//                 match_events. El mobile muestra la celebración + donación.
+//   not_matched → marca el match como falso positivo (rejected). No cierra.
+//   later       → snooze: solo descarta la pregunta.
+export const recordReunionOutcome = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const petId = Number(req.params.id);
+        const { outcome } = req.body || {};
+        if (!['reunited', 'not_matched', 'later'].includes(outcome)) {
+            return res.status(400).json({ error: 'outcome inválido.' });
+        }
+
+        const { rows: petRows } = await pool.query(
+            'SELECT id, user_id, name, photo_url, resolved_at FROM pets WHERE id = $1',
+            [petId]
+        );
+        if (petRows.length === 0) return res.status(404).json({ error: 'Mascota no encontrada.' });
+        const pet = petRows[0];
+        if (Number(pet.user_id) !== Number(userId)) {
+            return res.status(403).json({ error: 'No autorizado.' });
+        }
+
+        // Descartamos la notificación de recordatorio (respondida).
+        await pool.query(
+            `UPDATE notifications SET read_at = NOW()
+             WHERE user_id = $1 AND type = 'resolve_reminder'
+               AND (data->>'pet_id')::int = $2 AND read_at IS NULL`,
+            [userId, petId]
+        );
+
+        if (outcome === 'later') {
+            return res.json({ resolved: false });
+        }
+
+        // La persona con la que más chateó sobre este pet = con quién se
+        // coordinó el (des)encuentro.
+        const { rows: partnerRows } = await pool.query(
+            `SELECT (CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END) AS partner_id,
+                    COUNT(*)::int AS n
+             FROM messages
+             WHERE pet_id = $2 AND (sender_id = $1 OR receiver_id = $1)
+             GROUP BY partner_id
+             ORDER BY n DESC
+             LIMIT 1`,
+            [userId, petId]
+        );
+        const partnerId = partnerRows[0]?.partner_id ?? null;
+
+        if (outcome === 'not_matched') {
+            // Falso positivo del matching (dato valioso para el ML).
+            if (partnerId) {
+                try {
+                    await pool.query(
+                        `UPDATE match_events SET outcome = 'rejected', outcome_at = NOW()
+                         WHERE outcome = 'pending'
+                           AND ((new_pet_user_id = $1 AND matched_user_id = $2)
+                                OR (new_pet_user_id = $2 AND matched_user_id = $1))`,
+                        [userId, partnerId]
+                    );
+                } catch (e) {
+                    console.error('match_events rejected error:', e.message);
+                }
+            }
+            return res.json({ resolved: false });
+        }
+
+        // outcome === 'reunited'
+        if (pet.resolved_at) {
+            // Ya estaba cerrado — devolvemos igual el contexto para la celebración.
+            return res.json({ resolved: true, already: true, pet_id: petId, partner_id: partnerId, pet_name: pet.name, pet_photo: pet.photo_url });
+        }
+
+        const resolvedAt = new Date();
+        await pool.query(
+            'UPDATE pets SET resolved_at = $1, resolved_with_user_id = $2 WHERE id = $3',
+            [resolvedAt, partnerId, petId]
+        );
+        await pool.query(
+            'UPDATE messages SET is_read = true WHERE pet_id = $1 AND is_read = false',
+            [petId]
+        );
+        // Marca el match como reunited si el par tenía uno pendiente.
+        if (partnerId) {
+            try {
+                await pool.query(
+                    `UPDATE match_events SET outcome = 'reunited', outcome_at = NOW()
+                     WHERE outcome = 'pending'
+                       AND ((new_pet_user_id = $1 AND matched_user_id = $2)
+                            OR (new_pet_user_id = $2 AND matched_user_id = $1))`,
+                    [userId, partnerId]
+                );
+            } catch (e) {
+                console.error('match_events reunited (outcome) error:', e.message);
+            }
+        }
+
+        // Aviso en tiempo real a ambas partes (mismo evento que resolvePet).
+        const io = req.app.locals.io;
+        if (io) {
+            const payload = {
+                pet_id: petId, pet_name: pet.name,
+                resolved_at: resolvedAt, resolved_with_user_id: partnerId, owner_id: userId,
+            };
+            io.to(`user_${userId}`).emit('pet_resolved', payload);
+            if (partnerId) io.to(`user_${partnerId}`).emit('pet_resolved', payload);
+        }
+
+        res.json({
+            resolved: true,
+            pet_id: petId,
+            partner_id: partnerId,
+            pet_name: pet.name,
+            pet_photo: pet.photo_url,
+        });
+    } catch (error) {
+        console.error('recordReunionOutcome error:', error);
+        res.status(500).json({ error: 'Error procesando la respuesta.' });
     }
 };
 

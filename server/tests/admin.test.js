@@ -51,6 +51,37 @@ describe('Admin', () => {
         });
     });
 
+    describe('GET /api/admin/match-stats', () => {
+        it('devuelve reencuentros totales + calidad del matching', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ n: 12 }] })   // reunions total
+                .mockResolvedValueOnce({ rows: [{ n: 3 }] })    // reunions 30d
+                .mockResolvedValueOnce({ rows: [               // by outcome
+                    { outcome: 'pending', n: 5 },
+                    { outcome: 'reunited', n: 4 },
+                    { outcome: 'rejected', n: 1 },
+                ] })
+                .mockResolvedValueOnce({ rows: [{ d: '0.180' }] }); // avg distance
+            const res = await request(buildApp()).get('/api/admin/match-stats').set('x-test-user', '1');
+            expect(res.status).toBe(200);
+            expect(res.body.reunions_total).toBe(12);
+            expect(res.body.reunions_30d).toBe(3);
+            expect(res.body.matches_generated).toBe(10); // 5+4+1
+            expect(res.body.matches_reunited).toBe(4);
+            expect(res.body.matches_rejected).toBe(1);
+            expect(res.body.matches_pending).toBe(5);
+            expect(res.body.avg_distance).toBe(0.18);
+            expect(res.body.precision_pct).toBe(80); // 4/(4+1)
+        });
+
+        it('403 para non-admin', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ role: 'user' }] });
+            const res = await request(buildApp()).get('/api/admin/match-stats').set('x-test-user', '2');
+            expect(res.status).toBe(403);
+        });
+    });
+
     describe('GET /api/admin/stats', () => {
         it('devuelve counts, listas y métricas de refugios', async () => {
             mockAdminRole();

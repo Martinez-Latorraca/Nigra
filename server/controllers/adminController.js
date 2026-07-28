@@ -1,6 +1,45 @@
 import pool from '../db.js';
 import { generateEmbedding } from '../ai.js';
 
+// ─── MATCH / REUNION STATS ──────────────────────────────────
+// Dos métricas distintas:
+//   1. Reencuentros TOTALES del producto — todo caso cerrado (resolved_at),
+//      venga de un match del AI o de que alguien lo vio navegando el feed.
+//   2. Calidad del MATCHING — solo el subset que vino de un match del AI
+//      (match_events): de los generados, cuántos terminaron en reencuentro
+//      (reunited) vs falso positivo (rejected). visual_distance = señal ML.
+export const getMatchStats = async (_req, res) => {
+    try {
+        const [reunionsTotal, reunions30d, byOutcome, avgDist] = await Promise.all([
+            pool.query('SELECT COUNT(*)::int AS n FROM pets WHERE resolved_at IS NOT NULL'),
+            pool.query(`SELECT COUNT(*)::int AS n FROM pets WHERE resolved_at >= NOW() - INTERVAL '30 days'`),
+            pool.query('SELECT outcome, COUNT(*)::int AS n FROM match_events GROUP BY outcome'),
+            pool.query('SELECT ROUND(AVG(visual_distance)::numeric, 3) AS d FROM match_events'),
+        ]);
+
+        const outcomes = { pending: 0, reunited: 0, rejected: 0 };
+        for (const r of byOutcome.rows) outcomes[r.outcome] = r.n;
+        const generated = outcomes.pending + outcomes.reunited + outcomes.rejected;
+        const judged = outcomes.reunited + outcomes.rejected;
+        // Precisión: de los matches con veredicto, cuántos fueron reencuentros.
+        const precision = judged > 0 ? Math.round((outcomes.reunited / judged) * 100) : null;
+
+        res.json({
+            reunions_total: reunionsTotal.rows[0].n,
+            reunions_30d: reunions30d.rows[0].n,
+            matches_generated: generated,
+            matches_reunited: outcomes.reunited,
+            matches_rejected: outcomes.rejected,
+            matches_pending: outcomes.pending,
+            avg_distance: avgDist.rows[0].d != null ? Number(avgDist.rows[0].d) : null,
+            precision_pct: precision,
+        });
+    } catch (error) {
+        console.error('getMatchStats error:', error);
+        res.status(500).json({ error: 'Error obteniendo stats de matching.' });
+    }
+};
+
 // ─── DASHBOARD STATS ────────────────────────────────────────
 export const getDashboardStats = async (req, res) => {
     try {

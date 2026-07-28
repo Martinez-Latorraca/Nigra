@@ -12,6 +12,7 @@ function AdminPanel() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [stats, setStats] = useState(null);
     const [donationStats, setDonationStats] = useState(null);
+    const [matchStats, setMatchStats] = useState(null);
     const [users, setUsers] = useState([]);
     const [pets, setPets] = useState([]);
     const [pendingVets, setPendingVets] = useState([]);
@@ -45,13 +46,15 @@ function AdminPanel() {
     const fetchStats = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
-            const [res, donRes] = await Promise.all([
+            const [res, donRes, matchRes] = await Promise.all([
                 fetch(`${API}/api/admin/stats`, { headers: authHeaders() }),
                 fetch(`${API}/api/donations/stats`, { headers: authHeaders() }),
+                fetch(`${API}/api/admin/match-stats`, { headers: authHeaders() }),
             ]);
             const data = await res.json();
             if (res.ok) setStats(data);
             if (donRes.ok) setDonationStats(await donRes.json());
+            if (matchRes.ok) setMatchStats(await matchRes.json());
         } catch (err) {
             console.error(err);
         }
@@ -585,6 +588,45 @@ function AdminPanel() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Reencuentros & Matching — dos métricas distintas:
+                            reencuentros totales (todo caso cerrado) vs calidad del
+                            matching del AI (subset que vino de un match). */}
+                        {matchStats ? (
+                            <div className="mt-12">
+                                <h3 className="text-lg font-semibold mb-4">Reencuentros & Matching</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
+                                    <div className="bg-green-50 text-green-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.reunions_total}</p>
+                                        <p className="text-sm opacity-70">Reencuentros totales</p>
+                                    </div>
+                                    <div className="bg-emerald-50 text-emerald-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.reunions_30d}</p>
+                                        <p className="text-sm opacity-70">Últimos 30 días</p>
+                                    </div>
+                                    <div className="bg-blue-50 text-blue-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.matches_generated}</p>
+                                        <p className="text-sm opacity-70">Matches AI generados</p>
+                                    </div>
+                                    <div className="bg-teal-50 text-teal-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.matches_reunited}</p>
+                                        <p className="text-sm opacity-70">Matches → reunidos</p>
+                                    </div>
+                                    <div className="bg-red-50 text-red-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.matches_rejected}</p>
+                                        <p className="text-sm opacity-70">Falsos positivos</p>
+                                    </div>
+                                    <div className="bg-purple-50 text-purple-700 rounded-2xl p-4">
+                                        <p className="text-2xl font-bold">{matchStats.precision_pct != null ? `${matchStats.precision_pct}%` : '—'}</p>
+                                        <p className="text-sm opacity-70">Precisión matching</p>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-400">
+                                    Distancia visual promedio de los matches: {matchStats.avg_distance != null ? matchStats.avg_distance : '—'}
+                                    {' · '}Precisión = reunidos / (reunidos + falsos positivos). {matchStats.matches_pending} matches todavía sin veredicto.
+                                </p>
+                            </div>
+                        ) : null}
 
                         {/* Donaciones — fase 1: solo clicks en el banner de MP. Aún no
                             hay tracking de donaciones concretadas (requiere webhook MP). */}

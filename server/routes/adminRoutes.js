@@ -5,6 +5,7 @@ import validate from '../middlewares/validate.js';
 import { updateRoleSchema } from '../schemas/adminSchemas.js';
 import {
     getDashboardStats,
+    getMatchStats,
     getAllUsers,
     deleteUser,
     updateUserRole,
@@ -25,6 +26,7 @@ router.use(authenticateToken, requireAdmin);
 
 // Dashboard
 router.get('/stats', getDashboardStats);
+router.get('/match-stats', getMatchStats);
 
 // Usuarios
 router.get('/users', getAllUsers);

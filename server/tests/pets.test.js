@@ -247,6 +247,89 @@ describe('Pets', () => {
         });
     });
 
+    describe('POST /api/pets/:id/reunion-outcome', () => {
+        it('reunited: cierra el caso con el chat partner + emite pet_resolved + marca match_events', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 7, name: 'Rocky', photo_url: 'u', resolved_at: null }] }) // SELECT pet
+                .mockResolvedValueOnce({ rowCount: 1 })                       // dismiss notif
+                .mockResolvedValueOnce({ rows: [{ partner_id: 42, n: 5 }] })  // SELECT partner
+                .mockResolvedValueOnce({ rowCount: 1 })                       // UPDATE pets resolved
+                .mockResolvedValueOnce({ rowCount: 0 })                       // UPDATE messages read
+                .mockResolvedValueOnce({ rowCount: 1 });                      // UPDATE match_events reunited
+            const io = makeIoMock();
+            const res = await request(buildApp(io))
+                .post('/api/pets/1/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'reunited' });
+            expect(res.status).toBe(200);
+            expect(res.body.resolved).toBe(true);
+            expect(res.body.partner_id).toBe(42);
+            expect(res.body.pet_name).toBe('Rocky');
+            expect(io.to).toHaveBeenCalledWith('user_7');
+            expect(io.to).toHaveBeenCalledWith('user_42');
+            const meCall = pool.query.mock.calls.find(([sql]) => /match_events SET outcome = 'reunited'/.test(sql));
+            expect(meCall).toBeDefined();
+        });
+
+        it('not_matched: marca el match como rejected y NO cierra el caso', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 7, name: 'X', photo_url: null, resolved_at: null }] })
+                .mockResolvedValueOnce({ rowCount: 1 })                      // dismiss
+                .mockResolvedValueOnce({ rows: [{ partner_id: 42, n: 3 }] }) // partner
+                .mockResolvedValueOnce({ rowCount: 1 });                     // UPDATE match_events rejected
+            const res = await request(buildApp())
+                .post('/api/pets/1/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'not_matched' });
+            expect(res.status).toBe(200);
+            expect(res.body.resolved).toBe(false);
+            const rejectedCall = pool.query.mock.calls.find(([sql]) => /match_events SET outcome = 'rejected'/.test(sql));
+            expect(rejectedCall).toBeDefined();
+            // No debe haber UPDATE de pets (no cierra).
+            const resolveCall = pool.query.mock.calls.find(([sql]) => /UPDATE pets SET resolved_at/.test(sql));
+            expect(resolveCall).toBeUndefined();
+        });
+
+        it('later: solo descarta la pregunta, sin tocar partner ni pets', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 1, user_id: 7, name: 'X', photo_url: null, resolved_at: null }] })
+                .mockResolvedValueOnce({ rowCount: 1 }); // dismiss
+            const res = await request(buildApp())
+                .post('/api/pets/1/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'later' });
+            expect(res.status).toBe(200);
+            expect(res.body.resolved).toBe(false);
+            expect(pool.query).toHaveBeenCalledTimes(2); // solo SELECT pet + dismiss
+        });
+
+        it('400 si outcome es inválido', async () => {
+            const res = await request(buildApp())
+                .post('/api/pets/1/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'quizas' });
+            expect(res.status).toBe(400);
+        });
+
+        it('403 si no soy el dueño', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 1, user_id: 99, name: 'X', photo_url: null, resolved_at: null }] });
+            const res = await request(buildApp())
+                .post('/api/pets/1/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'reunited' });
+            expect(res.status).toBe(403);
+        });
+
+        it('404 si la mascota no existe', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/pets/9999/reunion-outcome')
+                .set('x-test-user', '7')
+                .send({ outcome: 'later' });
+            expect(res.status).toBe(404);
+        });
+    });
+
     describe('DELETE /api/pets/:id', () => {
         it('borra mi reporte', async () => {
             pool.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });

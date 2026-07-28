@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import * as Sentry from '@sentry/react-native';
 import { Stack } from 'expo-router';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -22,7 +23,18 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // splash nativo y el primer render de RN (especialmente en dev con Metro).
 SystemUI.setBackgroundColorAsync('#FFF6F0').catch(() => {});
 
-export default function RootLayout() {
+// Error tracking del cliente. Gated en EXPO_PUBLIC_SENTRY_DSN: sin la var
+// queda deshabilitado (no rompe dev ni Expo Go). Setear la DSN del proyecto
+// React Native de Sentry como env (EXPO_PUBLIC_ se inlinea en el build).
+Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    enabled: !!process.env.EXPO_PUBLIC_SENTRY_DSN,
+    environment: __DEV__ ? 'development' : 'production',
+    tracesSampleRate: 0, // solo errores, sin performance tracing
+    sendDefaultPii: false, // coherente con la línea de privacidad
+});
+
+function RootLayout() {
     const [showCustomSplash, setShowCustomSplash] = useState(true);
 
     const onLayoutRootView = useCallback(async () => {
@@ -63,3 +75,6 @@ export default function RootLayout() {
         </Provider>
     );
 }
+
+// Sentry.wrap habilita el error boundary + captura de crashes del árbol React.
+export default Sentry.wrap(RootLayout);

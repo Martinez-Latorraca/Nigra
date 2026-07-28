@@ -3,6 +3,7 @@ import { generateEmbedding, generateEmbeddings } from '../ai.js';
 import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
 import { sendExpoPush } from '../utils/push.js';
+import { track } from '../lib/analytics.js';
 
 // Alerta a users que optaron in (notify_lost / notify_found según el tipo de
 // reporte) y compartieron ubicación en los últimos 30 días, cuyas coordenadas
@@ -296,6 +297,7 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
         }
         if (matches.length > 0) {
             console.log(`🔔 ${matches.length} match notification(s) generadas para pet ${newPet.id}`);
+            track(reporterId, 'pet_match_generated', { match_count: matches.length, status });
         }
     } catch (error) {
         console.error('notifyMatchesForReport error:', error.message);
@@ -471,6 +473,12 @@ export const reportPet = async (req, res) => {
         ]);
 
         res.json({ success: true, pet: result.rows[0] });
+
+        track(user_id, 'pet_reported', {
+            status, // 'lost' | 'found'
+            type,
+            has_location: latNum != null && lngNum != null,
+        });
 
         // Fire-and-forget: notificamos por push + inbox a los dueños de mascotas
         // del pool opuesto cuya foto coincide visualmente.
@@ -713,6 +721,7 @@ export const recordReunionOutcome = async (req, res) => {
         );
 
         if (outcome === 'later') {
+            track(userId, 'reunion_outcome', { outcome: 'later' });
             return res.json({ resolved: false });
         }
 
@@ -745,12 +754,14 @@ export const recordReunionOutcome = async (req, res) => {
                     console.error('match_events rejected error:', e.message);
                 }
             }
+            track(userId, 'reunion_outcome', { outcome: 'not_matched', had_match_partner: !!partnerId });
             return res.json({ resolved: false });
         }
 
         // outcome === 'reunited'
         if (pet.resolved_at) {
             // Ya estaba cerrado — devolvemos igual el contexto para la celebración.
+            track(userId, 'reunion_outcome', { outcome: 'reunited', already: true, had_match_partner: !!partnerId });
             return res.json({ resolved: true, already: true, pet_id: petId, partner_id: partnerId, pet_name: pet.name, pet_photo: pet.photo_url });
         }
 
@@ -788,6 +799,8 @@ export const recordReunionOutcome = async (req, res) => {
             io.to(`user_${userId}`).emit('pet_resolved', payload);
             if (partnerId) io.to(`user_${partnerId}`).emit('pet_resolved', payload);
         }
+
+        track(userId, 'reunion_outcome', { outcome: 'reunited', already: false, had_match_partner: !!partnerId });
 
         res.json({
             resolved: true,

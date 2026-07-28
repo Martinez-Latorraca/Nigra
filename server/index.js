@@ -33,6 +33,7 @@ import { globalLimiter, geocodeLimiter } from './middlewares/rateLimiter.js';
 import { authenticateToken } from './middlewares/auth.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
 import { startReminderScheduler } from './lib/resolveReminder.js';
+import { analyticsEnabled, shutdownAnalytics } from './lib/analytics.js';
 
 // Fail fast si falta el secreto de firmar JWTs. Sin este check el server
 // arrancaba "funcionando" con jwt.sign(payload, undefined) → firma con la
@@ -450,8 +451,27 @@ server.listen(port, async () => {
     await ensureSchema();
     console.log(`🚀 Servidor listo en http://localhost:${port}`);
     console.log(process.env.SENTRY_DSN ? '🛡️  Sentry activo (error tracking).' : '🛡️  Sentry inactivo (sin SENTRY_DSN).');
+    console.log(analyticsEnabled ? '📊 PostHog activo (product analytics).' : '📊 PostHog inactivo (sin POSTHOG_API_KEY).');
     backfillAddresses();
     // Cron interno: reminder de "cerrá el caso" al dueño 1h después del
     // último mensaje. En Render free sobrevive mientras no haya cold start.
     startReminderScheduler({ pool, io, sendExpoPush });
 });
+
+// Shutdown ordenado: en un deploy Render manda SIGTERM. Flusheamos los eventos
+// de PostHog que quedaron en el buffer antes de salir (best-effort, con techo
+// de 2s para no colgar el restart). Sin analytics activo, el shutdown es
+// instantáneo. Node por default sale en SIGTERM; al registrar el handler nos
+// hacemos cargo de llamar a process.exit nosotros.
+for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.on(signal, async () => {
+        try {
+            await Promise.race([
+                shutdownAnalytics(),
+                new Promise((r) => setTimeout(r, 2000)),
+            ]);
+        } finally {
+            process.exit(0);
+        }
+    });
+}

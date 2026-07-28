@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
 import { slugify, ensureUniqueVetSlug } from '../utils/slug.js';
+import { track } from '../lib/analytics.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RESET_TOKEN_TTL_MIN = 60; // 1 hora
@@ -80,6 +81,7 @@ export const register = async (req, res) => {
                 email: existing.email,
                 role: existing.role,
             };
+            track(existing.id, 'user_registered', { account_type: account_type || 'user', restored: true });
             return res.json({ success: true, user: restored, restored: true, requires_verification: true });
         }
 
@@ -148,6 +150,7 @@ export const register = async (req, res) => {
             console.error('verification token insert error:', e?.message);
         }
 
+        track(user.id, 'user_registered', { account_type: account_type || 'user', restored: false });
         res.json({ success: true, user, requires_verification: true });
     } catch (error) {
         console.error(error);
@@ -184,6 +187,7 @@ export const verifyEmail = async (req, res) => {
             [verifyRow.id]
         );
 
+        track(verifyRow.user_id, 'email_verified');
         res.json({ success: true });
     } catch (error) {
         console.error('verifyEmail error:', error);
@@ -265,6 +269,12 @@ export const login = async (req, res) => {
         }
 
         const token = jwt.sign({ id: row.id }, JWT_SECRET, { expiresIn: '7d' });
+
+        track(row.id, 'user_logged_in', {
+            role: row.role,
+            has_vet: !!row.vet_id,
+            has_shelter: !!row.shelter_id,
+        });
 
         res.json({
             success: true,

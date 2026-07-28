@@ -28,7 +28,7 @@ import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
-import { sendExpoPush } from './utils/push.js';
+import { sendExpoPush, startReceiptScheduler } from './utils/push.js';
 import { globalLimiter, geocodeLimiter } from './middlewares/rateLimiter.js';
 import { authenticateToken } from './middlewares/auth.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
@@ -456,6 +456,9 @@ server.listen(port, async () => {
     // Cron interno: reminder de "cerrá el caso" al dueño 1h después del
     // último mensaje. En Render free sobrevive mientras no haya cold start.
     startReminderScheduler({ pool, io, sendExpoPush });
+    // Cron interno: chequea receipts de push y poda tokens muertos
+    // (DeviceNotRegistered) cada 15 min.
+    startReceiptScheduler();
 });
 
 // Shutdown ordenado: en un deploy Render manda SIGTERM. Flusheamos los eventos

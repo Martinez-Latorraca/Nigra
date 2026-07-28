@@ -37,7 +37,7 @@ export function buildReminderQuery() {
 export async function runReminderTick({ pool, io, sendExpoPush }) {
     const { rows } = await pool.query(buildReminderQuery());
     for (const row of rows) {
-        const petLabel = row.pet_name ? ` a ${row.pet_name}` : '';
+        const petLabel = row.pet_name ? ` con ${row.pet_name}` : '';
         const notificationData = {
             pet_id: row.pet_id,
             pet_name: row.pet_name,
@@ -60,8 +60,8 @@ export async function runReminderTick({ pool, io, sendExpoPush }) {
         if (row.push_token) {
             try {
                 sendExpoPush(row.push_token, {
-                    title: '¿Ya te reencontraste?',
-                    body: `Marcá${petLabel} como reunida desde el chat para cerrar el caso 🎉`,
+                    title: '¿Te reencontraste?',
+                    body: `Contanos si pudiste reunirte${petLabel}. Tocá para responder 🐾`,
                     data: {
                         type: 'resolve_reminder',
                         pet_id: row.pet_id,

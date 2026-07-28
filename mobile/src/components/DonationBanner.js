@@ -8,7 +8,9 @@ const MP_URL = 'https://link.mercadopago.com.uy/mimouy';
 
 // Banner que aparece en el chat exitoso después de que el dueño marca la
 // mascota como reunida. Ofrece un CTA a Mercado Pago + dismissal (temp / "ya doné").
-export default function DonationBanner({ petId, petName }) {
+// onDismiss (opcional): se llama después de "Ahora no" / "Ya doné" — sirve
+// para cerrar el modal de celebración que envuelve el banner.
+export default function DonationBanner({ petId, petName, onDismiss }) {
     const c = useTheme();
     const dispatch = useDispatch();
 
@@ -30,10 +32,12 @@ export default function DonationBanner({ petId, petName }) {
 
     const handleDonated = () => {
         dispatch(markDismissedPermanent(petId));
+        onDismiss?.();
     };
 
     const handleLater = () => {
         dispatch(markDismissedTemp(petId));
+        onDismiss?.();
     };
 
     return (

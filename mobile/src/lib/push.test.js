@@ -117,6 +117,11 @@ describe('createNotificationResponseHandler', () => {
             expect(deps.navigate).toHaveBeenCalledWith('/pet/55');
         });
 
+        it('type=resolve_reminder: navega a /messages (el follow-up vive en el inbox)', () => {
+            handle(makeResponse({ type: 'resolve_reminder', pet_id: 42, receiver_id: 7 }));
+            expect(deps.navigate).toHaveBeenCalledWith('/messages');
+        });
+
         it('type desconocido: no navega', () => {
             handle(makeResponse({ type: 'other', pet_id: 1, receiver_id: 7 }));
             expect(deps.navigate).not.toHaveBeenCalled();

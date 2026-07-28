@@ -95,6 +95,9 @@ export function createNotificationResponseHandler({ getUser, alert, navigate } =
       });
     } else if ((data.type === 'match' || data.type === 'nearby_lost' || data.type === 'nearby_found') && data.pet_id) {
       navigate(`/pet/${data.pet_id}`);
+    } else if (data.type === 'resolve_reminder') {
+      // El follow-up "¿te reencontraste?" vive como card accionable en el inbox.
+      navigate('/messages');
     }
   };
 }

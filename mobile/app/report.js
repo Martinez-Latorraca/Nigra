@@ -349,7 +349,14 @@ export default function Find() {
               <Text style={[styles.changePhotoText, { color: c.text }]}>Cambiar foto</Text>
             </Pressable>
 
-            <Text style={[styles.label, { color: c.label }]}>Fotos extra (opcional)</Text>
+            <Text style={[styles.label, { color: c.label }]}>Más fotos</Text>
+            {/* El copy explica el beneficio concreto: cada foto extra se
+                vectoriza y suma una chance más de matchear. Sin esto la gente
+                lo lee como "opcional" y sube una sola. */}
+            <Text style={[styles.hint, { color: c.subtitle }]}>
+              Cuantas más fotos subas (distintos ángulos y luz), más fácil es
+              reconocerla. Recomendado: 3 o 4.
+            </Text>
             <View style={styles.extraRow}>
               {extraImages.map((img, i) => (
                 <Pressable key={i} onPress={() => removeExtra(i)} style={styles.extraThumbWrap}>
@@ -431,6 +438,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
+  hint: { fontSize: 12, lineHeight: 17, marginTop: -4, marginBottom: 10 },
   mainImage: { width: '100%', aspectRatio: 1, borderRadius: 24, backgroundColor: '#E5E7EB' },
   changePhoto: { borderRadius: 16, paddingVertical: 12, alignItems: 'center', marginTop: 10 },
   changePhotoText: { fontWeight: '600', fontSize: 13 },

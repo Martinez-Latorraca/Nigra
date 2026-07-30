@@ -5,6 +5,19 @@ import { reverseGeocode } from '../utils/geocode.js';
 import { sendExpoPush } from '../utils/push.js';
 import { track } from '../lib/analytics.js';
 
+// Umbral de distancia coseno para considerar que dos fotos son la misma
+// mascota (más chico = más estricto).
+const MATCH_THRESHOLD = 0.25;
+
+// El color lo elige el usuario de una lista, pero la percepción del color es
+// MUY sensible a la luz: un perro marrón fotografiado en sombra se reporta
+// como "negro". Filtrar por color en duro (AND p.color = $x) hacía que esos
+// casos NUNCA matchearan — un falso negativo silencioso, el peor tipo de error
+// para este producto. Ahora el color es un prior: si no coincide, sumamos esta
+// penalidad a la distancia. Una mascota de otro color todavía puede matchear,
+// pero necesita ser visualmente más parecida para compensar.
+const COLOR_MISMATCH_PENALTY = 0.03;
+
 // Alerta a users que optaron in (notify_lost / notify_found según el tipo de
 // reporte) y compartieron ubicación en los últimos 30 días, cuyas coordenadas
 // caen dentro del radio configurado por CADA user (notify_radius_km).
@@ -203,6 +216,37 @@ export async function notifyNearbyVets({ pool, io, sendExpoPush, newPet, reporte
     }
 }
 
+// Vectoriza las fotos extra de una mascota y las guarda en pet_embeddings.
+// Fire-and-forget desde reportPet: no bloqueamos la respuesta al reportero.
+//
+// Por qué importa: hasta ahora las extra_photos se subían a Cloudinary pero
+// nunca se vectorizaban — se perdía la señal visual de 3-4 fotos por mascota.
+// Con esto, cada mascota queda representada por VARIOS vectores (distintos
+// ángulos/luz) y el matching toma la menor distancia contra cualquiera.
+//
+// Secuencial a propósito: el worker de IA es un solo thread y procesa de a un
+// job; mandarlas en paralelo no acelera nada y sí infla el pico de RAM (crítico
+// en el free tier de Render).
+async function embedExtraPhotos({ petId, buffers }) {
+    if (!petId || !buffers?.length) return;
+    let ok = 0;
+    for (const buffer of buffers) {
+        try {
+            const vector = await generateEmbedding(buffer);
+            await pool.query(
+                `INSERT INTO pet_embeddings (pet_id, embedding, source)
+                 VALUES ($1, $2, 'extra')`,
+                [petId, JSON.stringify(vector)]
+            );
+            ok++;
+        } catch (e) {
+            // Una foto que falla no debe frenar al resto ni romper el reporte.
+            console.error(`embedExtraPhotos error (pet ${petId}):`, e.message);
+        }
+    }
+    if (ok > 0) console.log(`🧬 ${ok} embedding(s) extra guardados para pet ${petId}`);
+}
+
 // Busca matches del nuevo reporte en el pool opuesto y avisa por push a los
 // dueños de las candidatas. Async + fire-and-forget desde reportPet: no
 // bloqueamos la respuesta al reportero. Usa el embedding ya generado (sin TTA)
@@ -215,26 +259,41 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
         // deleted_at + email vienen del user del pet matcheado. Si está borrado,
         // en vez de notificarle a un buzón huérfano alertamos al admin con el
         // email histórico para que pueda contactarlo por fuera de la app.
+        //
+        // visual_distance = menor distancia contra CUALQUIER vector de la
+        // mascota (el de la foto principal o el de cualquier foto extra).
+        // match_score = visual_distance + penalidad si el color no coincide.
+        // Separados a propósito: visual_distance queda crudo para el dataset
+        // de ML (match_events), match_score es el que filtra y ordena.
         const sql = `
-            SELECT p.id, p.user_id, p.name, p.description,
-                (p.embedding <=> $7) AS visual_distance,
-                u.push_token, u.deleted_at, u.email AS original_email
-            FROM pets p
-            JOIN users u ON p.user_id = u.id
-            WHERE p.type = $3
-              AND p.color = $4
-              AND p.status = $6
-              AND p.resolved_at IS NULL
-              AND p.user_id <> $8
-              AND p.lat IS NOT NULL
-              AND p.lng IS NOT NULL
-              AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
-            ORDER BY visual_distance
+            WITH candidates AS (
+                SELECT p.id, p.user_id, p.name, p.description, p.color,
+                    LEAST(
+                        p.embedding <=> $7,
+                        COALESCE((
+                            SELECT MIN(pe.embedding <=> $7)
+                            FROM pet_embeddings pe WHERE pe.pet_id = p.id
+                        ), 999)
+                    ) AS visual_distance,
+                    u.push_token, u.deleted_at, u.email AS original_email
+                FROM pets p
+                JOIN users u ON p.user_id = u.id
+                WHERE p.type = $3
+                  AND p.status = $6
+                  AND p.resolved_at IS NULL
+                  AND p.user_id <> $8
+                  AND p.lat IS NOT NULL
+                  AND p.lng IS NOT NULL
+                  AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
+            )
+            SELECT *, (visual_distance + CASE WHEN color = $4 THEN 0 ELSE $9::float END) AS match_score
+            FROM candidates
+            ORDER BY match_score
             LIMIT 5
         `;
-        const params = [lat, lng, type, color, radioKm, oppositeStatus, JSON.stringify(vector), reporterId];
+        const params = [lat, lng, type, color, radioKm, oppositeStatus, JSON.stringify(vector), reporterId, COLOR_MISMATCH_PENALTY];
         const { rows } = await pool.query(sql, params);
-        const matches = rows.filter((r) => r.visual_distance <= 0.25);
+        const matches = rows.filter((r) => r.match_score <= MATCH_THRESHOLD);
         for (const m of matches) {
             const notifData = {
                 pet_id: newPet.id,
@@ -412,8 +471,6 @@ export const reportPet = async (req, res) => {
         // 1. Agregamos lat y lng a la extracción de datos
         const { description, status, contact_info, type, color, lat, lng, name } = req.body;
 
-        console.log(req.files)
-
         // Verificamos que venga el archivo antes de intentar leer su buffer
         if (!req.files || !req.files['image']) {
             return res.status(400).send('Falta la imagen');
@@ -429,6 +486,8 @@ export const reportPet = async (req, res) => {
         const photoUrl = cloudinaryResult.secure_url;
 
         let extraPhotosUrls = [];
+        // Guardamos los buffers para vectorizarlos después de responder.
+        const extraBuffers = (req.files['extra_images'] || []).map((f) => f.buffer);
 
         if (req.files['extra_images'] && req.files['extra_images'].length > 0) {
             // Subimos todas las fotos extras en paralelo para ganar velocidad
@@ -479,6 +538,10 @@ export const reportPet = async (req, res) => {
             type,
             has_location: latNum != null && lngNum != null,
         });
+
+        // Fire-and-forget: vectorizamos las fotos extra para enriquecer la
+        // galería de vectores de esta mascota (mejora matches futuros).
+        embedExtraPhotos({ petId: result.rows[0].id, buffers: extraBuffers });
 
         // Fire-and-forget: notificamos por push + inbox a los dueños de mascotas
         // del pool opuesto cuya foto coincide visualmente.
@@ -540,52 +603,66 @@ export const searchPet = async (req, res) => {
         if (lat && lng) {
             const radioKm = parseFloat(searchRatio) || 10;
             query = `
-                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name,
-                u.name AS reporter_name, u.id AS reporter_id,
-                (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
-                LEAST(p.embedding <=> $7, p.embedding <=> $8, p.embedding <=> $9) AS visual_distance
-                FROM pets p
-                JOIN users u ON p.user_id = u.id
-                WHERE p.type = $3
-                AND p.color = $4
-                AND p.status = $6
-                AND p.resolved_at IS NULL
-                AND p.lat IS NOT NULL
-                AND p.lng IS NOT NULL
-                AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
-                ORDER BY visual_distance
+                WITH candidates AS (
+                    SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name,
+                    u.name AS reporter_name, u.id AS reporter_id,
+                    (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
+                    LEAST(
+                        LEAST(p.embedding <=> $7, p.embedding <=> $8, p.embedding <=> $9),
+                        COALESCE((
+                            SELECT MIN(LEAST(pe.embedding <=> $7, pe.embedding <=> $8, pe.embedding <=> $9))
+                            FROM pet_embeddings pe WHERE pe.pet_id = p.id
+                        ), 999)
+                    ) AS visual_distance
+                    FROM pets p
+                    JOIN users u ON p.user_id = u.id
+                    WHERE p.type = $3
+                    AND p.status = $6
+                    AND p.resolved_at IS NULL
+                    AND p.lat IS NOT NULL
+                    AND p.lng IS NOT NULL
+                    AND (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) <= $5
+                )
+                SELECT *, (visual_distance + CASE WHEN color = $4 THEN 0 ELSE $10::float END) AS match_score
+                FROM candidates
+                ORDER BY match_score
                 LIMIT 10;
             `;
-            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, status, ...vectorStrings];
+            params = [parseFloat(lat), parseFloat(lng), type, color, radioKm, status, ...vectorStrings, COLOR_MISMATCH_PENALTY];
         } else {
             query = `
-                SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.name,
-                u.name AS reporter_name, u.id AS reporter_id,
-                LEAST(p.embedding <=> $4, p.embedding <=> $5, p.embedding <=> $6) AS visual_distance
-                FROM pets p
-                JOIN users u ON p.user_id = u.id
-                WHERE p.type = $1
-                AND p.color = $2
-                AND p.status = $3
-                AND p.resolved_at IS NULL
-                ORDER BY visual_distance
+                WITH candidates AS (
+                    SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.name,
+                    u.name AS reporter_name, u.id AS reporter_id,
+                    LEAST(
+                        LEAST(p.embedding <=> $4, p.embedding <=> $5, p.embedding <=> $6),
+                        COALESCE((
+                            SELECT MIN(LEAST(pe.embedding <=> $4, pe.embedding <=> $5, pe.embedding <=> $6))
+                            FROM pet_embeddings pe WHERE pe.pet_id = p.id
+                        ), 999)
+                    ) AS visual_distance
+                    FROM pets p
+                    JOIN users u ON p.user_id = u.id
+                    WHERE p.type = $1
+                    AND p.status = $3
+                    AND p.resolved_at IS NULL
+                )
+                SELECT *, (visual_distance + CASE WHEN color = $2 THEN 0 ELSE $7::float END) AS match_score
+                FROM candidates
+                ORDER BY match_score
                 LIMIT 10;
             `;
-            params = [type, color, status, ...vectorStrings];
+            params = [type, color, status, ...vectorStrings, COLOR_MISMATCH_PENALTY];
         }
 
         const result = await pool.query(query, params);
 
 
-        const SIMILARITY_THRESHOLD = 0.25;
-
-        // Filtramos el array descartando los que superen la distancia permitida
+        // Filtramos por match_score (distancia visual + penalidad de color),
+        // no por la distancia cruda: así una mascota del color "equivocado"
+        // puede entrar si es visualmente muy parecida.
         const filteredResults = result.rows.filter(
-            (pet) => {
-                console.log("ID:", pet.id, "Visual:", pet.visual_distance, "Km:", pet.distance_km);
-                // ¡CORRECCIÓN AQUÍ!
-                return pet.visual_distance <= SIMILARITY_THRESHOLD;
-            }
+            (pet) => pet.match_score <= MATCH_THRESHOLD
         );
 
         // 3. Devolvemos la lista limpia al Frontend

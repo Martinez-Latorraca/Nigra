@@ -407,6 +407,24 @@ async function ensureSchema() {
         `);
         await pool.query('CREATE INDEX IF NOT EXISTS notifications_user_id_idx ON notifications(user_id, created_at DESC)');
 
+        // Embeddings adicionales por mascota (las fotos extra que el dueño sube).
+        // pets.embedding sigue siendo el de la foto principal; acá van los de
+        // extra_photos. El matching toma la MENOR distancia entre la query y
+        // CUALQUIER vector de la mascota (max-similarity): con 4 fotos de
+        // ángulos distintos, alcanza con que una matchee para que salte.
+        // Asimetría del problema: el dueño tiene el rollo entero (galería rica),
+        // el que encuentra tiene 1 foto apurada. Esto explota esa asimetría.
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS pet_embeddings (
+                id SERIAL PRIMARY KEY,
+                pet_id INTEGER NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+                embedding vector(1280) NOT NULL,
+                source TEXT NOT NULL DEFAULT 'extra',
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query('CREATE INDEX IF NOT EXISTS pet_embeddings_pet_id_idx ON pet_embeddings(pet_id)');
+
         // Tokens de reset de contraseña. Guardamos SOLO el hash — el token
         // en texto plano viaja al mail y nunca queda en la DB. Single-use
         // (used_at) + expiración (1h a nivel controller).
@@ -458,7 +476,7 @@ async function ensureSchema() {
         // funcionando. Bloquea a los roles anon y authenticated que usa la
         // PostgREST auto-expuesta por Supabase (evita que alguien con la anon
         // key haga SELECT * FROM users sin auth).
-        for (const table of ['users', 'pets', 'messages', 'notifications', 'password_resets']) {
+        for (const table of ['users', 'pets', 'messages', 'notifications', 'password_resets', 'pet_embeddings']) {
             await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
         }
     } catch (error) {

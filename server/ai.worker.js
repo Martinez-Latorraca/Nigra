@@ -75,6 +75,42 @@ loadModel()
 
 const mb = (n) => Math.round(n / 1024 / 1024);
 
+// Lado máximo del tensor antes de inferir.
+const MAX_DIM = 640;
+
+// Acota el tamaño del tensor decodificado.
+//
+// Por qué: MobileNet redimensiona a 224x224 internamente (resizeBilinear), así
+// que decodificar a resolución completa es desperdicio puro — el modelo nunca
+// ve esos píxeles, pero la RAM sí los paga. Una foto de 2160x2160 (las hay en
+// producción) son 56MB de tensor, y en búsqueda el TTA crea 4 variantes →
+// ~224MB. Sobre los ~347MB de base, eso desborda los 512MB del free de Render
+// y el worker muere (ai.js lo reinicia, así que se ve como "la búsqueda falló"
+// en vez de un crash evidente).
+//
+// Por qué 640 y no menos: medido sobre fotos reales de la app, bajar a 640
+// mueve el embedding 0.003 en distancia coseno — contra un umbral de match de
+// 0.25 y una separación típica de 0.69 entre mascotas distintas. Es ruido.
+// A 320 el drift sube ~10x (0.016-0.028). 640 además deja resolución de sobra
+// para un detect+crop futuro.
+//
+// No agranda si la foto ya es chica: no aportaría información y MobileNet la
+// escala igual.
+function clampSize(tensor) {
+  const [h, w] = tensor.shape;
+  const longest = Math.max(h, w);
+  if (longest <= MAX_DIM) return tensor;
+
+  const scale = MAX_DIM / longest;
+  const resized = tf.tidy(() =>
+    tf.image
+      .resizeBilinear(tensor.toFloat(), [Math.round(h * scale), Math.round(w * scale)], true)
+      .toInt()
+  );
+  tensor.dispose(); // liberamos el grande cuanto antes
+  return resized;
+}
+
 // TTA: genera variantes de la imagen para que la búsqueda sea más tolerante
 // con fotos de baja calidad (brillo distinto, mascota mirando al otro lado).
 // Cada variante produce su embedding y la query SQL toma LEAST(dist) por mascota.
@@ -91,9 +127,14 @@ parentPort.on('message', async ({ id, imageBuffer, variants }) => {
   try {
     if (!model) await loadModel();
     const buffer = Buffer.from(imageBuffer);
-    const baseTensor = decodeImage(buffer);
+    const decoded = decodeImage(buffer);
+    const decodedShape = decoded.shape.join('x');
+    // Acotamos ANTES del TTA: es donde el tamaño se multiplica por 4.
+    const baseTensor = clampSize(decoded);
+    const finalShape = baseTensor.shape.join('x');
+    const resizeNote = decodedShape === finalShape ? '' : ` (achicado desde ${decodedShape})`;
     console.log(
-      `[Worker] job ${id}: tensor ${baseTensor.shape} en ${Date.now() - t0}ms | rss=${mb(process.memoryUsage().rss)}MB | backend=${backendName}`
+      `[Worker] job ${id}: tensor ${finalShape}${resizeNote} en ${Date.now() - t0}ms | rss=${mb(process.memoryUsage().rss)}MB | backend=${backendName}`
     );
 
     const tensors = variants ? makeVariants(baseTensor) : [baseTensor];

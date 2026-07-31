@@ -4,9 +4,17 @@ import { v2 as cloudinary } from 'cloudinary';
 import { reverseGeocode } from '../utils/geocode.js';
 import { sendExpoPush } from '../utils/push.js';
 import { track } from '../lib/analytics.js';
+import logger from '../lib/logger.js';
 
 // Umbral de distancia coseno para considerar que dos fotos son la misma
 // mascota (más chico = más estricto).
+//
+// El 0.25 está validado empíricamente (2026-07-31) contra un dataset de
+// re-identificación de 188 mascotas con 3 fotos guardadas c/u: subirlo a 0.35
+// llevaría el 78% de las búsquedas a devolver al menos una mascota equivocada
+// (3.45 de promedio). No tocarlo sin re-correr esa medición: la tasa de falsos
+// positivos escala con el tamaño de la base, así que al crecer habrá que
+// bajarlo, no subirlo.
 const MATCH_THRESHOLD = 0.25;
 
 // El color lo elige el usuario de una lista, pero la percepción del color es
@@ -17,6 +25,31 @@ const MATCH_THRESHOLD = 0.25;
 // penalidad a la distancia. Una mascota de otro color todavía puede matchear,
 // pero necesita ser visualmente más parecida para compensar.
 const COLOR_MISMATCH_PENALTY = 0.03;
+
+// Deja rastro de los candidatos MÁS CERCANOS de un matching, incluidos los que
+// quedaron por encima del umbral. Es el dato que permite responder "¿por cuánto
+// no matcheó?" y, con el tiempo, calibrar MATCH_THRESHOLD con mascotas reales
+// en vez de con un dataset prestado.
+//
+// Una línea por operación y solo los 5 primeros: los logs ya se limpiaron una
+// vez por ser demasiado verbosos y no queremos reintroducir el problema.
+// Sin PII — solo ids de mascota y distancias.
+//   d = distancia visual cruda | s = con la penalidad de color aplicada
+function logMatchCandidates(kind, filters, rows, accepted) {
+    logger.info({
+        matching: kind,
+        ...filters,
+        threshold: MATCH_THRESHOLD,
+        candidates: rows.length,
+        accepted,
+        top: rows.slice(0, 5).map((r) => ({
+            id: r.id,
+            d: Number(r.visual_distance).toFixed(4),
+            s: Number(r.match_score).toFixed(4),
+            ok: Number(r.match_score) <= MATCH_THRESHOLD,
+        })),
+    }, 'match candidates');
+}
 
 // Alerta a users que optaron in (notify_lost / notify_found según el tipo de
 // reporte) y compartieron ubicación en los últimos 30 días, cuyas coordenadas
@@ -294,6 +327,10 @@ async function notifyMatchesForReport({ newPet, vector, type, color, status, lat
         const params = [lat, lng, type, color, radioKm, oppositeStatus, JSON.stringify(vector), reporterId, COLOR_MISMATCH_PENALTY];
         const { rows } = await pool.query(sql, params);
         const matches = rows.filter((r) => r.match_score <= MATCH_THRESHOLD);
+        // Mismo diagnóstico que en la búsqueda: acá se decide si el dueño
+        // recibe o no la notificación, así que ver los que quedaron cerca
+        // (pero afuera) es tan importante como ver los que entraron.
+        logMatchCandidates('report', { type, color, status: oppositeStatus }, rows, matches.length);
         for (const m of matches) {
             const notifData = {
                 pet_id: newPet.id,
@@ -657,7 +694,6 @@ export const searchPet = async (req, res) => {
 
         const result = await pool.query(query, params);
 
-
         // Filtramos por match_score (distancia visual + penalidad de color),
         // no por la distancia cruda: así una mascota del color "equivocado"
         // puede entrar si es visualmente muy parecida.
@@ -667,7 +703,14 @@ export const searchPet = async (req, res) => {
 
         // 3. Devolvemos la lista limpia al Frontend
         res.json(filteredResults);
-        console.log('Resultados encontrados:', filteredResults);
+
+        // Diagnóstico del matching: registramos los candidatos MÁS CERCANOS
+        // aunque hayan quedado afuera. Sin esto no hay forma de responder "¿por
+        // cuánto no matcheó?" — que es justo lo que se necesita para calibrar
+        // el umbral con datos reales en vez de con un dataset prestado.
+        // Una sola línea por búsqueda y solo los 5 primeros, para no inflar los
+        // logs. Sin PII: solo ids y distancias.
+        logMatchCandidates('search', { type, color, status }, result.rows, filteredResults.length);
 
 
     } catch (error) {

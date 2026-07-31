@@ -12,7 +12,12 @@
 import pino from 'pino';
 
 const isProd = process.env.NODE_ENV === 'production';
-const level = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
+// En tests: silencioso y sin transport. Dos motivos — no ensuciar la salida de
+// vitest con los logs de la app, y evitar que pino-pretty levante un worker
+// thread por archivo de test (17 workers extra compiten por CPU y vuelven la
+// suite lenta e inestable).
+const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+const level = process.env.LOG_LEVEL || (isTest ? 'silent' : isProd ? 'info' : 'debug');
 
 const redact = {
     paths: [
@@ -33,8 +38,8 @@ const logger = pino({
     redact,
     base: { service: 'mimo-server' },
     // En prod dejamos que pino escriba JSON directo a stdout (sin transport,
-    // más rápido). En dev, pretty.
-    transport: isProd
+    // más rápido). En dev, pretty. En test, nada.
+    transport: (isProd || isTest)
         ? undefined
         : {
             target: 'pino-pretty',

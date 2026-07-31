@@ -77,6 +77,24 @@ app.use(pinoHttp({
         if (res.statusCode >= 400) return 'warn';
         return 'info';
     },
+    // Serializers mínimos. Los de pino-http por default vuelcan TODOS los
+    // headers, lo que traía dos problemas:
+    //  1) Privacidad: la IP del usuario aparecía tres veces por request
+    //     (cf-connecting-ip, true-client-ip, x-forwarded-for). No la
+    //     necesitamos para operar y no queremos guardarla — menos todavía si
+    //     los logs van a un drain externo.
+    //  2) Ruido: ~2.5KB por request hacía los logs imposibles de leer.
+    // Con esto queda ~150 bytes y solo lo accionable. cf-ipcountry se conserva
+    // porque es país (no identifica a nadie) y sirve para entender el tráfico.
+    serializers: {
+        req: (req) => ({
+            id: req.id,
+            method: req.method,
+            url: req.url,
+            country: req.headers?.['cf-ipcountry'],
+        }),
+        res: (res) => ({ statusCode: res.statusCode }),
+    },
 }));
 app.use(cors({
     origin: ["https://mimo.uy", "https://www.mimo.uy", "http://localhost:5173"]

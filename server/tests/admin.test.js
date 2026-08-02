@@ -196,6 +196,110 @@ describe('Admin', () => {
         });
     });
 
+    // Convertir un user en vet/refugio. Existe porque el registro con
+    // Google/Facebook/Apple no lleva account_type: esas cuentas quedaban como
+    // particulares sin forma de convertirse.
+    describe('PATCH /api/admin/users/:id/account-type', () => {
+        it('convierte un user en veterinaria (sin aprobar)', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Vet Cordón', email: 'v@x.com', deleted_at: null }] }) // user
+                .mockResolvedValueOnce({ rows: [] })          // no tiene vet
+                .mockResolvedValueOnce({ rows: [] })          // slug libre
+                .mockResolvedValueOnce({ rows: [{ id: 9, slug: 'vet-cordon', name: 'Vet Cordón', approved: false }] });
+
+            const res = await request(buildApp())
+                .patch('/api/admin/users/5/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'vet' });
+
+            expect(res.status).toBe(201);
+            expect(res.body.entity.approved).toBe(false); // convertir != aprobar
+            const insert = pool.query.mock.calls.find(([sql]) => /INSERT INTO vets/.test(sql));
+            expect(insert).toBeDefined();
+            expect(insert[1]).toEqual(['vet-cordon', 'Vet Cordón', 5, 'v@x.com']);
+        });
+
+        it('convierte un user en refugio', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 6, name: 'Refugio Sur', email: 'r@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ id: 3, slug: 'refugio-sur', name: 'Refugio Sur', approved: false }] });
+
+            const res = await request(buildApp())
+                .patch('/api/admin/users/6/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'shelter' });
+
+            expect(res.status).toBe(201);
+            expect(pool.query.mock.calls.find(([sql]) => /INSERT INTO shelters/.test(sql))).toBeDefined();
+        });
+
+        it('409 si el user ya tiene esa entidad', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, name: 'X', email: 'x@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [{ id: 9, slug: 'x', approved: true, deleted_at: null }] });
+
+            const res = await request(buildApp())
+                .patch('/api/admin/users/5/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'vet' });
+
+            expect(res.status).toBe(409);
+            expect(pool.query.mock.calls.find(([sql]) => /INSERT INTO vets/.test(sql))).toBeUndefined();
+        });
+
+        it('reactiva en vez de insertar si estaba soft-borrada (índice único)', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, name: 'X', email: 'x@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [{ id: 9, slug: 'x', approved: false, deleted_at: new Date() }] })
+                .mockResolvedValueOnce({ rows: [{ id: 9, slug: 'x', name: 'X', approved: false }] });
+
+            const res = await request(buildApp())
+                .patch('/api/admin/users/5/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'vet' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.restored).toBe(true);
+            expect(pool.query.mock.calls.find(([sql]) => /INSERT INTO vets/.test(sql))).toBeUndefined();
+            expect(pool.query.mock.calls.find(([sql]) => /UPDATE vets SET deleted_at = NULL/.test(sql))).toBeDefined();
+        });
+
+        it('404 si el user no existe', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .patch('/api/admin/users/999/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'vet' });
+            expect(res.status).toBe(404);
+        });
+
+        it('400 si la cuenta está eliminada', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 5, name: 'X', email: 'x@x.com', deleted_at: new Date() }] });
+            const res = await request(buildApp())
+                .patch('/api/admin/users/5/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'vet' });
+            expect(res.status).toBe(400);
+        });
+
+        it('400 si el account_type es inválido (schema)', async () => {
+            mockAdminRole();
+            const res = await request(buildApp())
+                .patch('/api/admin/users/5/account-type')
+                .set('x-test-user', '1')
+                .send({ account_type: 'superadmin' });
+            expect(res.status).toBe(400);
+        });
+    });
+
     describe('DELETE /api/admin/users/:id', () => {
         it('borra el user + sus mensajes + sus mascotas', async () => {
             mockAdminRole();

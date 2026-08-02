@@ -2,13 +2,14 @@ import express from 'express';
 import { authenticateToken } from '../middlewares/auth.js';
 import { requireAdmin } from '../middlewares/adminAuth.js';
 import validate from '../middlewares/validate.js';
-import { updateRoleSchema } from '../schemas/adminSchemas.js';
+import { updateRoleSchema, setAccountTypeSchema } from '../schemas/adminSchemas.js';
 import {
     getDashboardStats,
     getMatchStats,
     getAllUsers,
     deleteUser,
     updateUserRole,
+    setUserAccountType,
     adminGetAllPets,
     adminDeletePet,
     adminGetConversationMessages,
@@ -31,6 +32,9 @@ router.get('/match-stats', getMatchStats);
 // Usuarios
 router.get('/users', getAllUsers);
 router.patch('/users/:id/role', validate(updateRoleSchema), updateUserRole);
+// Convertir a veterinaria/refugio — salida manual para las cuentas creadas con
+// OAuth, donde el account_type del formulario de registro no existe.
+router.patch('/users/:id/account-type', validate(setAccountTypeSchema), setUserAccountType);
 router.delete('/users/:id', deleteUser);
 
 // Mascotas / Reportes

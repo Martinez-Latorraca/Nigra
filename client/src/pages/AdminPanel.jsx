@@ -291,6 +291,28 @@ function AdminPanel() {
         }
     };
 
+    // Convierte un usuario en veterinaria o refugio. Necesario porque quien se
+    // registra con Google/Facebook/Apple no puede elegir el tipo de cuenta: el
+    // proveedor solo devuelve nombre y mail, así que queda como particular sin
+    // forma de convertirse. Queda SIN aprobar — la aprobación sigue siendo un
+    // paso aparte, en la pestaña de Vets o Refugios.
+    const handleSetAccountType = async (id, accountType) => {
+        const label = accountType === 'vet' ? 'veterinaria' : 'refugio';
+        if (!confirm(`Convertir este usuario en ${label}?\n\nQueda pendiente de aprobación: después tenés que aprobarlo desde la pestaña correspondiente.`)) return;
+        try {
+            const res = await fetch(`${API}/api/admin/users/${id}/account-type`, {
+                method: 'PATCH',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account_type: accountType }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) fetchUsers(pagination.page, search);
+            else alert(data.error || 'No se pudo cambiar el tipo de cuenta.');
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const handleDeletePet = async (id) => {
         if (!confirm('Eliminar este reporte?')) return;
         try {
@@ -683,6 +705,7 @@ function AdminPanel() {
                                     <th className="pb-2 pr-4">Nombre</th>
                                     <th className="pb-2 pr-4">Email</th>
                                     <th className="pb-2 pr-4">Rol</th>
+                                    <th className="pb-2 pr-4">Tipo</th>
                                     <th className="pb-2 pr-4">Registro</th>
                                     <th className="pb-2">Acciones</th>
                                 </tr>
@@ -698,9 +721,26 @@ function AdminPanel() {
                                                 {u.role}
                                             </span>
                                         </td>
+                                        {/* Tipo de cuenta: vet / refugio / particular. El ⏳ marca
+                                            que fue convertida pero todavía no aprobada. */}
+                                        <td className="py-3 pr-4">
+                                            <div className="flex gap-1 flex-wrap">
+                                                {u.vet_id && (
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${u.vet_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                        Vet {u.vet_approved ? '✓' : '⏳'}
+                                                    </span>
+                                                )}
+                                                {u.shelter_id && (
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${u.shelter_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                                                        Refugio {u.shelter_approved ? '✓' : '⏳'}
+                                                    </span>
+                                                )}
+                                                {!u.vet_id && !u.shelter_id && <span className="text-xs text-gray-300">Particular</span>}
+                                            </div>
+                                        </td>
                                         <td className="py-3 pr-4 text-gray-400">{formatDate(u.created_at)}</td>
                                         <td className="py-3">
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 flex-wrap">
                                                 {u.id !== user.id && (
                                                     <>
                                                         <button
@@ -709,6 +749,23 @@ function AdminPanel() {
                                                         >
                                                             {u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
                                                         </button>
+                                                        {/* Solo ofrecemos convertir a lo que todavía no es. */}
+                                                        {!u.vet_id && (
+                                                            <button
+                                                                onClick={() => handleSetAccountType(u.id, 'vet')}
+                                                                className="text-xs px-3 py-1 rounded-full bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
+                                                            >
+                                                                Hacer vet
+                                                            </button>
+                                                        )}
+                                                        {!u.shelter_id && (
+                                                            <button
+                                                                onClick={() => handleSetAccountType(u.id, 'shelter')}
+                                                                className="text-xs px-3 py-1 rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                                            >
+                                                                Hacer refugio
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => handleDeleteUser(u.id)}
                                                             className="text-xs px-3 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"

@@ -1,5 +1,7 @@
 import pool from '../db.js';
 import { generateEmbedding } from '../ai.js';
+import { slugify, ensureUniqueSlug } from '../utils/slug.js';
+import logger from '../lib/logger.js';
 
 // ─── MATCH / REUNION STATS ──────────────────────────────────
 // Dos métricas distintas:
@@ -151,19 +153,28 @@ export const getAllUsers = async (req, res) => {
         let paramIndex = 1;
 
         if (search) {
-            whereClause = `WHERE name ILIKE $${paramIndex} OR email ILIKE $${paramIndex}`;
+            whereClause = `WHERE u.name ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex}`;
             params.push(`%${search}%`);
             paramIndex++;
         }
 
         const countResult = await pool.query(
-            `SELECT COUNT(*) FROM users ${whereClause}`, params
+            `SELECT COUNT(*) FROM users u ${whereClause}`, params
         );
         const total = parseInt(countResult.rows[0].count);
 
+        // JOIN a vets/shelters para que el panel sepa quién ya es una entidad
+        // (y no ofrezca convertir a alguien que ya lo es). Ignoramos las
+        // soft-borradas: para esas la conversión reactiva en vez de crear.
         const result = await pool.query(
-            `SELECT id, name, email, role, created_at FROM users ${whereClause}
-             ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
+            `SELECT u.id, u.name, u.email, u.role, u.created_at,
+                    v.id AS vet_id, v.approved AS vet_approved,
+                    s.id AS shelter_id, s.approved AS shelter_approved
+             FROM users u
+             LEFT JOIN vets v ON v.owner_user_id = u.id AND v.deleted_at IS NULL
+             LEFT JOIN shelters s ON s.owner_user_id = u.id AND s.deleted_at IS NULL
+             ${whereClause}
+             ORDER BY u.created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`,
             [...params, limit, offset]
         );
 
@@ -176,6 +187,86 @@ export const getAllUsers = async (req, res) => {
     } catch (error) {
         console.error('Error obteniendo usuarios:', error);
         res.status(500).json({ error: 'Error obteniendo usuarios' });
+    }
+};
+
+// Convierte un usuario existente en veterinaria o refugio.
+//
+// Por qué existe: en el registro con email se elige account_type y se crea la
+// fila de vets/shelters, pero al entrar con Google/Facebook/Apple ese dato no
+// existe — el proveedor solo devuelve nombre y mail. El usuario quedaba como
+// particular sin forma de convertirse, y no hay UI de autogestión. Esto le da
+// al admin la salida manual.
+//
+// Se crea con approved = FALSE a propósito: convertir y aprobar siguen siendo
+// dos pasos, así la verificación (papeles del refugio, datos de la vet) pasa
+// por el mismo flujo de siempre en vez de saltearse.
+const ENTITY_TABLES = { vet: 'vets', shelter: 'shelters' };
+
+export const setUserAccountType = async (req, res) => {
+    try {
+        const userId = Number(req.params.id);
+        const { account_type } = req.body || {};
+        const table = ENTITY_TABLES[account_type];
+        if (!table) {
+            return res.status(400).json({ error: "account_type debe ser 'vet' o 'shelter'." });
+        }
+
+        const { rows: userRows } = await pool.query(
+            'SELECT id, name, email, deleted_at FROM users WHERE id = $1',
+            [userId]
+        );
+        if (userRows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
+        const user = userRows[0];
+        if (user.deleted_at) {
+            return res.status(400).json({ error: 'La cuenta está eliminada.' });
+        }
+
+        // Hay índice único por owner_user_id, así que un usuario no puede tener
+        // dos. Si ya existe una fila con soft-delete, la reactivamos en vez de
+        // intentar insertar (chocaría con el índice).
+        const { rows: existing } = await pool.query(
+            `SELECT id, slug, approved, deleted_at FROM ${table} WHERE owner_user_id = $1`,
+            [userId]
+        );
+        if (existing.length > 0) {
+            const row = existing[0];
+            if (!row.deleted_at) {
+                return res.status(409).json({
+                    error: account_type === 'vet'
+                        ? 'Este usuario ya tiene una veterinaria.'
+                        : 'Este usuario ya tiene un refugio.',
+                    id: row.id, approved: row.approved,
+                });
+            }
+            const { rows: restored } = await pool.query(
+                `UPDATE ${table} SET deleted_at = NULL WHERE id = $1
+                 RETURNING id, slug, name, approved`,
+                [row.id]
+            );
+            logger.info({ adminId: req.user.id, userId, account_type, action: 'restored' }, 'admin cambió el tipo de cuenta');
+            return res.json({ message: 'Reactivado', account_type, entity: restored[0], restored: true });
+        }
+
+        const slug = await ensureUniqueSlug(pool, table, slugify(user.name));
+        const { rows: created } = await pool.query(
+            `INSERT INTO ${table} (slug, name, owner_user_id, email, approved)
+             VALUES ($1, $2, $3, $4, FALSE)
+             RETURNING id, slug, name, approved`,
+            [slug, user.name, userId, user.email]
+        );
+
+        // Acción privilegiada: dejamos rastro de quién la hizo.
+        logger.info({ adminId: req.user.id, userId, account_type, action: 'created' }, 'admin cambió el tipo de cuenta');
+
+        res.status(201).json({
+            message: account_type === 'vet' ? 'Convertido en veterinaria' : 'Convertido en refugio',
+            account_type,
+            entity: created[0],
+        });
+    } catch (error) {
+        logger.error({ err: error }, 'setUserAccountType error');
+        res.status(500).json({ error: 'No se pudo cambiar el tipo de cuenta.' });
     }
 };
 

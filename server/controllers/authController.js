@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
-import { slugify, ensureUniqueVetSlug } from '../utils/slug.js';
+import { slugify, ensureUniqueVetSlug, ensureUniqueSlug } from '../utils/slug.js';
 import { track } from '../lib/analytics.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -120,17 +120,7 @@ export const register = async (req, res) => {
         // mínimos. El owner completa el resto post-verify + login.
         if (isShelter) {
             try {
-                // Slug único en shelters. Reuso slugify pero armo el bucle acá
-                // porque ensureUniqueVetSlug apunta específicamente a vets.
-                const base = slugify(name) || 'refugio';
-                let slug = base, n = 1;
-                while (true) {
-                    const { rows } = await pool.query('SELECT 1 FROM shelters WHERE slug = $1', [slug]);
-                    if (rows.length === 0) break;
-                    n += 1;
-                    slug = `${base}-${n}`;
-                    if (n > 999) throw new Error('cannot find unique shelter slug');
-                }
+                const slug = await ensureUniqueSlug(pool, 'shelters', slugify(name));
                 await pool.query(
                     `INSERT INTO shelters (slug, name, owner_user_id, email, approved)
                      VALUES ($1, $2, $3, $4, FALSE)`,

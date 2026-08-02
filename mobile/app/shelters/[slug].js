@@ -137,9 +137,11 @@ export default function ShelterProfile() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.kicker, { color: c.subtitle }]}>REFUGIO</Text>
               <Text style={[styles.heroName, { color: c.title }]}>{shelter.name}</Text>
-              {(shelter.city || shelter.address) && (
+              {/* Solo ciudad: la dirección de un refugio no se publica
+                  (suele ser un domicilio particular con animales). */}
+              {shelter.city && (
                 <Text style={[styles.heroLocation, { color: c.subtitle }]}>
-                  📍 {[shelter.address, shelter.city].filter(Boolean).join(' · ')}
+                  📍 {shelter.city}
                 </Text>
               )}
             </View>

@@ -195,7 +195,7 @@ export const getAdoptionPet = async (req, res) => {
             `SELECT ${PUBLIC_COLUMNS},
                 s.phone AS shelter_phone, s.whatsapp AS shelter_whatsapp,
                 s.email AS shelter_email, s.instagram AS shelter_instagram,
-                s.website AS shelter_website, s.address AS shelter_address
+                s.website AS shelter_website, s.city AS shelter_city
              FROM adoption_pets ap
              JOIN shelters s ON s.id = ap.shelter_id
              WHERE ap.id = $1 AND ap.deleted_at IS NULL

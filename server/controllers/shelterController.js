@@ -2,9 +2,23 @@ import pool from '../db.js';
 import { slugify } from '../utils/slug.js';
 import { uploadBufferToCloudinary } from '../utils/cloudinary.js';
 
+// Columnas públicas del directorio de refugios.
+//
+// NO incluye dirección ni coordenadas, a diferencia de las veterinarias.
+// Una veterinaria es un comercio que quiere que la encuentres; un refugio es
+// habitualmente la casa de alguien, con animales adentro. Publicar su
+// ubicación exacta expone a las personas y a los animales (abandonos en la
+// puerta, robos, hostigamiento) además del problema legal.
+//
+// `city` sí queda: granularidad de ciudad, sirve para filtrar el directorio y
+// no identifica un domicilio. El contacto va por teléfono/whatsapp/mail/redes,
+// así que el refugio decide a quién le pasa la dirección y cuándo.
+//
+// Ojo si se vuelve a tocar: ocultar `address` pero exponer `lat`/`lng` no
+// sirve de nada — las coordenadas son MÁS precisas que la dirección escrita.
 const PUBLIC_COLUMNS = `
     id, slug, name, email, phone, whatsapp, website, instagram,
-    address, city, country, lat, lng, logo_url, cover_url, bio,
+    city, country, logo_url, cover_url, bio,
     hours, created_at
 `;
 
@@ -45,17 +59,20 @@ export const createShelter = async (req, res) => {
         }
         const slug = await ensureUniqueSlug(b.slug ? slugify(b.slug) : slugify(b.name));
 
+        // No se piden dirección ni coordenadas: no se guarda lo que no se
+        // quiere exponer. Las columnas siguen existiendo en la tabla (vienen
+        // del schema original) pero quedan siempre NULL.
         const result = await pool.query(
             `INSERT INTO shelters (
                 slug, name, owner_user_id, email, phone, whatsapp, website, instagram,
-                address, city, country, lat, lng, logo_url, cover_url, bio, hours
+                city, country, logo_url, cover_url, bio, hours
             ) VALUES (
-                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17
+                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
             ) RETURNING ${PUBLIC_COLUMNS}, approved, owner_user_id`,
             [
                 slug, b.name, ownerId, shelterEmail, b.phone || null, b.whatsapp || null,
-                b.website || null, b.instagram || null, b.address || null, b.city || null,
-                b.country || 'UY', b.lat ?? null, b.lng ?? null, b.logo_url || null,
+                b.website || null, b.instagram || null, b.city || null,
+                b.country || 'UY', b.logo_url || null,
                 b.cover_url || null, b.bio || null, b.hours || null,
             ]
         );
@@ -98,9 +115,11 @@ export const updateMyShelter = async (req, res) => {
             newSlug = await ensureUniqueSlug(slugify(b.slug));
         }
 
+        // 'address', 'lat' y 'lng' quedan FUERA a propósito: aunque alguien
+        // los mande en el body, no se guardan (ver PUBLIC_COLUMNS).
         const fields = [
             'name', 'email', 'phone', 'whatsapp', 'website', 'instagram',
-            'address', 'city', 'country', 'lat', 'lng',
+            'city', 'country',
             'logo_url', 'cover_url', 'bio', 'hours',
         ];
         const sets = ['slug = $1'];
@@ -172,10 +191,17 @@ export const deleteMyShelter = async (req, res) => {
     }
 };
 
-// GET /api/shelters — directorio público. Filtros: city, lat/lng+radius_km.
+// GET /api/shelters — directorio público. Filtro: city.
+//
+// Se quitó el filtro por lat/lng+radius_km que había acá. No solo era código
+// muerto (ningún cliente lo llamaba y los refugios nunca cargaron
+// coordenadas): un filtro por radio es un oráculo de ubicación. Repitiendo
+// consultas con distintos centros y radios se triangula el domicilio sin que
+// la API devuelva nunca una coordenada. Filtrar por ciudad da lo mismo a
+// efectos prácticos y no permite eso.
 export const listShelters = async (req, res) => {
     try {
-        const { city, lat, lng, radius_km = 25, page = 1, limit = 20 } = req.query;
+        const { city, page = 1, limit = 20 } = req.query;
         const offset = (page - 1) * limit;
 
         const filterParams = [];
@@ -184,16 +210,7 @@ export const listShelters = async (req, res) => {
             filterParams.push(city);
             where += ` AND LOWER(city) = LOWER($${filterParams.length})`;
         }
-        if (lat != null && lng != null) {
-            filterParams.push(Number(lat), Number(lng), Number(radius_km));
-            const iLat = filterParams.length - 2;
-            const iLng = filterParams.length - 1;
-            const iRad = filterParams.length;
-            where += ` AND lat IS NOT NULL AND lng IS NOT NULL AND (6371 * acos(cos(radians($${iLat})) * cos(radians(lat)) * cos(radians(lng) - radians($${iLng})) + sin(radians($${iLat})) * sin(radians(lat)))) <= $${iRad}`;
-        }
-        const orderClause = (lat != null && lng != null)
-            ? `ORDER BY (6371 * acos(cos(radians($${filterParams.length - 2})) * cos(radians(lat)) * cos(radians(lng) - radians($${filterParams.length - 1})) + sin(radians($${filterParams.length - 2})) * sin(radians(lat)))) ASC`
-            : `ORDER BY created_at DESC`;
+        const orderClause = 'ORDER BY created_at DESC';
 
         const listParams = [...filterParams, limit, offset];
         const { rows } = await pool.query(

@@ -17,11 +17,13 @@ const baseFields = {
     whatsapp: Joi.string().trim().max(30).allow('', null),
     website: Joi.string().trim().uri().max(200).allow('', null),
     instagram: Joi.string().trim().max(80).allow('', null),
-    address: Joi.string().trim().max(200).allow('', null),
+    // Sin address ni lat/lng: la ubicación exacta de un refugio no se pide ni
+    // se guarda. Suele ser la casa de alguien, con animales adentro, y
+    // publicarla los expone (abandonos en la puerta, robos, hostigamiento).
+    // Solo `city`, que no identifica un domicilio. Las veterinarias sí llevan
+    // dirección: son comercios que quieren que los encuentren.
     city: Joi.string().trim().max(80).allow('', null),
     country: Joi.string().trim().length(2).uppercase().default('UY'),
-    lat: Joi.number().min(-90).max(90).allow(null),
-    lng: Joi.number().min(-180).max(180).allow(null),
     logo_url: Joi.string().trim().uri().max(500).allow('', null),
     cover_url: Joi.string().trim().uri().max(500).allow('', null),
     bio: Joi.string().trim().max(2000).allow('', null),
@@ -39,14 +41,14 @@ export const updateShelterSchema = Joi.object({
     name: baseFields.name.optional(),
 }).min(1);
 
+// Solo ciudad. El filtro por lat/lng+radius_km que había acá no lo usaba
+// ningún cliente (web y mobile mandan page/limit/city) y un filtro por radio
+// permite triangular el domicilio repitiendo consultas con distintos centros.
 export const listSheltersSchema = Joi.object({
     city: Joi.string().trim().max(80).optional(),
-    lat: Joi.number().min(-90).max(90).optional(),
-    lng: Joi.number().min(-180).max(180).optional(),
-    radius_km: Joi.number().min(0.1).max(500).default(25),
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(50).default(20),
-}).and('lat', 'lng');
+});
 
 // ---- adoption pets ----
 const speciesValues = ['dog', 'cat', 'other'];

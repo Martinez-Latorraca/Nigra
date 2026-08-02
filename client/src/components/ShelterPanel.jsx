@@ -302,7 +302,9 @@ function ShelterEditForm({ shelter, onSaved, token }) {
     const [form, setForm] = useState(() => ({
         name: shelter.name || '',
         city: shelter.city || '',
-        address: shelter.address || '',
+        // Sin dirección: no se pide ni se guarda (ver PUBLIC_COLUMNS en
+        // shelterController). Publicar el domicilio de un refugio expone a
+        // las personas y a los animales.
         phone: shelter.phone || '',
         whatsapp: shelter.whatsapp || '',
         website: shelter.website || '',
@@ -343,7 +345,6 @@ function ShelterEditForm({ shelter, onSaved, token }) {
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Ciudad"><input className={inputCls} value={form.city} onChange={upd('city')} maxLength={80} /></Field>
-                <Field label="Dirección"><input className={inputCls} value={form.address} onChange={upd('address')} maxLength={200} /></Field>
                 <Field label="Teléfono"><input className={inputCls} value={form.phone} onChange={upd('phone')} maxLength={30} /></Field>
                 <Field label="WhatsApp"><input className={inputCls} value={form.whatsapp} onChange={upd('whatsapp')} maxLength={30} /></Field>
                 <Field label="Email"><input type="email" className={inputCls} value={form.email} onChange={upd('email')} maxLength={150} /></Field>

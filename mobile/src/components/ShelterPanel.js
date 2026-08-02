@@ -279,7 +279,9 @@ function ShelterEditForm({ shelter, c, onSaved }) {
   const [form, setForm] = useState({
     name: shelter.name || '',
     city: shelter.city || '',
-    address: shelter.address || '',
+    // Sin dirección: no se pide ni se guarda (ver PUBLIC_COLUMNS en
+    // shelterController). Publicar el domicilio de un refugio expone a las
+    // personas y a los animales.
     phone: shelter.phone || '',
     whatsapp: shelter.whatsapp || '',
     website: shelter.website || '',
@@ -307,7 +309,6 @@ function ShelterEditForm({ shelter, c, onSaved }) {
   const fields = [
     ['name', 'NOMBRE *', 120],
     ['city', 'CIUDAD', 80],
-    ['address', 'DIRECCIÓN', 200],
     ['phone', 'TELÉFONO', 30],
     ['whatsapp', 'WHATSAPP', 30],
     ['email', 'EMAIL', 150],

@@ -123,9 +123,11 @@ export default function ShelterProfile() {
                             <h1 className="mt-1 font-display font-black text-3xl tracking-tight text-mimo-noche md:text-5xl leading-none">
                                 {shelter.name}
                             </h1>
-                            {(shelter.city || shelter.address) && (
+                            {/* Solo ciudad: la dirección de un refugio no se publica
+                                (suele ser un domicilio particular con animales). */}
+                            {shelter.city && (
                                 <p className="mt-2 text-sm font-medium text-mimo-ink">
-                                    📍 {[shelter.address, shelter.city].filter(Boolean).join(' · ')}
+                                    📍 {shelter.city}
                                 </p>
                             )}
                         </div>

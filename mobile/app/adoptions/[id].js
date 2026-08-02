@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Linking,
-  useWindowDimensions, FlatList,
+  useWindowDimensions, FlatList, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
+import { API_URL } from '../../src/lib/config';
 import MenuButton from '../../src/components/MenuButton';
 
 const SPECIES_LABEL = { dog: 'Perro', cat: 'Gato', other: 'Otro' };
@@ -71,6 +72,13 @@ export default function AdoptionDetail() {
   const whatsappHref = pet.shelter_whatsapp
     ? `https://wa.me/${String(pet.shelter_whatsapp).replace(/[^\d]/g, '')}?text=Hola,%20me%20interesa%20adoptar%20a%20${encodeURIComponent(pet.name || 'esta mascota')}`
     : null;
+  const handleShare = () => {
+    Share.share({
+      message: adopted
+        ? `🏡 ${pet.name || 'Esta mascota'} encontró familia gracias a Mimo 🐾 ${API_URL}/adoptions/${pet.id}`
+        : `🏡 ${pet.name || 'Esta mascota'} busca familia. Compartí para que encuentre su casa 🐾 ${API_URL}/adoptions/${pet.id}`,
+    });
+  };
 
   const heroSize = Math.min(width, 500);
 
@@ -177,14 +185,20 @@ export default function AdoptionDetail() {
                     <Text style={[styles.ctaBtnGhostText, { color: c.title }]}>✉️  Email</Text>
                   </Pressable>
                 ) : null}
-                {pet.shelter_phone ? (
-                  <Pressable onPress={openLink(`tel:${pet.shelter_phone}`)}
-                    style={[styles.ctaBtnGhost, { borderColor: c.cardBorder }]}>
-                    <Text style={[styles.ctaBtnGhostText, { color: c.title }]}>📞  Llamar</Text>
-                  </Pressable>
-                ) : null}
+                {/* Sin "Llamar": el contacto con el refugio va por WhatsApp o
+                    mail, que dejan la conversación escrita. */}
               </View>
             ) : null}
+
+            {/* Difundir una adopción es la forma más directa de que aparezca
+                alguien, así que el botón va siempre — incluso si ya fue
+                adoptada, para poder compartir el final feliz. */}
+            <Pressable
+              onPress={handleShare}
+              style={[styles.ctaBtnGhost, { borderColor: c.cardBorder, marginTop: 16 }]}
+            >
+              <Text style={[styles.ctaBtnGhostText, { color: c.title }]}>🔗  Compartir</Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>

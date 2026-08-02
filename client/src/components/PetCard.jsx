@@ -64,13 +64,13 @@ function PetCard({ pet }) {
                         )}
                     </div>
 
-                    <a
-                        href={`tel:${pet.contact_info}`}
-                        className="text-xs font-semibold text-black hover:opacity-60 transition-opacity flex items-center gap-1"
-                    >
-                        Contactar
+                    {/* Antes esto era un enlace tel: al contact_info. El contacto
+                        por una mascota va SOLO por el chat interno, que está en el
+                        detalle — así que la tarjeta solo lleva a la ficha. */}
+                    <span className="text-xs font-semibold text-black flex items-center gap-1">
+                        Ver ficha
                         <span className="text-[14px]">↗</span>
-                    </a>
+                    </span>
                 </div>
             </div>
         </div>

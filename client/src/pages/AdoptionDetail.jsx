@@ -22,6 +22,7 @@ export default function AdoptionDetail() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [activePhoto, setActivePhoto] = useState(0);
+    const [shareMsg, setShareMsg] = useState('');
 
     useEffect(() => {
         setLoading(true);
@@ -59,6 +60,34 @@ export default function AdoptionDetail() {
     const whatsappHref = pet.shelter_whatsapp
         ? `https://wa.me/${String(pet.shelter_whatsapp).replace(/[^\d]/g, '')}?text=Hola,%20me%20interesa%20adoptar%20a%20${encodeURIComponent(pet.name || 'esta mascota')}`
         : null;
+
+    // Difundir una adopción es la forma más directa de que aparezca alguien.
+    // Con fallback a copiar el link: navigator.share no existe en escritorio,
+    // y sin el fallback el botón no haría nada justo donde más se comparte.
+    const handleShare = async () => {
+        const url = `${import.meta.env.VITE_API_URL}/adoptions/${pet.id}`;
+        const shareData = {
+            title: `🏡 ${pet.name || 'Esta mascota'} busca familia`,
+            text: 'Está en adopción en Mimo. Compartí para que encuentre su casa.',
+            url,
+        };
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                return;
+            } catch {
+                return; // el usuario canceló: no mostramos error
+            }
+        }
+        try {
+            await navigator.clipboard.writeText(url);
+            setShareMsg('¡Link copiado!');
+            setTimeout(() => setShareMsg(''), 2000);
+        } catch {
+            setShareMsg('No se pudo copiar el link');
+            setTimeout(() => setShareMsg(''), 2000);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-mimo-muted pb-20 font-sans text-mimo-noche">
@@ -176,15 +205,19 @@ export default function AdoptionDetail() {
                                             ✉️ Escribir por email
                                         </a>
                                     ) : null}
-                                    {pet.shelter_phone ? (
-                                        <a
-                                            href={`tel:${pet.shelter_phone}`}
-                                            className="flex items-center justify-center gap-2 rounded-full border border-mimo-muted bg-mimo-warm py-3 text-sm font-bold text-mimo-ink hover:bg-mimo-muted"
-                                        >
-                                            📞 Llamar
-                                        </a>
-                                    ) : null}
+                                    {/* Sin "Llamar": el contacto con el refugio va por
+                                        WhatsApp o mail, que dejan la conversación escrita. */}
                                 </div>
+                            ) : null}
+
+                            <button
+                                onClick={handleShare}
+                                className="mt-2 flex w-full items-center justify-center gap-2 rounded-full border border-mimo-muted bg-white py-3 text-sm font-bold text-mimo-ink hover:bg-mimo-warm"
+                            >
+                                🔗 Compartir
+                            </button>
+                            {shareMsg ? (
+                                <p className="mt-2 text-center text-xs font-semibold text-mimo-quiet">{shareMsg}</p>
                             ) : null}
                         </div>
                     </div>

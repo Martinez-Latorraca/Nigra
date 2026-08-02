@@ -107,16 +107,6 @@ function Pet() {
             }));
         }
     };
-    const handleCallClick = (e) => {
-        if (!token) {
-            e.preventDefault();
-            alert('Inicia sesión en Mimo para acceder a los datos de contacto.');
-            navigate('/login');
-            return;
-        }
-    };
-
-
     const handleResolve = async (resolved) => {
         const ok = window.confirm(
             resolved
@@ -290,19 +280,11 @@ function Pet() {
                                 </button>
 
                             )}
-                            {!pet.resolved_at && currentUser?.id !== pet.user_id && pet.contact_info && (
-                                <a
-                                    href={`tel:${pet.contact_info}`}
-                                    onClick={handleCallClick}
-                                    className="w-full py-5 border-2 border-transparent bg-gray-300 hover:bg-gray-400 text-gray-800 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
-                                >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                    </svg>
-                                    Llamar
-                                </a>
-
-                            )}
+                            {/* Sin "Llamar": el contacto por una mascota perdida va SOLO por
+                                el chat interno. Un teléfono expuesto no se puede retirar
+                                después, no deja rastro moderable y es la vía habitual de las
+                                estafas de "recompensa". El chat queda registrado y se puede
+                                bloquear/denunciar. */}
                             <button
                                 onClick={handleShare}
                                 className="w-full py-5 border-2 border-gray-100 bg-white hover:border-black text-gray-400 hover:text-black text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-sm active:scale-95 flex items-center justify-center gap-3"

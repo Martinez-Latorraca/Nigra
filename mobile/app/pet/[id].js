@@ -77,9 +77,6 @@ export default function PetDetail() {
   const isResolved = !!pet.resolved_at;
   const extras = parseExtraPhotos(pet.extra_photos);
 
-  const handleCall = () => {
-    if (pet.contact_info) Linking.openURL(`tel:${pet.contact_info}`);
-  };
   const handleShare = () => {
     Share.share({
       message:
@@ -247,15 +244,10 @@ export default function PetDetail() {
               </Pressable>
             )}
 
-            {pet.contact_info && !isOwn && !isResolved ? (
-              <Pressable
-                style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
-                onPress={handleCall}
-              >
-                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Llamar</Text>
-              </Pressable>
-            ) : null}
-
+            {/* Sin "Llamar": el contacto por una mascota perdida va SOLO por el
+                chat interno. Un teléfono expuesto no se puede retirar después, no
+                deja rastro moderable y es la vía habitual de las estafas de
+                "recompensa". El chat queda registrado y se puede bloquear/denunciar. */}
             <Pressable
               style={[styles.secondaryBtn, { borderColor: c.cardBorder, backgroundColor: c.card }]}
               onPress={handleShare}

@@ -4,6 +4,7 @@ import Landing from './pages/Landing';
 import Find from './pages/Find';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AccountType from './pages/AccountType';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
@@ -139,6 +140,8 @@ function App() {
           <Route path="/pet/:id" element={<Pet socket={socket} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {/* Post-login social: pregunta el tipo de cuenta una única vez. */}
+          <Route path="/tipo-de-cuenta" element={<AccountType />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

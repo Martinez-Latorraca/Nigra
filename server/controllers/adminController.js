@@ -1,7 +1,7 @@
 import pool from '../db.js';
 import { generateEmbedding } from '../ai.js';
-import { slugify, ensureUniqueSlug } from '../utils/slug.js';
 import logger from '../lib/logger.js';
+import { linkUserToEntity, isValidAccountType, alreadyHasMessage } from '../lib/accountType.js';
 
 // ─── MATCH / REUNION STATS ──────────────────────────────────
 // Dos métricas distintas:
@@ -201,68 +201,37 @@ export const getAllUsers = async (req, res) => {
 // Se crea con approved = FALSE a propósito: convertir y aprobar siguen siendo
 // dos pasos, así la verificación (papeles del refugio, datos de la vet) pasa
 // por el mismo flujo de siempre en vez de saltearse.
-const ENTITY_TABLES = { vet: 'vets', shelter: 'shelters' };
-
 export const setUserAccountType = async (req, res) => {
     try {
         const userId = Number(req.params.id);
         const { account_type } = req.body || {};
-        const table = ENTITY_TABLES[account_type];
-        if (!table) {
+        if (!isValidAccountType(account_type)) {
             return res.status(400).json({ error: "account_type debe ser 'vet' o 'shelter'." });
         }
 
-        const { rows: userRows } = await pool.query(
-            'SELECT id, name, email, deleted_at FROM users WHERE id = $1',
-            [userId]
-        );
-        if (userRows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
-        const user = userRows[0];
-        if (user.deleted_at) {
-            return res.status(400).json({ error: 'La cuenta está eliminada.' });
+        const result = await linkUserToEntity({ userId, accountType: account_type });
+
+        if (result.status === 'user_not_found') return res.status(404).json({ error: 'Usuario no encontrado.' });
+        if (result.status === 'user_deleted') return res.status(400).json({ error: 'La cuenta está eliminada.' });
+        if (result.status === 'exists') {
+            return res.status(409).json({
+                error: alreadyHasMessage(account_type),
+                id: result.entity.id,
+                approved: result.entity.approved,
+            });
         }
 
-        // Hay índice único por owner_user_id, así que un usuario no puede tener
-        // dos. Si ya existe una fila con soft-delete, la reactivamos en vez de
-        // intentar insertar (chocaría con el índice).
-        const { rows: existing } = await pool.query(
-            `SELECT id, slug, approved, deleted_at FROM ${table} WHERE owner_user_id = $1`,
-            [userId]
-        );
-        if (existing.length > 0) {
-            const row = existing[0];
-            if (!row.deleted_at) {
-                return res.status(409).json({
-                    error: account_type === 'vet'
-                        ? 'Este usuario ya tiene una veterinaria.'
-                        : 'Este usuario ya tiene un refugio.',
-                    id: row.id, approved: row.approved,
-                });
-            }
-            const { rows: restored } = await pool.query(
-                `UPDATE ${table} SET deleted_at = NULL WHERE id = $1
-                 RETURNING id, slug, name, approved`,
-                [row.id]
-            );
-            logger.info({ adminId: req.user.id, userId, account_type, action: 'restored' }, 'admin cambió el tipo de cuenta');
-            return res.json({ message: 'Reactivado', account_type, entity: restored[0], restored: true });
+        // Acción privilegiada: dejamos rastro de quién la hizo sobre quién.
+        logger.info({ adminId: req.user.id, userId, account_type, action: result.status },
+            'admin cambió el tipo de cuenta');
+
+        if (result.status === 'restored') {
+            return res.json({ message: 'Reactivado', account_type, entity: result.entity, restored: true });
         }
-
-        const slug = await ensureUniqueSlug(pool, table, slugify(user.name));
-        const { rows: created } = await pool.query(
-            `INSERT INTO ${table} (slug, name, owner_user_id, email, approved)
-             VALUES ($1, $2, $3, $4, FALSE)
-             RETURNING id, slug, name, approved`,
-            [slug, user.name, userId, user.email]
-        );
-
-        // Acción privilegiada: dejamos rastro de quién la hizo.
-        logger.info({ adminId: req.user.id, userId, account_type, action: 'created' }, 'admin cambió el tipo de cuenta');
-
         res.status(201).json({
             message: account_type === 'vet' ? 'Convertido en veterinaria' : 'Convertido en refugio',
             account_type,
-            entity: created[0],
+            entity: result.entity,
         });
     } catch (error) {
         logger.error({ err: error }, 'setUserAccountType error');

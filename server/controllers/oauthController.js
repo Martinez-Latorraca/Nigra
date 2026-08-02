@@ -232,7 +232,11 @@ const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatar
     );
     const user = inserted.rows[0];
     await insertOAuthLink(user.id, provider, providerId);
-    return user;
+    // isNew marca que la cuenta se acaba de crear por este login social. Los
+    // clientes lo usan para preguntar UNA vez el tipo de cuenta (particular /
+    // veterinaria / refugio): es el único camino de alta donde no se puede
+    // preguntar antes, porque el proveedor solo devuelve nombre y mail.
+    return { ...user, isNew: true };
 };
 
 const respondWithSession = async (res, user) => {
@@ -264,6 +268,9 @@ const respondWithSession = async (res, user) => {
     res.json({
         success: true,
         token,
+        // Cuenta recién creada por este login social → el cliente pregunta el
+        // tipo de cuenta una sola vez. En un login normal viene false.
+        is_new: !!user.isNew,
         user: {
             id: user.id,
             name: user.name,

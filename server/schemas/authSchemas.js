@@ -94,3 +94,13 @@ export const resetPasswordSchema = Joi.object({
             'string.min': 'La contraseña debe tener al menos 6 caracteres',
         }),
 });
+
+// El usuario declara su tipo de cuenta después del primer login social.
+// 'user' no se acepta a propósito: quedarse como particular es simplemente
+// no llamar al endpoint, no hay nada que crear.
+export const setMyAccountTypeSchema = Joi.object({
+    account_type: Joi.string().valid('vet', 'shelter').required().messages({
+        'any.only': 'El tipo debe ser "vet" o "shelter"',
+        'any.required': 'El tipo de cuenta es obligatorio',
+    }),
+});

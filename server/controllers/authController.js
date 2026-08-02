@@ -5,6 +5,7 @@ import pool from '../db.js';
 import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
 import { slugify, ensureUniqueVetSlug, ensureUniqueSlug } from '../utils/slug.js';
 import { track } from '../lib/analytics.js';
+import { linkUserToEntity, isValidAccountType, alreadyHasMessage } from '../lib/accountType.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RESET_TOKEN_TTL_MIN = 60; // 1 hora
@@ -145,6 +146,48 @@ export const register = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Error al registrar usuario' });
+    }
+};
+
+// El propio usuario declara que su cuenta es de veterinaria o refugio.
+//
+// Existe por el login social: es el único camino de alta donde no se puede
+// preguntar el tipo (el proveedor devuelve nombre y mail, nada más), y el
+// login no puede pedirlo de antemano porque no sabe si sos alguien nuevo.
+// Los clientes lo llaman UNA sola vez, justo después del primer login social.
+//
+// No agrega privilegio: /register ya permite auto-declararse vet o refugio.
+// La entidad se crea sin aprobar, así que un admin la revisa igual.
+export const setMyAccountType = async (req, res) => {
+    try {
+        const { account_type } = req.body || {};
+        if (!isValidAccountType(account_type)) {
+            return res.status(400).json({ error: "El tipo debe ser 'vet' o 'shelter'." });
+        }
+
+        const result = await linkUserToEntity({ userId: req.user.id, accountType: account_type });
+
+        if (result.status === 'user_not_found') return res.status(404).json({ error: 'Usuario no encontrado.' });
+        if (result.status === 'user_deleted') return res.status(400).json({ error: 'La cuenta está eliminada.' });
+        if (result.status === 'exists') {
+            return res.status(409).json({ error: alreadyHasMessage(account_type) });
+        }
+
+        track(req.user.id, 'account_type_declared', { account_type, via: 'oauth_followup' });
+
+        res.status(result.status === 'created' ? 201 : 200).json({
+            success: true,
+            account_type,
+            entity: result.entity,
+            // El cliente necesita esto para redirigir al dashboard correcto,
+            // igual que hace con la respuesta del login.
+            has_vet: account_type === 'vet',
+            has_shelter: account_type === 'shelter',
+            approved: result.entity.approved,
+        });
+    } catch (error) {
+        console.error('setMyAccountType error:', error);
+        res.status(500).json({ error: 'No se pudo guardar el tipo de cuenta.' });
     }
 };
 

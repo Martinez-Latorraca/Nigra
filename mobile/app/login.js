@@ -45,7 +45,12 @@ export default function Login() {
   const handleSocialSuccess = (data) => {
     dispatch(setCredentials({ user: data.user, token: data.token }));
     setLoadingProvider(null);
-    if (data.user?.has_shelter) {
+    // Cuenta recién creada por este login social: preguntamos una única vez si
+    // es particular, veterinaria o refugio. El proveedor solo nos dio nombre y
+    // mail, así que es el único momento para capturarlo (ver /account-type).
+    if (data.is_new) {
+      router.replace('/account-type');
+    } else if (data.user?.has_shelter) {
       // Refugios (aprobados o no) van directo a su panel.
       router.replace('/profile');
     } else if (data.user?.has_vet && !data.user.vet_approved) {

@@ -59,7 +59,14 @@ export default function SocialAuth() {
             }
             if (!res.ok) throw new Error(data.error || 'No se pudo iniciar sesión');
             dispatch(setCredentials({ user: data.user, token: data.token }));
-            if (redirectTo) {
+            // Cuenta recién creada por este login social: preguntamos una sola
+            // vez si es particular, veterinaria o refugio. El proveedor solo
+            // devuelve nombre y mail, así que es el único momento de captarlo.
+            // Si venía con un redirect explícito lo respetamos: esa intención
+            // es más concreta que la pregunta.
+            if (data.is_new && !redirectTo) {
+                navigate('/tipo-de-cuenta');
+            } else if (redirectTo) {
                 navigate(redirectTo);
             } else if (data.user?.has_vet && !data.user.vet_approved) {
                 navigate('/profile');

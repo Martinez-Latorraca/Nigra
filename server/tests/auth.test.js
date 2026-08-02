@@ -219,6 +219,75 @@ describe('Auth', () => {
         });
     });
 
+    // El usuario declara su tipo de cuenta. Es el remedio al hueco del login
+    // social: ahí no se puede preguntar el tipo (el proveedor solo devuelve
+    // nombre y mail) y la cuenta quedaba como particular para siempre.
+    describe('POST /api/auth/account-type', () => {
+        it('requiere auth', async () => {
+            const res = await request(buildApp())
+                .post('/api/auth/account-type').send({ account_type: 'vet' });
+            expect(res.status).toBe(401);
+        });
+
+        it('crea la veterinaria SIN aprobar', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Vet Sur', email: 'v@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [] })   // no tiene vet
+                .mockResolvedValueOnce({ rows: [] })   // slug libre
+                .mockResolvedValueOnce({ rows: [{ id: 4, slug: 'vet-sur', name: 'Vet Sur', approved: false }] });
+
+            const res = await request(buildApp())
+                .post('/api/auth/account-type')
+                .set('x-test-user', '7')
+                .send({ account_type: 'vet' });
+
+            expect(res.status).toBe(201);
+            expect(res.body.has_vet).toBe(true);
+            // Declarar no es aprobar: un admin la revisa igual.
+            expect(res.body.approved).toBe(false);
+        });
+
+        it('usa el usuario del token, no uno del body', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 7, name: 'X', email: 'x@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ id: 4, slug: 'x', name: 'X', approved: false }] });
+
+            await request(buildApp())
+                .post('/api/auth/account-type')
+                .set('x-test-user', '7')
+                .send({ account_type: 'shelter', user_id: 999 }); // intento de suplantar
+
+            // El SELECT del usuario tiene que ir contra el id del token.
+            expect(pool.query.mock.calls[0][1]).toEqual([7]);
+        });
+
+        it('409 si ya tiene esa entidad', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 7, name: 'X', email: 'x@x.com', deleted_at: null }] })
+                .mockResolvedValueOnce({ rows: [{ id: 4, slug: 'x', approved: true, deleted_at: null }] });
+
+            const res = await request(buildApp())
+                .post('/api/auth/account-type')
+                .set('x-test-user', '7')
+                .send({ account_type: 'vet' });
+
+            expect(res.status).toBe(409);
+            expect(pool.query.mock.calls.find(([sql]) => /INSERT INTO vets/.test(sql))).toBeUndefined();
+        });
+
+        it('400 si el tipo es inválido (incluido "user")', async () => {
+            for (const bad of ['user', 'admin', '']) {
+                const res = await request(buildApp())
+                    .post('/api/auth/account-type')
+                    .set('x-test-user', '7')
+                    .send({ account_type: bad });
+                expect(res.status).toBe(400);
+            }
+        });
+    });
+
     describe('DELETE /api/auth/me (deleteAccount)', () => {
         it('requiere auth', async () => {
             const res = await request(buildApp()).delete('/api/auth/me').send({});

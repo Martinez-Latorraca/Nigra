@@ -2,6 +2,7 @@ import pool from '../db.js';
 import { generateEmbedding } from '../ai.js';
 import logger from '../lib/logger.js';
 import { linkUserToEntity, isValidAccountType, alreadyHasMessage } from '../lib/accountType.js';
+import { banEmail } from '../lib/bannedEmails.js';
 
 // ─── MATCH / REUNION STATS ──────────────────────────────────
 // Dos métricas distintas:
@@ -236,6 +237,65 @@ export const setUserAccountType = async (req, res) => {
     } catch (error) {
         logger.error({ err: error }, 'setUserAccountType error');
         res.status(500).json({ error: 'No se pudo cambiar el tipo de cuenta.' });
+    }
+};
+
+// Expulsa a un usuario: soft delete + veto del email.
+//
+// Distinto de deleteUser (que borra en duro y pierde el rastro): acá el
+// registro histórico queda, para poder revisar la moderación después.
+//
+// Las dos partes son necesarias. Solo el soft delete no expulsa a nadie:
+// /register reactiva una cuenta soft-borrada con el mismo email, así que
+// volvería con sus mascotas y chats. Y sin el veto tampoco serviría marcar
+// deleted_at, porque entraría con Google. Ver lib/bannedEmails.js.
+export const banUser = async (req, res) => {
+    try {
+        const userId = Number(req.params.id);
+        const { reason = null, report_id = null } = req.body || {};
+
+        if (userId === req.user.id) {
+            return res.status(400).json({ error: 'No podés expulsarte a vos mismo.' });
+        }
+
+        const { rows } = await pool.query(
+            'SELECT id, name, email, role, deleted_at FROM users WHERE id = $1',
+            [userId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Usuario no encontrado.' });
+        const user = rows[0];
+        if (user.role === 'admin') {
+            return res.status(400).json({ error: 'No podés expulsar a otro administrador.' });
+        }
+
+        // Soft delete (idempotente: si ya estaba borrado no se pisa la fecha).
+        await pool.query(
+            'UPDATE users SET deleted_at = COALESCE(deleted_at, NOW()) WHERE id = $1',
+            [userId]
+        );
+        // Si tenía vet o refugio, también se dan de baja: si no, la entidad
+        // seguiría publicada en el directorio sin dueño activo.
+        await pool.query('UPDATE vets SET deleted_at = NOW() WHERE owner_user_id = $1 AND deleted_at IS NULL', [userId]);
+        await pool.query('UPDATE shelters SET deleted_at = NOW() WHERE owner_user_id = $1 AND deleted_at IS NULL', [userId]);
+
+        const ban = await banEmail({
+            email: user.email,
+            userId,
+            reportId: report_id,
+            reason,
+            bannedBy: req.user.id,
+        });
+
+        logger.info({ adminId: req.user.id, userId, reportId: report_id }, 'admin expulsó a un usuario');
+
+        res.json({
+            message: 'Usuario eliminado y email bloqueado.',
+            user: { id: user.id, name: user.name },
+            banned: !!ban,
+        });
+    } catch (error) {
+        logger.error({ err: error }, 'banUser error');
+        res.status(500).json({ error: 'No se pudo expulsar al usuario.' });
     }
 };
 

@@ -59,6 +59,7 @@ describe('Auth', () => {
         it('registra un usuario nuevo con email_verified=false + dispara mail de verificación', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [] }) // check email no existe
+                .mockResolvedValueOnce({ rows: [] }) // banned_emails: no vetado
                 .mockResolvedValueOnce({ rows: [{ id: 1, name: 'Test', email: 't@t.com', role: 'user' }] }) // INSERT user
                 .mockResolvedValueOnce({ rows: [] }) // UPDATE verificaciones previas (none)
                 .mockResolvedValueOnce({ rows: [] }); // INSERT nuevo token
@@ -69,15 +70,19 @@ describe('Auth', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.user.email).toBe('t@t.com');
             expect(res.body.requires_verification).toBe(true);
-            // INSERT users con email_verified = FALSE
-            expect(pool.query.mock.calls[1][0]).toMatch(/email_verified/);
-            expect(pool.query.mock.calls[1][0]).toMatch(/FALSE/);
+            // INSERT users con email_verified = FALSE. Lo buscamos por patrón y
+            // no por índice: cualquier query nueva antes correría la posición.
+            const userInsert = pool.query.mock.calls.find(([sql]) => /INSERT INTO users/.test(sql));
+            expect(userInsert).toBeDefined();
+            expect(userInsert[0]).toMatch(/email_verified/);
+            expect(userInsert[0]).toMatch(/FALSE/);
             expect(sendVerificationEmail).toHaveBeenCalled();
         });
 
         it('con account_type=vet crea además una row en vets con approved=false', async () => {
             pool.query
                 .mockResolvedValueOnce({ rows: [] }) // email libre
+                .mockResolvedValueOnce({ rows: [] }) // banned_emails: no vetado
                 .mockResolvedValueOnce({ rows: [{ id: 20, name: 'Vet Amigo', email: 'v@x.com', role: 'user' }] }) // INSERT user
                 .mockResolvedValueOnce({ rows: [] }) // slug único
                 .mockResolvedValueOnce({ rows: [] }) // INSERT vet
@@ -216,6 +221,56 @@ describe('Auth', () => {
                 .post('/api/auth/resend-verification')
                 .send({ email: 'ana@x.com' });
             expect(sendVerificationEmail).not.toHaveBeenCalled();
+        });
+    });
+
+    // El veto de email es lo que hace efectiva la expulsión. Sin esto, el
+    // soft delete no sirve: la rama de restore de /register le devuelve la
+    // cuenta al expulsado con sus mascotas y chats.
+    describe('POST /api/auth/register con email vetado', () => {
+        it('403 y NO restaura la cuenta soft-borrada', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [{ id: 5, email: 'spam@x.com', deleted_at: new Date() }] }) // user check
+                .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });                                     // banned_emails hit
+
+            const res = await request(buildApp())
+                .post('/api/auth/register')
+                .send({ name: 'Spammer', email: 'spam@x.com', password: 'secret123' });
+
+            expect(res.status).toBe(403);
+            expect(res.body.code).toBe('email_banned');
+            // Lo crítico: no debe haber tocado la cuenta borrada.
+            expect(pool.query.mock.calls.find(([sql]) => /deleted_at = NULL/.test(sql))).toBeUndefined();
+        });
+
+        it('el bloqueo no se esquiva cambiando mayusculas', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })
+                .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
+
+            const res = await request(buildApp())
+                .post('/api/auth/register')
+                .send({ name: 'Spammer', email: 'SPAM@X.com', password: 'secret123' });
+
+            expect(res.status).toBe(403);
+            // La query compara en minúsculas de los dos lados.
+            const check = pool.query.mock.calls.find(([sql]) => /banned_emails/.test(sql));
+            expect(check[0]).toMatch(/LOWER\(email\) = LOWER\(\$1\)/);
+        });
+
+        it('un email no vetado sigue registrandose normal', async () => {
+            pool.query
+                .mockResolvedValueOnce({ rows: [] })          // user check
+                .mockResolvedValueOnce({ rows: [] })          // banned_emails: no hit
+                .mockResolvedValueOnce({ rows: [{ id: 7, name: 'Ana', email: 'ana@x.com', role: 'user' }] })
+                .mockResolvedValue({ rows: [] });
+
+            const res = await request(buildApp())
+                .post('/api/auth/register')
+                .send({ name: 'Ana', email: 'ana@x.com', password: 'secret123' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
         });
     });
 

@@ -10,6 +10,7 @@ import {
     deleteUser,
     updateUserRole,
     setUserAccountType,
+    banUser,
     adminGetAllPets,
     adminDeletePet,
     adminGetConversationMessages,
@@ -35,6 +36,9 @@ router.patch('/users/:id/role', validate(updateRoleSchema), updateUserRole);
 // Convertir a veterinaria/refugio — salida manual para las cuentas creadas con
 // OAuth, donde el account_type del formulario de registro no existe.
 router.patch('/users/:id/account-type', validate(setAccountTypeSchema), setUserAccountType);
+// Expulsión por moderación: soft delete + veto del email para que no pueda
+// volver a registrarse ni entrar con login social.
+router.post('/users/:id/ban', banUser);
 router.delete('/users/:id', deleteUser);
 
 // Mascotas / Reportes

@@ -6,6 +6,7 @@ import { sendResetEmail, sendVerificationEmail } from '../lib/mailer.js';
 import { slugify, ensureUniqueVetSlug, ensureUniqueSlug } from '../utils/slug.js';
 import { track } from '../lib/analytics.js';
 import { linkUserToEntity, isValidAccountType, alreadyHasMessage } from '../lib/accountType.js';
+import { isEmailBanned, BANNED_MESSAGE } from '../lib/bannedEmails.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RESET_TOKEN_TTL_MIN = 60; // 1 hora
@@ -39,6 +40,13 @@ export const register = async (req, res) => {
 
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         const existing = userCheck.rows[0];
+
+        // Email vetado por moderación: se corta ACÁ, antes de la rama que
+        // restaura cuentas soft-borradas. Si se chequeara después, el
+        // expulsado se registraría de nuevo y recuperaría todo.
+        if (await isEmailBanned(email)) {
+            return res.status(403).json({ error: BANNED_MESSAGE, code: 'email_banned' });
+        }
 
         // Caso especial: el email pertenece a una cuenta soft-deleted. En vez
         // de rechazar el registro o crear duplicado, reactivamos la cuenta con

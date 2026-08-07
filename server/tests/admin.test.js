@@ -300,6 +300,79 @@ describe('Admin', () => {
         });
     });
 
+    // Expulsión por moderación. Las dos mitades importan: sin el veto del
+    // email, /register reactiva la cuenta soft-borrada y el usuario vuelve
+    // con todo.
+    describe('POST /api/admin/users/:id/ban', () => {
+        const okUser = (over = {}) => ({
+            rows: [{ id: 5, name: 'Spammer', email: 'Spam@X.com', role: 'user', deleted_at: null, ...over }],
+        });
+
+        it('hace soft delete y bloquea el email', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce(okUser())              // SELECT user
+                .mockResolvedValueOnce({ rowCount: 1 })       // soft delete user
+                .mockResolvedValueOnce({ rowCount: 0 })       // vets
+                .mockResolvedValueOnce({ rowCount: 0 })       // shelters
+                .mockResolvedValueOnce({ rows: [{ id: 1, email: 'spam@x.com' }] }); // ban
+
+            const res = await request(buildApp())
+                .post('/api/admin/users/5/ban')
+                .set('x-test-user', '1')
+                .send({ report_id: 9, reason: 'scam' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.banned).toBe(true);
+
+            const soft = pool.query.mock.calls.find(([sql]) => /UPDATE users SET deleted_at/.test(sql));
+            expect(soft).toBeDefined();
+            const ban = pool.query.mock.calls.find(([sql]) => /INSERT INTO banned_emails/.test(sql));
+            expect(ban).toBeDefined();
+            expect(ban[1][0]).toBe('Spam@X.com'); // el SQL lo baja con LOWER()
+            expect(ban[1][2]).toBe(9);            // report_id
+        });
+
+        it('da de baja tambien su veterinaria y su refugio', async () => {
+            mockAdminRole();
+            pool.query
+                .mockResolvedValueOnce(okUser())
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rowCount: 1 })
+                .mockResolvedValueOnce({ rows: [{ id: 1 }] });
+
+            await request(buildApp()).post('/api/admin/users/5/ban').set('x-test-user', '1').send({});
+
+            expect(pool.query.mock.calls.find(([sql]) => /UPDATE vets SET deleted_at/.test(sql))).toBeDefined();
+            expect(pool.query.mock.calls.find(([sql]) => /UPDATE shelters SET deleted_at/.test(sql))).toBeDefined();
+        });
+
+        it('no permite expulsar a otro admin', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce(okUser({ role: 'admin' }));
+            const res = await request(buildApp())
+                .post('/api/admin/users/5/ban').set('x-test-user', '1').send({});
+            expect(res.status).toBe(400);
+            expect(pool.query.mock.calls.find(([sql]) => /INSERT INTO banned_emails/.test(sql))).toBeUndefined();
+        });
+
+        it('no permite auto-expulsarse', async () => {
+            mockAdminRole();
+            const res = await request(buildApp())
+                .post('/api/admin/users/1/ban').set('x-test-user', '1').send({});
+            expect(res.status).toBe(400);
+        });
+
+        it('404 si el usuario no existe', async () => {
+            mockAdminRole();
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            const res = await request(buildApp())
+                .post('/api/admin/users/999/ban').set('x-test-user', '1').send({});
+            expect(res.status).toBe(404);
+        });
+    });
+
     describe('DELETE /api/admin/users/:id', () => {
         it('borra el user + sus mensajes + sus mascotas', async () => {
             mockAdminRole();

@@ -443,6 +443,29 @@ async function ensureSchema() {
         `);
         await pool.query('CREATE INDEX IF NOT EXISTS pet_embeddings_pet_id_idx ON pet_embeddings(pet_id)');
 
+        // Emails vetados por moderación.
+        //
+        // El soft delete SOLO no alcanza para expulsar a alguien: /register
+        // reactiva una cuenta soft-borrada con el mismo email, así que el
+        // usuario volvía con sus mascotas y chats intactos. Esta tabla es lo
+        // que hace efectivo el bloqueo, y se consulta tanto en el registro
+        // como en el login social (si no, entraba con Google).
+        //
+        // Guardamos el email en minúsculas y comparamos siempre con LOWER()
+        // para que no se esquive cambiando mayúsculas.
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS banned_emails (
+                id SERIAL PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                user_id INTEGER,
+                report_id INTEGER,
+                reason TEXT,
+                banned_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )
+        `);
+        await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS banned_emails_email_idx ON banned_emails (LOWER(email))');
+
         // Tokens de reset de contraseña. Guardamos SOLO el hash — el token
         // en texto plano viaja al mail y nunca queda en la DB. Single-use
         // (used_at) + expiración (1h a nivel controller).
@@ -494,7 +517,7 @@ async function ensureSchema() {
         // funcionando. Bloquea a los roles anon y authenticated que usa la
         // PostgREST auto-expuesta por Supabase (evita que alguien con la anon
         // key haga SELECT * FROM users sin auth).
-        for (const table of ['users', 'pets', 'messages', 'notifications', 'password_resets', 'pet_embeddings']) {
+        for (const table of ['users', 'pets', 'messages', 'notifications', 'password_resets', 'pet_embeddings', 'banned_emails']) {
             await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
         }
     } catch (error) {

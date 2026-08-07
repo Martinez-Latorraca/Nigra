@@ -189,6 +189,32 @@ function AdminPanel() {
         }
     };
 
+    // Expulsa al denunciado: soft delete + veto del email para que no pueda
+    // volver a registrarse ni entrar con Google/Facebook/Apple.
+    // El confirm es explícito porque no hay deshacer desde el panel.
+    const banReportedUser = async (report) => {
+        const ok = window.confirm(
+            `Eliminar a ${report.reported_name} y bloquear su email?\n\n` +
+            `${report.reported_email}\n\n` +
+            `Se elimina la cuenta y no va a poder registrarse de nuevo con ese email, ` +
+            `ni entrar con Google/Facebook/Apple. Sus veterinarias o refugios también se dan de baja.\n\n` +
+            `Esto no se puede deshacer desde el panel.`
+        );
+        if (!ok) return;
+        try {
+            const res = await fetch(`${API}/api/admin/users/${report.reported_user_id}/ban`, {
+                method: 'POST',
+                headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: report.id, reason: report.reason }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) fetchReports();
+            else alert(data.error || 'No se pudo eliminar al usuario.');
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const fetchDeletedUserMatches = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
@@ -1203,12 +1229,25 @@ function AdminPanel() {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button
-                                                    onClick={() => updateReportStatus(r.id, 'pending')}
-                                                    className="px-3 py-1.5 rounded-full text-gray-400 text-xs font-medium hover:bg-gray-100"
-                                                >
-                                                    Reabrir
-                                                </button>
+                                                <>
+                                                    {/* La expulsión aparece recién con la denuncia
+                                                        revisada: primero se mira, después se actúa.
+                                                        Se oculta si la cuenta ya fue eliminada. */}
+                                                    {r.status === 'reviewed' && r.reported_user_id && !r.reported_deleted_at ? (
+                                                        <button
+                                                            onClick={() => banReportedUser(r)}
+                                                            className="px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700"
+                                                        >
+                                                            Eliminar usuario y bloquear email
+                                                        </button>
+                                                    ) : null}
+                                                    <button
+                                                        onClick={() => updateReportStatus(r.id, 'pending')}
+                                                        className="px-3 py-1.5 rounded-full text-gray-400 text-xs font-medium hover:bg-gray-100"
+                                                    >
+                                                        Reabrir
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>

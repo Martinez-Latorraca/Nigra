@@ -18,6 +18,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import jwksClient from 'jwks-rsa';
 import pool from '../db.js';
+import { isEmailBanned, BANNED_MESSAGE } from '../lib/bannedEmails.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -75,6 +76,16 @@ class OAuthAlreadyLinkedToOther extends Error {
 class OAuthAccountDeleted extends Error {
     constructor() {
         super('account_deleted');
+        this.status = 403;
+    }
+}
+
+// Email vetado por moderación. Se distingue de OAuthAccountDeleted porque no
+// hay camino de vuelta: la cuenta eliminada se recupera desde /register, ésta
+// no. Ver lib/bannedEmails.js.
+class OAuthAccountBanned extends Error {
+    constructor() {
+        super('email_banned');
         this.status = 403;
     }
 }
@@ -195,6 +206,11 @@ const insertOAuthLink = async (userId, provider, providerId) => {
 };
 
 const findOrCreateOAuthUser = async ({ provider, providerId, email, name, avatarUrl }) => {
+    // 0) Email vetado por moderación. Va PRIMERO: sin esto, un usuario
+    // expulsado entra con Google y se salta el bloqueo del registro, que es
+    // el único lugar donde se chequeaba.
+    if (email && await isEmailBanned(email)) throw new OAuthAccountBanned();
+
     // 1) Ya linkeado a este exact (provider, provider_id).
     const linked = await findUserByOAuth(provider, providerId);
     if (linked) return rejectIfDeleted(linked);
@@ -303,6 +319,9 @@ const handleOAuthError = (res, error, providerLabel) => {
             error: 'Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente desde el registro.',
             code: 'account_deleted',
         });
+    }
+    if (error instanceof OAuthAccountBanned) {
+        return res.status(403).json({ error: BANNED_MESSAGE, code: 'email_banned' });
     }
     res.status(error.status || 401).json({
         error: error.message || `Token de ${providerLabel} inválido`,

@@ -614,7 +614,22 @@ export default function Profile() {
           </View>
         )}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: c.title }]}>{displayName}.</Text>
+          {/* Nombre y "Editar" en la misma línea: el botón ancho debajo del
+              hero empujaba todo el contenido útil fuera de la pantalla. */}
+          <View style={styles.nameRow}>
+            <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
+              {displayName}.
+            </Text>
+            <Pressable
+              onPress={() => setEditing((v) => !v)}
+              hitSlop={8}
+              style={[styles.editBtnSm, { borderColor: c.cardBorder, backgroundColor: c.card }]}
+            >
+              <Text style={[styles.editBtnSmText, { color: c.title }]}>
+                {editing ? 'Cerrar' : 'Editar'}
+              </Text>
+            </Pressable>
+          </View>
           {isVet && vet ? (
             <View style={styles.badgeRow}>
               {vet.is_sponsor ? (
@@ -637,15 +652,6 @@ export default function Profile() {
           ) : null}
         </View>
       </View>
-
-      <Pressable
-        onPress={() => setEditing((v) => !v)}
-        style={[styles.editBtn, { backgroundColor: c.primary }]}
-      >
-        <Text style={[styles.editBtnText, { color: c.primaryText }]}>
-          {editing ? 'Cerrar' : 'Editar perfil'}
-        </Text>
-      </Pressable>
 
       {editing ? (
         isVet && vet ? (
@@ -840,6 +846,18 @@ export default function Profile() {
         </View>
       ) : null}
 
+      {/* "Mis registros" cierra el header: los items del FlatList se
+          renderizan justo después, así que el título tiene que quedar pegado
+          a su lista. Todo lo que va debajo (alertas, cuentas vinculadas,
+          sesión) vive en el footer. */}
+      {!isVet ? <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text> : null}
+    </View>
+  );
+
+  // Pie: ajustes y acciones de cuenta. Van DESPUÉS de los registros porque son
+  // configuración que se toca una vez, no lo que uno viene a ver al entrar.
+  const footer = (
+    <View style={{ gap: 12 }}>
       {/* CONFIGURACIÓN DE ALERTAS — mismos 3 controles para user y vet. El
           endpoint destino cambia en saveAlerts según isVet. El cap del radio
           (5km) solo aplica si es una vet en plan ally. */}
@@ -917,10 +935,6 @@ export default function Profile() {
       <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
         <Text style={styles.deleteBtnText}>Eliminar cuenta</Text>
       </Pressable>
-
-      {/* "Mis registros" solo para users no-vet — para vets ya se muestra
-          en el bloque MIS REPORTES arriba (en el medio del profile). */}
-      {!isVet ? <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text> : null}
     </View>
   );
 
@@ -942,17 +956,21 @@ export default function Profile() {
           ) : null
         }
         ListFooterComponent={
-          !isVet && page < totalPages ? (
-            <Pressable
-              style={[styles.moreBtn, { borderColor: c.cardBorder }]}
-              onPress={() => fetchReports(page + 1, true)}
-              disabled={loadingMore}
-            >
-              <Text style={[styles.moreBtnText, { color: c.text }]}>
-                {loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
-              </Text>
-            </Pressable>
-          ) : null
+          <>
+            {/* "Cargar más" primero: pertenece a la lista de arriba. */}
+            {!isVet && page < totalPages ? (
+              <Pressable
+                style={[styles.moreBtn, { borderColor: c.cardBorder }]}
+                onPress={() => fetchReports(page + 1, true)}
+                disabled={loadingMore}
+              >
+                <Text style={[styles.moreBtnText, { color: c.text }]}>
+                  {loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
+                </Text>
+              </Pressable>
+            ) : null}
+            {footer}
+          </>
         }
       />
     </SafeAreaView>
@@ -974,7 +992,10 @@ const styles = StyleSheet.create({
   heroAvatar: { width: 68, height: 68, borderRadius: 20, backgroundColor: '#F0EBE8' },
   heroAvatarFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
   heroAvatarLetter: { color: '#fff', fontWeight: '800', fontSize: 30 },
-  name: { fontSize: 32, fontWeight: '700', letterSpacing: -1 },
+  // El nombre lleva flex:1 + numberOfLines para que un nombre largo no
+  // empuje el botón "Editar" fuera de la pantalla.
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  name: { flex: 1, fontSize: 32, fontWeight: '700', letterSpacing: -1 },
   email: { fontSize: 13, marginTop: 2 },
 
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
@@ -985,8 +1006,10 @@ const styles = StyleSheet.create({
   pendingBadge: { backgroundColor: '#FEE2E2', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
   pendingText: { color: '#DC2626', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
 
-  editBtn: { alignSelf: 'flex-start', marginTop: 12, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
-  editBtnText: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+  // Botón chico al lado del nombre. Reemplaza al antiguo `editBtn` de ancho
+  // completo, que empujaba el contenido útil fuera de la primera pantalla.
+  editBtnSm: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  editBtnSmText: { fontSize: 12, fontWeight: '700' },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
   adStatsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },

@@ -20,10 +20,12 @@
 //
 // En test/dev sin SMTP_PASS los envíos devuelven { skipped: true } sin error.
 
+import { CONTACT_EMAIL } from './contact.js';
+
 const BASE_URL = process.env.BASE_URL || 'https://mimo.uy';
 const MAIL_FROM_EMAIL = process.env.MAIL_FROM || 'no-reply@mimo.uy';
 const MAIL_FROM_NAME = 'Mimo';
-const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || 'somos.mimo.app@gmail.com';
+const MAIL_REPLY_TO = process.env.MAIL_REPLY_TO || CONTACT_EMAIL;
 
 // Sólo para tests: permite inyectar un fetch fake.
 let injectedFetch = null;

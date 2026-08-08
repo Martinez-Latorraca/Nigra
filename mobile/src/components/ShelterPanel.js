@@ -12,6 +12,7 @@ import { useTheme } from '../lib/theme';
 import { clearCredentials } from '../store/userSlice';
 import MenuButton from './MenuButton';
 import LinkedAccounts from './LinkedAccounts';
+import { CONTACT_EMAIL } from '../lib/config';
 
 const MAX_PHOTOS = 6;
 const SPECIES_LABEL = { dog: 'Perro', cat: 'Gato', other: 'Otro' };
@@ -536,7 +537,7 @@ export default function ShelterPanel() {
             <Text style={styles.pendingKicker}>📋 VERIFICACIÓN PENDIENTE</Text>
             <Text style={styles.pendingCardText}>
               Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-              Enviá a somos.mimo.app@gmail.com los comprobantes que tengas
+              Enviá a {CONTACT_EMAIL} los comprobantes que tengas
               (papeles de la ONG, cuenta bancaria a nombre del refugio, redes sociales, etc.)
               desde el email de tu cuenta.
               {'\n\n'}

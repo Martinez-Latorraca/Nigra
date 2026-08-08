@@ -34,6 +34,7 @@ import { authenticateToken } from './middlewares/auth.js';
 import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js';
 import { startReminderScheduler } from './lib/resolveReminder.js';
 import { analyticsEnabled, shutdownAnalytics } from './lib/analytics.js';
+import { CONTACT_EMAIL } from './lib/contact.js';
 import pinoHttp from 'pino-http';
 import logger from './lib/logger.js';
 
@@ -303,7 +304,7 @@ app.get('/privacy', (req, res) => {
 <p>Podés eliminar tu cuenta y todos tus reportes y mensajes en cualquier momento desde la app. Al hacerlo, borramos tus datos asociados de nuestra base de datos.</p>
 
 <h2>5. Contacto</h2>
-<p>Por consultas sobre esta política, escribí a <a href="mailto:nicomar2004@gmail.com">nicomar2004@gmail.com</a>.</p>
+<p>Por consultas sobre esta política, escribí a <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
 </body>
 </html>`);
 });

@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { clearCredentials, updateUserData } from '../store/userSlice';
 import { openChat } from '../store/chatSlice';
 import { markNotificationRead } from '../store/notificationsSlice';
+import { CONTACT_EMAIL, mailtoContact } from '../utils/links';
 import LinkedAccounts from '../components/LinkedAccounts';
 import MimoLogo from '../components/MimoLogo';
 import MapSelector from '../components/MapSelector';
@@ -422,7 +423,7 @@ function UserEditForm({ user, token, dispatch, onClose }) {
             <div className="mt-4">
                 <div className={`${labelCls} mb-2`}>Email</div>
                 <input className={`${inputCls} opacity-60 cursor-not-allowed`} value={user.email || ''} disabled readOnly />
-                <div className="mt-1 text-[11px] text-mimo-quiet">Para cambiar tu email escribinos a somos.mimo.app@gmail.com.</div>
+                <div className="mt-1 text-[11px] text-mimo-quiet">Para cambiar tu email escribinos a {CONTACT_EMAIL}.</div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
@@ -813,7 +814,7 @@ function Profile() {
                                 </p>
                             </div>
                             <a
-                                href="mailto:somos.mimo.app@gmail.com?subject=Quiero%20ser%20Socio%20Mimo"
+                                href={mailtoContact('Quiero ser Socio Mimo')}
                                 className="rounded-full bg-mimo-noche text-white px-6 py-3 text-sm font-display font-extrabold uppercase tracking-widest hover:opacity-90"
                             >
                                 Contactar

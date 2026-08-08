@@ -3,8 +3,7 @@ import { useDispatch } from 'react-redux';
 import { markDismissedTemp, markDismissedPermanent } from '../store/donationSlice';
 import { useTheme } from '../lib/theme';
 import api from '../lib/api';
-
-const MP_URL = 'https://link.mercadopago.com.uy/mimouy';
+import { MP_DONATION_URL as MP_URL } from '../lib/config';
 
 // Banner que aparece en el chat exitoso después de que el dueño marca la
 // mascota como reunida. Ofrece un CTA a Mercado Pago + dismissal (temp / "ya doné").

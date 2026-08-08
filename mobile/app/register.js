@@ -3,6 +3,7 @@ import { Text, TextInput, Pressable, View, StyleSheet, ActivityIndicator } from 
 import { router, Link } from 'expo-router';
 import api from '../src/lib/api';
 import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
+import { CONTACT_EMAIL } from '../src/lib/config';
 
 const ACCOUNT_TYPES = [
   {
@@ -80,7 +81,7 @@ export default function Register() {
             <Text style={styles.shelterNoticeKicker}>📋 UN PASO MÁS</Text>
             <Text style={styles.shelterNoticeText}>
               Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-              Enviá a somos.mimo.app@gmail.com los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes, etc.) desde el email de tu cuenta.
+              Enviá a {CONTACT_EMAIL} los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes, etc.) desde el email de tu cuenta.
               {'\n\n'}
               Mientras tanto podés editar el perfil. Un admin te aprueba y ya podés publicar.
             </Text>

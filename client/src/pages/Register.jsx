@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import SocialAuth from '../components/SocialAuth';
+import { CONTACT_EMAIL, mailtoContact } from '../utils/links';
 
 const ACCOUNT_TYPES = [
     {
@@ -100,7 +101,7 @@ function Register() {
                             </div>
                             <p className="text-[13px] leading-relaxed text-yellow-900">
                                 Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-                                Enviá a <a href="mailto:somos.mimo.app@gmail.com" className="font-semibold underline">somos.mimo.app@gmail.com</a> los
+                                Enviá a <a href={mailtoContact('Verificación de refugio Mimo')} className="font-semibold underline">{CONTACT_EMAIL}</a> los
                                 comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
                                 redes sociales, etc.) desde el email de tu cuenta.
                             </p>

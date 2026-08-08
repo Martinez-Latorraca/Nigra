@@ -9,6 +9,7 @@ import {
     ScreenMap,
     ScreenChat,
 } from '../components/brand/AppScreens';
+import { MP_DONATION_URL, INSTAGRAM_URL } from '../utils/links';
 
 const MIMO = {
     coral: '#FF5C6C',
@@ -1003,7 +1004,7 @@ export default function Landing() {
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                             <li>
                                 <a
-                                    href="https://instagram.com/somos.mimo.uy"
+                                    href={INSTAGRAM_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={footerLinkStyle}
@@ -1013,7 +1014,7 @@ export default function Landing() {
                             </li>
                             <li>
                                 <a
-                                    href="https://link.mercadopago.com.uy/mimouy"
+                                    href={MP_DONATION_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={footerLinkStyle}

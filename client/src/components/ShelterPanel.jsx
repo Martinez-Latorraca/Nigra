@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearCredentials } from '../store/userSlice';
+import { CONTACT_EMAIL, mailtoContact } from '../utils/links';
 import MimoLogo from './MimoLogo';
 import LinkedAccounts from './LinkedAccounts';
 
@@ -513,8 +514,8 @@ export default function ShelterPanel() {
                         <p className="text-sm leading-relaxed text-yellow-900 mb-3">
                             Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
                             Enviá a{' '}
-                            <a href="mailto:somos.mimo.app@gmail.com?subject=Verificaci%C3%B3n%20de%20refugio%20Mimo"
-                                className="font-semibold underline">somos.mimo.app@gmail.com</a>{' '}
+                            <a href={mailtoContact('Verificación de refugio Mimo')}
+                                className="font-semibold underline">{CONTACT_EMAIL}</a>{' '}
                             los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
                             redes sociales, etc.) desde el email de tu cuenta.
                         </p>

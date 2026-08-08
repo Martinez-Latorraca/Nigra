@@ -25,6 +25,7 @@ import LinkedAccounts from '../src/components/LinkedAccounts';
 import MapPicker from '../src/components/MapPicker';
 import ShelterPanel from '../src/components/ShelterPanel';
 import { adRadiusOf } from '../src/lib/sponsorTiers';
+import { CONTACT_EMAIL, mailtoContact } from '../src/lib/config';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
 // Radio de push notifications, mismos presets para user y vet — sponsor no
@@ -136,7 +137,7 @@ function UserEditForm({ user, c, dispatch, onClose }) {
       <Text style={[formStyles.label, { color: c.subtitle, marginTop: 12 }]}>EMAIL</Text>
       <TextInput style={[inputStyle, { opacity: 0.6 }]} value={user?.email || ''} editable={false} />
       <Text style={[formStyles.hint, { color: c.subtitle }]}>
-        Para cambiar tu email escribinos a somos.mimo.app@gmail.com.
+        Para cambiar tu email escribinos a {CONTACT_EMAIL}.
       </Text>
 
       <Pressable
@@ -729,7 +730,7 @@ export default function Profile() {
           </Text>
           <Pressable
             onPress={() =>
-              Linking.openURL('mailto:somos.mimo.app@gmail.com?subject=Quiero%20ser%20Socio%20Mimo')
+              Linking.openURL(mailtoContact('Quiero ser Socio Mimo'))
             }
             style={styles.ctaBtn}
           >

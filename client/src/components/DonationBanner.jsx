@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { markDismissedTemp, markDismissedPermanent } from '../store/donationSlice';
+import { MP_DONATION_URL as MP_URL } from '../utils/links';
 
-const MP_URL = 'https://link.mercadopago.com.uy/mimouy';
 const API = import.meta.env.VITE_API_URL || '';
 
 // Banner que aparece en el chat exitoso después de que el dueño marca la

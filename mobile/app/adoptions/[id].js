@@ -1,36 +1,40 @@
 import { useEffect, useState } from 'react';
 import {
-  ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Linking,
-  useWindowDimensions, FlatList, Share,
+  ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Linking, Share,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
+import { useSidebar } from '../../src/lib/sidebar';
 import { API_URL } from '../../src/lib/config';
-import MenuButton from '../../src/components/MenuButton';
+import {
+  ChevronLeft, ChevronRight, Menu, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
+  PawPrint, Check,
+} from '../../src/lib/icons';
+import IconButton from '../../src/components/IconButton';
+import StatusChip from '../../src/components/StatusChip';
+import Button from '../../src/components/Button';
 
 const SPECIES_LABEL = { dog: 'Perro', cat: 'Gato', other: 'Otro' };
 const SIZE_LABEL = { small: 'Chico', medium: 'Mediano', large: 'Grande' };
 const AGE_LABEL = { puppy: 'Cachorro', young: 'Joven', adult: 'Adulto', senior: 'Senior', unknown: 'Sin dato' };
 const SEX_LABEL = { male: 'Macho', female: 'Hembra', unknown: 'Sin dato' };
 
-function Chip({ children, c }) {
+function Trait({ children, icon: Icon, c }) {
   return (
-    <View style={[chipStyles.chip, { backgroundColor: c.bg }]}>
-      <Text style={[chipStyles.text, { color: c.text }]}>{children}</Text>
+    <View style={[styles.trait, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+      {Icon ? <Icon size={14} color={c.text} strokeWidth={2} /> : null}
+      <Text style={[styles.traitText, { color: c.text }]}>{children}</Text>
     </View>
   );
 }
-const chipStyles = StyleSheet.create({
-  chip: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  text: { fontSize: 12, fontWeight: '700' },
-});
 
 export default function AdoptionDetail() {
   const c = useTheme();
+  const insets = useSafeAreaInsets();
+  const { open: openSidebar } = useSidebar();
   const { id } = useLocalSearchParams();
-  const { width } = useWindowDimensions();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,20 +51,23 @@ export default function AdoptionDetail() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
+      <View style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
         <ActivityIndicator color={c.title} />
-      </SafeAreaView>
+      </View>
     );
   }
   if (error || !pet) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
-        <Text style={[styles.notFoundTitle, { color: c.title }]}>404.</Text>
-        <Text style={[styles.notFoundText, { color: c.subtitle }]}>{error}</Text>
-        <Pressable onPress={() => router.replace('/adoptions')} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>Volver a adopciones</Text>
-        </Pressable>
-      </SafeAreaView>
+      <View style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
+        <Text style={[styles.notFoundTitle, { color: c.title }]}>404</Text>
+        <Text style={[styles.notFoundText, { color: c.text }]}>{error}</Text>
+        <Button
+          title="Volver a adopciones"
+          color={palette.violeta}
+          onPress={() => router.replace('/adoptions')}
+          style={styles.notFoundBtn}
+        />
+      </View>
     );
   }
 
@@ -72,6 +79,9 @@ export default function AdoptionDetail() {
   const whatsappHref = pet.shelter_whatsapp
     ? `https://wa.me/${String(pet.shelter_whatsapp).replace(/[^\d]/g, '')}?text=Hola,%20me%20interesa%20adoptar%20a%20${encodeURIComponent(pet.name || 'esta mascota')}`
     : null;
+  const emailHref = pet.shelter_email
+    ? `mailto:${pet.shelter_email}?subject=Consulta%20por%20adopci%C3%B3n%20-%20${encodeURIComponent(pet.name || 'mascota')}`
+    : null;
   const handleShare = () => {
     Share.share({
       message: adopted
@@ -79,170 +89,222 @@ export default function AdoptionDetail() {
         : `🏡 ${pet.name || 'Esta mascota'} busca familia. Compartí para que encuentre su casa 🐾 ${API_URL}/adoptions/${pet.id}`,
     });
   };
-
-  const heroSize = Math.min(width, 500);
+  const shelterColor = palette.teal;
+  const name = pet.name || 'Sin nombre';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={styles.headerTop}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={[styles.back, { color: c.subtitle }]}>‹ Adopciones</Text>
-          </Pressable>
-          <MenuButton />
-        </View>
-
-        {/* Galería */}
-        <View style={{ position: 'relative' }}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
+        {/* Foto principal */}
+        <View style={[styles.hero, { backgroundColor: c.arena }]}>
           {photos[activePhoto] ? (
-            <Image source={{ uri: photos[activePhoto] }} style={{ width, height: Math.round(heroSize * 0.75), backgroundColor: '#F0EBE8' }} />
+            <Image source={{ uri: photos[activePhoto] }} style={StyleSheet.absoluteFill} />
           ) : (
-            <View style={{ width, height: Math.round(heroSize * 0.75), alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0EBE8' }}>
-              <Text style={{ fontSize: 72 }}>🐾</Text>
-            </View>
+            <PawPrint size={64} color={c.text} strokeWidth={2} />
           )}
           {adopted ? (
             <View style={styles.adoptedOverlay}>
-              <Text style={styles.adoptedText}>YA FUE ADOPTADO</Text>
+              <View style={styles.adoptedPill}>
+                <Check size={20} color={palette.noche} strokeWidth={3} />
+                <Text style={styles.adoptedText}>Ya fue adoptado</Text>
+              </View>
             </View>
           ) : null}
+          <View style={[styles.heroBar, { top: insets.top + 16 }]}>
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.backPill, { opacity: pressed ? 0.8 : 1 }]}
+            >
+              <ChevronLeft size={22} color={palette.arena} strokeWidth={2} />
+              <Text style={styles.backPillText}>Adopciones</Text>
+            </Pressable>
+            <IconButton
+              icon={Menu}
+              iconSize={22}
+              color={palette.crema}
+              backgroundColor={palette.violeta}
+              accessibilityLabel="Menú"
+              onPress={openSidebar}
+            />
+          </View>
         </View>
 
-        {photos.length > 1 ? (
-          <FlatList
-            horizontal
-            data={photos}
-            keyExtractor={(u, i) => `${u}-${i}`}
-            contentContainerStyle={{ padding: 16, gap: 10 }}
-            showsHorizontalScrollIndicator={false}
-            renderItem={({ item, index }) => (
-              <Pressable
-                onPress={() => setActivePhoto(index)}
-                style={[
-                  styles.thumb,
-                  { borderColor: index === activePhoto ? c.title : 'transparent', opacity: index === activePhoto ? 1 : 0.7 },
-                ]}
-              >
-                <Image source={{ uri: item }} style={styles.thumbImg} />
-              </Pressable>
-            )}
-          />
-        ) : null}
+        <View style={[styles.sheet, { backgroundColor: c.bg }]}>
+          {photos.length > 1 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
+              {photos.map((url, index) => (
+                <Pressable
+                  key={`${url}-${index}`}
+                  onPress={() => setActivePhoto(index)}
+                  accessibilityLabel={`Foto ${index + 1}`}
+                  style={[styles.thumb, { backgroundColor: c.arena }, index === activePhoto && styles.thumbActive]}
+                >
+                  <Image source={{ uri: url }} style={StyleSheet.absoluteFill} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : null}
 
-        <View style={{ padding: 20 }}>
-          <Text style={[styles.kicker, { color: c.subtitle }]}>EN ADOPCIÓN</Text>
-          <Text style={[styles.name, { color: c.title }]}>{pet.name || 'Sin nombre'}.</Text>
-
-          <View style={styles.chipsRow}>
-            <Chip c={c}>{SPECIES_LABEL[pet.species]}</Chip>
-            {pet.size ? <Chip c={c}>{SIZE_LABEL[pet.size]}</Chip> : null}
-            {pet.age_group && pet.age_group !== 'unknown' ? <Chip c={c}>{AGE_LABEL[pet.age_group]}</Chip> : null}
-            {pet.sex && pet.sex !== 'unknown' ? <Chip c={c}>{SEX_LABEL[pet.sex]}</Chip> : null}
-            {pet.color ? <Chip c={c}>{pet.color}</Chip> : null}
-            {pet.vaccinated ? <Chip c={c}>💉 Vacunado</Chip> : null}
-            {pet.neutered ? <Chip c={c}>✂️ Castrado</Chip> : null}
+          <View style={styles.titleBlock}>
+            <StatusChip status={adopted ? 'adopted' : 'adoption'} style={styles.statusChip} />
+            <Text style={[styles.name, { color: c.title }]}>{name}</Text>
+            <View style={styles.traits}>
+              <Trait c={c}>{SPECIES_LABEL[pet.species]}</Trait>
+              {pet.size ? <Trait c={c}>{SIZE_LABEL[pet.size]}</Trait> : null}
+              {pet.age_group && pet.age_group !== 'unknown' ? <Trait c={c}>{AGE_LABEL[pet.age_group]}</Trait> : null}
+              {pet.sex && pet.sex !== 'unknown' ? <Trait c={c}>{SEX_LABEL[pet.sex]}</Trait> : null}
+              {pet.color ? <Trait c={c}>{pet.color}</Trait> : null}
+              {pet.vaccinated ? <Trait c={c} icon={Syringe}>Vacunado</Trait> : null}
+              {pet.neutered ? <Trait c={c} icon={Scissors}>Castrado</Trait> : null}
+            </View>
           </View>
 
           {pet.description ? (
-            <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+            <View style={[styles.card, { backgroundColor: c.card }]}>
+              <Text style={[styles.label, { color: c.text }]}>Sobre {name}</Text>
               <Text style={[styles.body, { color: c.text }]}>{pet.description}</Text>
             </View>
           ) : null}
 
           {/* Refugio */}
-          <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-            <Text style={[styles.sectionKicker, { color: c.subtitle }]}>REFUGIO</Text>
+          <View style={[styles.card, styles.shelterCard, { backgroundColor: c.card }]}>
+            <Text style={[styles.label, { color: c.text }]}>Refugio</Text>
             <Pressable
               onPress={() => router.push(`/shelters/${pet.shelter_slug}`)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}
+              style={styles.shelterRow}
             >
               {pet.shelter_logo ? (
-                <Image source={{ uri: pet.shelter_logo }} style={styles.shelterLogo} />
+                <Image source={{ uri: pet.shelter_logo }} style={[styles.shelterLogo, { backgroundColor: c.arena }]} />
               ) : (
-                <View style={[styles.shelterLogo, styles.shelterLogoFallback]}>
-                  <Text style={styles.shelterLogoLetter}>{pet.shelter_name?.charAt(0) || '?'}</Text>
+                <View style={[styles.shelterLogo, styles.shelterLogoFallback, { backgroundColor: shelterColor }]}>
+                  <Text style={[styles.shelterLogoLetter, { color: onColor(shelterColor) }]}>
+                    {pet.shelter_name?.charAt(0) || '?'}
+                  </Text>
                 </View>
               )}
-              <View style={{ flex: 1 }}>
+              <View style={styles.flex}>
                 <Text style={[styles.shelterName, { color: c.title }]} numberOfLines={1}>{pet.shelter_name}</Text>
                 {pet.shelter_city ? (
-                  <Text style={[styles.shelterCity, { color: c.subtitle }]}>📍 {pet.shelter_city}</Text>
+                  <View style={styles.cityRow}>
+                    <MapPin size={14} color={c.text} strokeWidth={2} />
+                    <Text style={[styles.shelterCity, { color: c.text }]}>{pet.shelter_city}</Text>
+                  </View>
                 ) : null}
               </View>
-              <Text style={{ color: c.subtitle, fontSize: 20 }}>›</Text>
+              <ChevronRight size={20} color={c.text} strokeWidth={2} />
             </Pressable>
 
-            {!adopted ? (
-              <View style={{ marginTop: 16, gap: 8 }}>
-                {whatsappHref ? (
-                  <Pressable onPress={openLink(whatsappHref)} style={[styles.ctaBtn, { backgroundColor: '#1A1A2E' }]}>
-                    <Text style={styles.ctaBtnText}>💬 Contactar por WhatsApp</Text>
-                  </Pressable>
+            <View style={styles.ctas}>
+              {/* Sin "Llamar": el contacto con el refugio va por WhatsApp o
+                  mail, que dejan la conversación escrita. */}
+              {!adopted && whatsappHref ? (
+                <Button variant="dark" icon={MessageCircle} title="Contactar por WhatsApp" onPress={openLink(whatsappHref)} />
+              ) : null}
+              <View style={styles.ctaRow}>
+                {!adopted && emailHref ? (
+                  <Button variant="outline" icon={Mail} title="Email" onPress={openLink(emailHref)} style={styles.halfBtn} />
                 ) : null}
-                {pet.shelter_email ? (
-                  <Pressable onPress={openLink(`mailto:${pet.shelter_email}?subject=Consulta%20por%20adopci%C3%B3n%20-%20${encodeURIComponent(pet.name || 'mascota')}`)}
-                    style={[styles.ctaBtnGhost, { borderColor: c.cardBorder }]}>
-                    <Text style={[styles.ctaBtnGhostText, { color: c.title }]}>✉️  Email</Text>
-                  </Pressable>
-                ) : null}
-                {/* Sin "Llamar": el contacto con el refugio va por WhatsApp o
-                    mail, que dejan la conversación escrita. */}
+                {/* Difundir una adopción es la forma más directa de que aparezca
+                    alguien, así que el botón va siempre — incluso si ya fue
+                    adoptada, para poder compartir el final feliz. */}
+                <Button variant="outline" icon={Share2} title="Compartir" onPress={handleShare} style={styles.halfBtn} />
               </View>
-            ) : null}
-
-            {/* Difundir una adopción es la forma más directa de que aparezca
-                alguien, así que el botón va siempre — incluso si ya fue
-                adoptada, para poder compartir el final feliz. */}
-            <Pressable
-              onPress={handleShare}
-              style={[styles.ctaBtnGhost, { borderColor: c.cardBorder, marginTop: 16 }]}
-            >
-              <Text style={[styles.ctaBtnGhostText, { color: c.title }]}>🔗  Compartir</Text>
-            </Pressable>
+            </View>
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  centered: { alignItems: 'center', justifyContent: 'center', padding: 20 },
-  headerTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: 20, paddingBottom: 8,
+  centered: { alignItems: 'center', justifyContent: 'center', padding: 20, gap: 12 },
+  flex: { flex: 1, minWidth: 0 },
+
+  hero: { height: 380, alignItems: 'center', justifyContent: 'center' },
+  heroBar: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  back: { fontSize: 15, fontWeight: '600' },
+  backPill: {
+    height: 44,
+    paddingLeft: 8,
+    paddingRight: 14,
+    borderRadius: 999,
+    backgroundColor: palette.violeta,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  backPillText: { fontFamily: fonts.bold, fontSize: 14, color: palette.arena },
   adoptedOverlay: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(26,26,46,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adoptedPill: {
+    height: 48,
+    paddingHorizontal: 20,
+    borderRadius: 999,
+    backgroundColor: palette.crema,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   adoptedText: {
-    backgroundColor: '#FF5C6C', color: '#fff', paddingHorizontal: 16, paddingVertical: 6,
-    borderRadius: 999, fontSize: 12, fontWeight: '800', letterSpacing: 1.5,
+    fontFamily: fonts.display, fontSize: 18, letterSpacing: 0.7, textTransform: 'uppercase', color: palette.noche,
   },
-  thumb: { width: 60, height: 60, borderRadius: 12, borderWidth: 2, overflow: 'hidden' },
-  thumbImg: { width: '100%', height: '100%' },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
-  name: { fontSize: 32, fontWeight: '800', letterSpacing: -0.8, marginTop: 4 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 16 },
-  section: {
-    marginTop: 20, padding: 20, borderRadius: 24, borderWidth: 1,
+
+  sheet: {
+    marginTop: -32,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 20,
   },
-  sectionKicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
-  body: { fontSize: 14, lineHeight: 21 },
-  shelterLogo: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F0EBE8' },
-  shelterLogoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  shelterLogoLetter: { color: '#fff', fontWeight: '800', fontSize: 20 },
-  shelterName: { fontSize: 16, fontWeight: '800' },
-  shelterCity: { fontSize: 12, fontWeight: '500', marginTop: 3 },
-  ctaBtn: { borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
-  ctaBtnText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1 },
-  ctaBtnGhost: { borderRadius: 999, paddingVertical: 14, alignItems: 'center', borderWidth: 1 },
-  ctaBtnGhostText: { fontSize: 13, fontWeight: '700' },
-  notFoundTitle: { fontSize: 60, fontWeight: '700' },
-  notFoundText: { fontSize: 14, marginTop: 8, marginBottom: 24 },
-  backBtn: { backgroundColor: '#1A1A2E', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999 },
-  backBtnText: { color: '#fff', fontWeight: '700' },
+  thumbs: { gap: 8 },
+  thumb: { width: 64, height: 64, borderRadius: 16, overflow: 'hidden' },
+  thumbActive: { borderWidth: 3, borderColor: palette.violeta },
+
+  titleBlock: { gap: 10 },
+  statusChip: { paddingHorizontal: 12, paddingVertical: 4 },
+  name: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38 },
+  traits: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  trait: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  traitText: { fontFamily: fonts.medium, fontSize: 13 },
+
+  card: { borderRadius: 24, padding: 18, gap: 8 },
+  shelterCard: { gap: 16 },
+  label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  shelterRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shelterLogo: { width: 52, height: 52, borderRadius: 16 },
+  shelterLogoFallback: { alignItems: 'center', justifyContent: 'center' },
+  shelterLogoLetter: { fontFamily: fonts.display, fontSize: 22 },
+  shelterName: { fontFamily: fonts.display, fontSize: 17 },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  shelterCity: { fontFamily: fonts.regular, fontSize: 13 },
+  ctas: { gap: 10 },
+  ctaRow: { flexDirection: 'row', gap: 10 },
+  halfBtn: { flex: 1, height: 52, paddingHorizontal: 12 },
+
+  notFoundTitle: { fontFamily: fonts.display, fontSize: 60 },
+  notFoundText: { fontFamily: fonts.regular, fontSize: 15, textAlign: 'center' },
+  notFoundBtn: { alignSelf: 'stretch', marginTop: 8 },
 });

@@ -4,6 +4,7 @@
 // su línea con el nombre en kebab-case (ver lucide.dev/icons).
 export { default as ArrowUpRight } from 'lucide-react-native/icons/arrow-up-right';
 export { default as Bell } from 'lucide-react-native/icons/bell';
+export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Camera } from 'lucide-react-native/icons/camera';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as ChevronDown } from 'lucide-react-native/icons/chevron-down';
@@ -20,6 +21,9 @@ export { default as MessageCircle } from 'lucide-react-native/icons/message-circ
 export { default as PawPrint } from 'lucide-react-native/icons/paw-print';
 export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as Search } from 'lucide-react-native/icons/search';
+export { default as Share2 } from 'lucide-react-native/icons/share-2';
+export { default as Shield } from 'lucide-react-native/icons/shield';
 export { default as Star } from 'lucide-react-native/icons/star';
 export { default as Stethoscope } from 'lucide-react-native/icons/stethoscope';
+export { default as Trash2 } from 'lucide-react-native/icons/trash-2';
 export { default as User } from 'lucide-react-native/icons/user';

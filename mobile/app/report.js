@@ -314,7 +314,7 @@ export default function Find() {
             </Text>
             <View style={styles.results}>
               {matches.map((pet) => (
-                <PetCard key={pet.id} pet={pet} onPress={() => router.push(`/pet/${pet.id}`)} />
+                <PetCard key={pet.id} pet={pet} onPress={() => router.push(`/pet/${pet.id}?origen=coincidencias`)} />
               ))}
             </View>
 

@@ -45,3 +45,15 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   carrusel "Nuestros socios" ni anuncios en Explorar. Arreglo sugerido: usar
   `getLastKnownPositionAsync` o ponerle un timeout, y si no hay posición pedir los
   anuncios sin coordenadas (orden por plan).
+- **El mapa de la ficha de mascota no muestra el mapa** · `src/components/PetMap.js` ·
+  los tiles de CARTO (`basemaps.cartocdn.com`) ahora devuelven una imagen
+  "API KEY REQUIRED": se ve el punto pero no las calles. Hay que cambiar de proveedor
+  de tiles (p. ej. OpenStreetMap con su política de uso, o una key gratuita de
+  Stadia/MapTiler). Revisar si la web usa los mismos tiles.
+
+## Diseño que contradice decisiones ya tomadas (no se implementó)
+
+- **"Marcar como reunida" en la ficha propia** (`Mascota-propia.dc.html`) · en el
+  commit `0a765fc` se decidió que el caso se cierra **solo desde el chat** (opción A).
+  La ficha propia muestra "Esta es tu publicación", Compartir y Eliminar, y "Reabrir"
+  si ya está cerrada. Si querés el botón de vuelta, es reactivar `handleResolve(true)`.

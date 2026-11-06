@@ -5,6 +5,8 @@
 export { default as ArrowUpRight } from 'lucide-react-native/icons/arrow-up-right';
 export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as Camera } from 'lucide-react-native/icons/camera';
+export { default as Check } from 'lucide-react-native/icons/check';
+export { default as ChevronDown } from 'lucide-react-native/icons/chevron-down';
 export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left';
 export { default as HeartHandshake } from 'lucide-react-native/icons/heart-handshake';
 export { default as House } from 'lucide-react-native/icons/house';
@@ -13,6 +15,7 @@ export { default as Map } from 'lucide-react-native/icons/map';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
+export { default as PawPrint } from 'lucide-react-native/icons/paw-print';
 export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as Star } from 'lucide-react-native/icons/star';

@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, Pressable, Image, TextInput, StyleSheet, ActivityIndicator, Modal,
+  View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator, Modal, useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import api from '../../src/lib/api';
-import { useTheme } from '../../src/lib/theme';
-import MenuButton from '../../src/components/MenuButton';
+import { useTheme, palette, fonts, sectionColors } from '../../src/lib/theme';
+import { ChevronDown, Check, HouseHeart, PawPrint } from '../../src/lib/icons';
+import SectionHeader from '../../src/components/SectionHeader';
+import SearchBar from '../../src/components/SearchBar';
+import StatusChip from '../../src/components/StatusChip';
+import Button from '../../src/components/Button';
+import TabBar, { useTabBarSpace } from '../../src/components/TabBar';
 
 const PAGE_LIMIT = 20;
 
@@ -21,13 +25,13 @@ const SPECIES_FILTERS = [
   { key: 'other', label: 'Otros' },
 ];
 const SIZE_FILTERS = [
-  { key: '', label: 'Cualquier tamaño' },
+  { key: '', label: 'Cualquiera' },
   { key: 'small', label: 'Chico' },
   { key: 'medium', label: 'Mediano' },
   { key: 'large', label: 'Grande' },
 ];
 const SEX_FILTERS = [
-  { key: '', label: 'Cualquier sexo' },
+  { key: '', label: 'Cualquiera' },
   { key: 'male', label: 'Macho' },
   { key: 'female', label: 'Hembra' },
 ];
@@ -35,22 +39,24 @@ const SEX_FILTERS = [
 // Dropdown genérico: botón que abre un modal con la lista de opciones.
 // RN no tiene <select> nativo; usar el picker de @react-native-picker suma dep.
 // Cada opción es { key, label }. `value` matchea contra `key`.
-function Dropdown({ label, value, options, onChange, c, activeColor = '#1A1A2E' }) {
+function Dropdown({ label, value, options, onChange, c }) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => String(o.key) === String(value)) || options[0];
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${current?.label || ''}`}
         style={[styles.dropdownBtn, { backgroundColor: c.card, borderColor: c.cardBorder }]}
       >
-        <Text style={[styles.dropdownLabel, { color: c.subtitle }]}>{label}</Text>
-        <View style={styles.dropdownRow}>
+        <View style={styles.dropdownTexts}>
+          <Text style={[styles.dropdownLabel, { color: c.text }]}>{label}</Text>
           <Text style={[styles.dropdownValue, { color: c.title }]} numberOfLines={1}>
             {current?.label || '—'}
           </Text>
-          <Text style={[styles.dropdownCaret, { color: c.subtitle }]}>▾</Text>
         </View>
+        <ChevronDown size={18} color={c.text} strokeWidth={2} />
       </Pressable>
       <Modal
         visible={open}
@@ -69,12 +75,17 @@ function Dropdown({ label, value, options, onChange, c, activeColor = '#1A1A2E' 
                 return (
                   <Pressable
                     onPress={() => { onChange(item.key); setOpen(false); }}
-                    style={[styles.modalRow, active && { backgroundColor: `${activeColor}18` }]}
+                    style={[styles.modalRow, active && { backgroundColor: c.bg }]}
                   >
-                    <Text style={[styles.modalRowText, { color: active ? activeColor : c.title }]}>
+                    <Text
+                      style={[
+                        styles.modalRowText,
+                        { color: c.title, fontFamily: active ? fonts.bold : fonts.medium },
+                      ]}
+                    >
                       {item.label}
                     </Text>
-                    {active ? <Text style={[styles.modalCheck, { color: activeColor }]}>✓</Text> : null}
+                    {active ? <Check size={18} color={palette.violeta} strokeWidth={2.5} /> : null}
                   </Pressable>
                 );
               }}
@@ -86,40 +97,40 @@ function Dropdown({ label, value, options, onChange, c, activeColor = '#1A1A2E' 
   );
 }
 
-function PetCard({ pet, c, onPress }) {
+function AdoptionCard({ pet, c, onPress, width }) {
   const photo = pet.photos?.[0];
   const adopted = !!pet.adopted_at;
+  const meta = [
+    SPECIES_LABEL[pet.species],
+    pet.size ? SIZE_LABEL[pet.size] : null,
+    pet.age_group && pet.age_group !== 'unknown' ? AGE_LABEL[pet.age_group] : null,
+  ].filter(Boolean).join(' · ');
   return (
-    <Pressable onPress={onPress} style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-      <View style={styles.imgWrap}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, { width, backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
+    >
+      <View style={[styles.imgWrap, { backgroundColor: c.arena }]}>
         {photo ? (
-          <Image source={{ uri: photo }} style={styles.img} />
+          <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} />
         ) : (
-          <View style={[styles.img, { backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }]}>
-            <Text style={{ fontSize: 42 }}>🐾</Text>
-          </View>
+          <PawPrint size={36} color={c.text} strokeWidth={2} />
         )}
-        {adopted ? (
-          <View style={styles.adoptedOverlay}>
-            <Text style={styles.adoptedText}>ADOPTADO</Text>
-          </View>
-        ) : null}
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>En adopción</Text>
-        </View>
+        <StatusChip status={adopted ? 'adopted' : 'adoption'} style={styles.chip} />
       </View>
-      <View style={{ padding: 14 }}>
+      <View style={styles.cardBody}>
         <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
           {pet.name || 'Sin nombre'}
         </Text>
-        <Text style={[styles.meta, { color: c.subtitle }]} numberOfLines={1}>
-          {SPECIES_LABEL[pet.species]}
-          {pet.size ? ` · ${SIZE_LABEL[pet.size]}` : ''}
-          {pet.age_group && pet.age_group !== 'unknown' ? ` · ${AGE_LABEL[pet.age_group]}` : ''}
-        </Text>
-        <Text style={[styles.shelter, { color: c.text }]} numberOfLines={1}>
-          🏡 {pet.shelter_name}{pet.shelter_city ? ` · ${pet.shelter_city}` : ''}
-        </Text>
+        {meta ? (
+          <Text style={[styles.meta, { color: c.text }]} numberOfLines={1}>{meta}</Text>
+        ) : null}
+        <View style={styles.shelterRow}>
+          <HouseHeart size={14} color={c.text} strokeWidth={2} />
+          <Text style={[styles.shelter, { color: c.text }]} numberOfLines={1}>
+            {pet.shelter_name}{pet.shelter_city ? ` · ${pet.shelter_city}` : ''}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -129,13 +140,16 @@ const EMPTY_FILTERS = { species: '', size: '', sex: '', city: '', shelter_id: ''
 
 export default function Adoptions() {
   const c = useTheme();
+  const bottomSpace = useTabBarSpace();
+  // Dos columnas de ancho fijo: con un número impar la última no se estira.
+  const cardWidth = (useWindowDimensions().width - 40 - 12) / 2;
   const [pets, setPets] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   // City input tiene draft (typing) + committed (aplicado tras submit).
   const [cityDraft, setCityDraft] = useState('');
-  // Refugios activos para los chips. Se cargan una vez.
+  // Refugios activos para el dropdown. Se cargan una vez.
   const [shelters, setShelters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -156,7 +170,7 @@ export default function Adoptions() {
 
   useEffect(() => { fetchPets(1, EMPTY_FILTERS); /* eslint-disable-next-line */ }, []);
 
-  // Refugios para los chips. Cap 50 (limit del server).
+  // Refugios para el dropdown. Cap 50 (limit del server).
   useEffect(() => {
     api.get('/api/shelters', { params: { limit: 50 } })
       .then(({ data }) => setShelters(data.shelters || []))
@@ -176,190 +190,158 @@ export default function Adoptions() {
   const hasMore = pets.length < total;
 
   const header = (
-    <View>
-      <View style={styles.headerTop}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-        </Pressable>
-        <MenuButton />
-      </View>
-      <Text style={[styles.kicker, { color: c.subtitle }]}>REFUGIOS MIMO</Text>
-      <Text style={[styles.title, { color: c.title }]}>En adopción.</Text>
-      <Text style={[styles.subtitle, { color: c.subtitle }]}>
-        Mascotas que están esperando una familia. Contactá al refugio directamente.
-      </Text>
+    <View style={styles.headerWrap}>
+      <SectionHeader
+        color={sectionColors.adopcion}
+        kicker="Refugios Mimo"
+        title="En adopción"
+        subtitle="Mascotas que están esperando una familia. Contactá al refugio directamente."
+        style={styles.sectionHeader}
+      />
 
-      {/* Dropdowns 2x2 (especie/tamaño y sexo/refugio) — ciudad va con input aparte. */}
-      <View style={styles.dropdownGrid}>
-        <Dropdown
-          label="Especie"
-          value={filters.species}
-          options={SPECIES_FILTERS}
-          onChange={(v) => setFilter('species', v)}
-          c={c}
-          activeColor="#FF5C6C"
-        />
-        <Dropdown
-          label="Tamaño"
-          value={filters.size}
-          options={SIZE_FILTERS}
-          onChange={(v) => setFilter('size', v)}
-          c={c}
-        />
-      </View>
-      <View style={styles.dropdownGrid}>
-        <Dropdown
-          label="Sexo"
-          value={filters.sex}
-          options={SEX_FILTERS}
-          onChange={(v) => setFilter('sex', v)}
-          c={c}
-          activeColor="#9B6DFF"
-        />
-        <Dropdown
-          label="Refugio"
-          value={filters.shelter_id}
-          options={[
-            { key: '', label: 'Todos los refugios' },
-            ...shelters.map((s) => ({ key: String(s.id), label: s.name })),
-          ]}
-          onChange={(v) => setFilter('shelter_id', v)}
-          c={c}
-          activeColor="#3ECFB2"
-        />
-      </View>
+      <View style={styles.filters}>
+        {/* Dropdowns 2x2 (especie/tamaño y sexo/refugio) — ciudad va con input aparte. */}
+        <View style={styles.dropdownGrid}>
+          <Dropdown
+            label="Especie"
+            value={filters.species}
+            options={SPECIES_FILTERS}
+            onChange={(v) => setFilter('species', v)}
+            c={c}
+          />
+          <Dropdown
+            label="Tamaño"
+            value={filters.size}
+            options={SIZE_FILTERS}
+            onChange={(v) => setFilter('size', v)}
+            c={c}
+          />
+        </View>
+        <View style={styles.dropdownGrid}>
+          <Dropdown
+            label="Sexo"
+            value={filters.sex}
+            options={SEX_FILTERS}
+            onChange={(v) => setFilter('sex', v)}
+            c={c}
+          />
+          <Dropdown
+            label="Refugio"
+            value={filters.shelter_id}
+            options={[
+              { key: '', label: 'Todos' },
+              ...shelters.map((s) => ({ key: String(s.id), label: s.name })),
+            ]}
+            onChange={(v) => setFilter('shelter_id', v)}
+            c={c}
+          />
+        </View>
 
-      {/* Ciudad: text input con submit. */}
-      <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-        <TextInput
+        <SearchBar
           value={cityDraft}
           onChangeText={setCityDraft}
+          onSubmit={submitCity}
           placeholder="Ciudad (Montevideo, Salto…)"
-          placeholderTextColor={c.subtitle}
-          style={[styles.input, { color: c.title }]}
-          returnKeyType="search"
-          onSubmitEditing={submitCity}
         />
-        <Pressable onPress={submitCity} style={styles.searchBtn}>
-          <Text style={styles.searchBtnText}>Buscar</Text>
-        </Pressable>
-      </View>
 
-      <Text style={[styles.count, { color: c.subtitle }]}>
-        {total} {total === 1 ? 'RESULTADO' : 'RESULTADOS'}
-      </Text>
+        <Text style={[styles.count, { color: c.text }]}>
+          {total} {total === 1 ? 'resultado' : 'resultados'}
+        </Text>
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       {loading ? (
-        <View style={{ padding: 20 }}>
+        <View>
           {header}
           <ActivityIndicator color={c.title} style={{ marginTop: 40 }} />
         </View>
       ) : (
         <FlatList
           data={pets}
+          numColumns={2}
           keyExtractor={(item) => String(item.id)}
+          columnWrapperStyle={styles.column}
           renderItem={({ item }) => (
-            <PetCard vet={item} pet={item} c={c} onPress={() => router.push(`/adoptions/${item.id}`)} />
+            <AdoptionCard pet={item} c={c} width={cardWidth} onPress={() => router.push(`/adoptions/${item.id}`)} />
           )}
           ListHeaderComponent={header}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={{ paddingBottom: bottomSpace }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.subtitle }]}>
+            <Text style={[styles.empty, { color: c.text }]}>
               No encontramos mascotas con esos filtros.
             </Text>
           }
           ListFooterComponent={
             hasMore ? (
-              <Pressable
+              <Button
+                variant="outline"
+                title={loadingMore ? 'Cargando…' : 'Cargar más'}
                 onPress={() => fetchPets(page + 1, filters, true)}
                 disabled={loadingMore}
-                style={[styles.moreBtn, { borderColor: c.cardBorder }]}
-              >
-                <Text style={[styles.moreBtnText, { color: c.text }]}>
-                  {loadingMore ? 'Cargando…' : 'Cargar más'}
-                </Text>
-              </Pressable>
+                style={styles.moreBtn}
+                textStyle={styles.moreBtnText}
+              />
             ) : null
           }
         />
       )}
-    </SafeAreaView>
+
+      <TabBar />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 20, paddingBottom: 40, gap: 12 },
-  headerTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
-  },
-  back: { fontSize: 15, fontWeight: '600' },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2.5 },
-  title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.8, marginTop: 6 },
-  subtitle: { fontSize: 13, marginTop: 10, lineHeight: 19 },
-  dropdownGrid: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  headerWrap: { marginBottom: 12 },
+  sectionHeader: { marginBottom: 20 },
+  filters: { paddingHorizontal: 20, gap: 10 },
+  dropdownGrid: { flexDirection: 'row', gap: 10 },
   dropdownBtn: {
-    flex: 1, borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10,
+    flex: 1,
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
   },
-  dropdownLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  dropdownRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 4, gap: 6,
-  },
-  dropdownValue: { fontSize: 13, fontWeight: '700', flex: 1 },
-  dropdownCaret: { fontSize: 12, fontWeight: '700' },
+  dropdownTexts: { flex: 1, minWidth: 0, gap: 1 },
+  dropdownLabel: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.66, textTransform: 'uppercase' },
+  dropdownValue: { fontFamily: fonts.bold, fontSize: 14 },
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end',
+    flex: 1, backgroundColor: 'rgba(26,26,46,0.4)', justifyContent: 'flex-end',
   },
   modalSheet: {
     borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 16, paddingBottom: 24, maxHeight: '70%',
   },
   modalTitle: {
-    fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textAlign: 'center', marginBottom: 12,
+    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase',
+    textAlign: 'center', marginBottom: 12,
   },
   modalRow: {
     paddingVertical: 14, paddingHorizontal: 20,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  modalRowText: { fontSize: 15, fontWeight: '600' },
-  modalCheck: { fontSize: 16, fontWeight: '800' },
-  searchBar: {
-    marginTop: 10, borderRadius: 999, borderWidth: 1, padding: 4,
-    flexDirection: 'row', alignItems: 'center',
+  modalRowText: { fontSize: 15 },
+  count: {
+    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginTop: 6,
   },
-  input: { flex: 1, paddingHorizontal: 18, paddingVertical: 10, fontSize: 14, fontWeight: '500' },
-  searchBtn: { backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
-  searchBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  count: { fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginTop: 20, marginBottom: 4 },
-  card: {
-    borderRadius: 24, borderWidth: 1, overflow: 'hidden',
-  },
-  imgWrap: { position: 'relative', aspectRatio: 4 / 3, backgroundColor: '#F0EBE8' },
-  img: { width: '100%', height: '100%' },
-  badge: {
-    position: 'absolute', top: 12, left: 12,
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: 'rgba(26,26,46,0.8)',
-  },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  adoptedOverlay: {
-    position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  adoptedText: {
-    backgroundColor: '#FF5C6C', color: '#fff', paddingHorizontal: 12, paddingVertical: 4,
-    borderRadius: 999, fontSize: 10, fontWeight: '800', letterSpacing: 1.5,
-  },
-  name: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
-  meta: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginTop: 4, textTransform: 'uppercase' },
-  shelter: { fontSize: 12, fontWeight: '600', marginTop: 6 },
-  empty: { textAlign: 'center', fontSize: 14, marginTop: 40 },
-  moreBtn: {
-    borderRadius: 999, paddingVertical: 14, alignItems: 'center', borderWidth: 1, marginTop: 12,
-  },
-  moreBtnText: { fontWeight: '700', fontSize: 13 },
+  column: { gap: 12, paddingHorizontal: 20, marginBottom: 12 },
+  card: { borderRadius: 22, overflow: 'hidden' },
+  imgWrap: { height: 150, alignItems: 'center', justifyContent: 'center' },
+  chip: { position: 'absolute', top: 10, left: 10 },
+  cardBody: { padding: 12, gap: 3 },
+  name: { fontFamily: fonts.display, fontSize: 17 },
+  meta: { fontFamily: fonts.regular, fontSize: 12 },
+  shelterRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  shelter: { flex: 1, fontFamily: fonts.bold, fontSize: 12 },
+  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 40, paddingHorizontal: 20 },
+  moreBtn: { height: 52, borderRadius: 16, marginHorizontal: 20, marginTop: 4 },
+  moreBtnText: { fontSize: 15 },
 });

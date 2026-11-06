@@ -10,21 +10,22 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../src/lib/api';
-import { useTheme } from '../src/lib/theme';
+import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
+import { MapPin } from '../src/lib/icons';
 import PetCard from '../src/components/PetCard';
-import MenuButton from '../src/components/MenuButton';
+import SectionHeader from '../src/components/SectionHeader';
+import ChipGroup from '../src/components/ChipGroup';
+import TabBar, { useTabBarSpace } from '../src/components/TabBar';
 import { tierOf } from '../src/lib/sponsorTiers';
-import SponsorBadge from '../src/components/SponsorBadge';
 import { trackAdClick, trackImpressionOnce } from '../src/lib/vetTracking';
 
 const FILTERS = [
-  { key: 'all', label: 'Todos' },
-  { key: 'lost', label: 'Perdidos' },
-  { key: 'found', label: 'Encontrados' },
+  { value: 'all', label: 'Todos' },
+  { value: 'lost', label: 'Perdidos' },
+  { value: 'found', label: 'Encontrados' },
 ];
 const AD_INTERVAL = 6;
 
@@ -37,52 +38,46 @@ const onFeedViewable = ({ viewableItems }) => {
   }
 };
 
-// Card de publicidad de un vet sponsor. Estilo distinto del PetCard (borde
-// dorado + label "Publicidad") para no confundir con contenido orgánico.
+// Card de publicidad de un vet sponsor. Distinta del PetCard (borde del
+// color del plan + etiqueta "Publicidad") para no confundir con contenido
+// orgánico.
 function VetAdCard({ vet, c, onPress, style }) {
-  const tier = tierOf(vet);
-  const color = tier?.color || '#FF5C6C';
+  const color = tierOf(vet)?.color || palette.coral;
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.adCard,
-        {
-          backgroundColor: c.card,
-          borderColor: color,
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.22,
-          shadowRadius: 12,
-          elevation: 4,
-        },
+        { backgroundColor: c.card, borderColor: color, opacity: pressed ? 0.85 : 1 },
         style,
       ]}
     >
-      <View style={styles.adBadge}>
-        <Text style={styles.adBadgeText}>Publicidad</Text>
-      </View>
-      <View style={styles.adCoverWrap}>
+      <View style={[styles.adCover, { backgroundColor: c.arena }]}>
         {vet.cover_url ? (
-          <Image source={{ uri: vet.cover_url }} style={styles.adCover} />
+          <Image source={{ uri: vet.cover_url }} style={StyleSheet.absoluteFill} />
+        ) : vet.logo_url ? (
+          <Image source={{ uri: vet.logo_url }} style={styles.adCenterLogo} />
         ) : (
-          <View style={[styles.adCover, styles.adCoverPlaceholder]}>
-            {vet.logo_url ? (
-              <Image source={{ uri: vet.logo_url }} style={styles.adCenterLogo} />
-            ) : (
-              <View style={styles.adCenterFallback}>
-                <Text style={styles.adCenterFallbackText}>{vet.name.charAt(0)}</Text>
-              </View>
-            )}
+          <View style={styles.adCenterFallback}>
+            <Text style={styles.adCenterFallbackText}>{vet.name.charAt(0)}</Text>
           </View>
         )}
+        <View style={styles.adBadge}>
+          <Text style={styles.adBadgeText}>Publicidad</Text>
+        </View>
       </View>
       <View style={styles.adBody}>
-        <SponsorBadge vet={vet} width={110} />
         <Text style={[styles.adName, { color: c.title }]} numberOfLines={2}>{vet.name}</Text>
-        {vet.city ? <Text style={[styles.adCity, { color: c.subtitle }]}>📍 {vet.city}</Text> : null}
-        {vet.bio ? <Text style={[styles.adBio, { color: c.subtitle }]} numberOfLines={2}>{vet.bio}</Text> : null}
-        <Text style={[styles.adCta, { color }]}>Ver perfil →</Text>
+        {vet.city ? (
+          <View style={styles.iconRow}>
+            <MapPin size={14} color={c.text} strokeWidth={2} />
+            <Text style={[styles.adSecondary, { color: c.text }]}>{vet.city}</Text>
+          </View>
+        ) : null}
+        {vet.bio ? (
+          <Text style={[styles.adSecondary, { color: c.text }]} numberOfLines={2}>{vet.bio}</Text>
+        ) : null}
+        <Text style={[styles.adCta, { color: c.text }]}>Ver perfil →</Text>
       </View>
     </Pressable>
   );
@@ -91,6 +86,7 @@ function VetAdCard({ vet, c, onPress, style }) {
 export default function Pets() {
   const c = useTheme();
   const { width } = useWindowDimensions();
+  const bottomSpace = useTabBarSpace();
   const numColumns = width >= 700 ? 2 : 1;
   const [pets, setPets] = useState([]);
   const [ads, setAds] = useState([]);
@@ -151,38 +147,15 @@ export default function Pets() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-          </Pressable>
-          <MenuButton />
-        </View>
-        <Text style={[styles.title, { color: c.title }]}>Explorar</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <SectionHeader
+        color={sectionColors.explorar}
+        title="Explorar"
+        subtitle="Reportes de mascotas en tu zona."
+      />
 
       <View style={styles.filters}>
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              onPress={() => setFilter(f.key)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: active ? c.primary : c.card,
-                  borderColor: active ? c.primary : c.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.chipText, { color: active ? c.primaryText : c.subtitle }]}>
-                {f.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <ChipGroup options={FILTERS} value={filter} onChange={setFilter} c={c} />
       </View>
 
       {loading ? (
@@ -227,64 +200,75 @@ export default function Pets() {
           )}
           onViewableItemsChanged={onFeedViewable}
           viewabilityConfig={AD_VIEWABILITY}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomSpace }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.title} />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.subtitle }]}>
+            <Text style={[styles.empty, { color: c.text }]}>
               {error || 'No hay mascotas para mostrar todavía.'}
             </Text>
           }
         />
       )}
-    </SafeAreaView>
+
+      <TabBar />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 8, gap: 4 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  back: { fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
-  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 16 },
-  chip: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 13, fontWeight: '600' },
-  list: { paddingHorizontal: 20, paddingBottom: 32 },
+  filters: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
+  list: { paddingHorizontal: 20 },
   columnWrapper: { gap: 12 },
   gridCard: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { textAlign: 'center', marginTop: 48, fontSize: 14, fontWeight: '500' },
+  empty: { textAlign: 'center', marginTop: 48, fontFamily: fonts.medium, fontSize: 15 },
 
   adCard: {
     borderRadius: 24,
     borderWidth: 2,
     padding: 12,
     marginBottom: 12,
+    gap: 12,
+  },
+  adCover: {
+    height: 168,
+    borderRadius: 18,
     overflow: 'hidden',
-    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   adBadge: {
     position: 'absolute',
-    top: 20,
-    left: 20,
+    top: 10,
+    left: 10,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    zIndex: 10,
-    backgroundColor: 'rgba(26,26,46,0.75)',
+    backgroundColor: 'rgba(26,26,46,0.8)',
   },
-  adBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  adCoverWrap: { borderRadius: 18, overflow: 'hidden', aspectRatio: 4 / 3, backgroundColor: '#F0EBE8' },
-  adCover: { width: '100%', height: '100%' },
-  adCoverPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  adCenterLogo: { width: 96, height: 96, borderRadius: 24 },
-  adCenterFallback: { width: 96, height: 96, borderRadius: 24, backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  adCenterFallbackText: { color: '#fff', fontSize: 40, fontWeight: '900' },
-  adBody: { padding: 8, gap: 6 },
-  adName: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  adCity: { fontSize: 11, fontWeight: '600' },
-  adBio: { fontSize: 12, lineHeight: 16, marginTop: 4 },
-  adCta: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8 },
+  adBadgeText: {
+    color: palette.crema,
+    fontFamily: fonts.bold,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  adCenterLogo: { width: 80, height: 80, borderRadius: 22 },
+  adCenterFallback: {
+    width: 80,
+    height: 80,
+    borderRadius: 22,
+    backgroundColor: palette.coral,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  adCenterFallbackText: { color: palette.arena, fontFamily: fonts.display, fontSize: 36 },
+  adBody: { paddingHorizontal: 6, paddingBottom: 6, gap: 4 },
+  adName: { fontFamily: fonts.display, fontSize: 20 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  adSecondary: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+  adCta: { fontFamily: fonts.bold, fontSize: 13, marginTop: 6 },
 });

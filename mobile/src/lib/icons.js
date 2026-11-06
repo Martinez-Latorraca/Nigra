@@ -12,6 +12,7 @@ export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right
 export { default as HeartHandshake } from 'lucide-react-native/icons/heart-handshake';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as HouseHeart } from 'lucide-react-native/icons/house-heart';
+export { default as Locate } from 'lucide-react-native/icons/locate';
 export { default as Map } from 'lucide-react-native/icons/map';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as Menu } from 'lucide-react-native/icons/menu';

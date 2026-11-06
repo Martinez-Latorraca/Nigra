@@ -3,21 +3,24 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   Pressable,
   Image,
-  TextInput,
   StyleSheet,
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../../src/lib/api';
-import { useTheme } from '../../src/lib/theme';
-import MenuButton from '../../src/components/MenuButton';
+import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
+import { Stethoscope, ChevronRight, Star, MapPin, Locate } from '../../src/lib/icons';
 import { tierOf } from '../../src/lib/sponsorTiers';
+import SectionHeader from '../../src/components/SectionHeader';
+import SearchBar from '../../src/components/SearchBar';
 import SponsorBadge from '../../src/components/SponsorBadge';
+import Button from '../../src/components/Button';
+import TabBar, { useTabBarSpace } from '../../src/components/TabBar';
 import { trackAdClick, trackImpressionOnce } from '../../src/lib/vetTracking';
 
 const PAGE_LIMIT = 20;
@@ -38,71 +41,90 @@ const SERVICE_CATALOG = [
   'Atención a domicilio',
 ];
 
+// Color del cuadrado con la inicial cuando la vet no tiene logo.
+// Fijo por id para que no cambie entre cargas.
+const FALLBACK_COLORS = [palette.violeta, palette.teal, palette.noche, palette.coral, palette.sol];
+const fallbackColor = (id) => FALLBACK_COLORS[Number(id) % FALLBACK_COLORS.length] || palette.coral;
+
+function Logo({ vet, size, radius, color }) {
+  if (vet.logo_url) {
+    return (
+      <Image
+        source={{ uri: vet.logo_url }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: palette.arena }}
+      />
+    );
+  }
+  return (
+    <View style={[styles.logoFallback, { width: size, height: size, borderRadius: radius, backgroundColor: color }]}>
+      <Text style={[styles.logoLetter, { fontSize: size * 0.43, color: onColor(color) }]}>{vet.name.charAt(0)}</Text>
+    </View>
+  );
+}
+
 function VetCard({ vet, onPress, c }) {
-  const tier = tierOf(vet);
+  const services = vet.services || [];
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.card,
-        {
-          backgroundColor: c.card,
-          borderColor: tier ? tier.color : c.cardBorder,
-          borderWidth: tier ? 2 : 1,
-          // Sombra del color del tier solo para sponsors.
-          shadowColor: tier ? tier.color : '#000',
-          shadowOffset: { width: 0, height: tier ? 6 : 2 },
-          shadowOpacity: tier ? 0.22 : 0.05,
-          shadowRadius: tier ? 12 : 4,
-          elevation: tier ? 4 : 1,
-        },
-      ]}
+      style={({ pressed }) => [styles.card, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
     >
-      {tier && (
-        <View style={styles.sponsorBadge}>
-          <SponsorBadge vet={vet} width={95} />
-        </View>
-      )}
       <View style={styles.cardRow}>
-        {vet.logo_url ? (
-          <Image source={{ uri: vet.logo_url }} style={styles.logo} />
-        ) : (
-          <View style={[styles.logo, styles.logoFallback]}>
-            <Text style={styles.logoLetter}>{vet.name.charAt(0)}</Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
-            {vet.name}
-          </Text>
+        <Logo vet={vet} size={56} radius={18} color={fallbackColor(vet.id)} />
+        <View style={styles.cardTexts}>
+          <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>{vet.name}</Text>
           {vet.city ? (
-            <Text style={[styles.city, { color: c.subtitle }]} numberOfLines={1}>
-              📍 {vet.city}
-            </Text>
+            <View style={styles.cityRow}>
+              <MapPin size={14} color={c.text} strokeWidth={2} />
+              <Text style={[styles.city, { color: c.text }]} numberOfLines={1}>{vet.city}</Text>
+            </View>
           ) : null}
         </View>
+        <ChevronRight size={20} color={c.text} strokeWidth={2} />
       </View>
+      <SponsorBadge vet={vet} />
       {vet.bio ? (
-        <Text style={[styles.bio, { color: c.text }]} numberOfLines={2}>
-          {vet.bio}
-        </Text>
+        <Text style={[styles.bio, { color: c.text }]} numberOfLines={2}>{vet.bio}</Text>
       ) : null}
-      {vet.services && vet.services.length > 0 ? (
+      {services.length > 0 ? (
         <View style={styles.services}>
-          {vet.services.slice(0, 3).map((s) => (
-            <View key={s} style={[styles.chip, { backgroundColor: c.bg }]}>
-              <Text style={[styles.chipText, { color: c.subtitle }]}>{s}</Text>
+          {services.slice(0, 3).map((s) => (
+            <View key={s} style={[styles.serviceChip, { backgroundColor: c.bg }]}>
+              <Text style={[styles.serviceChipText, { color: c.text }]}>{s}</Text>
             </View>
           ))}
-          {vet.services.length > 3 ? (
-            <View style={[styles.chip, { backgroundColor: c.bg }]}>
-              <Text style={[styles.chipText, { color: c.subtitle }]}>
-                +{vet.services.length - 3}
-              </Text>
+          {services.length > 3 ? (
+            <View style={[styles.serviceChip, { backgroundColor: c.bg }]}>
+              <Text style={[styles.serviceChipText, { color: c.text }]}>+{services.length - 3}</Text>
             </View>
           ) : null}
         </View>
       ) : null}
+    </Pressable>
+  );
+}
+
+// Chip de filtro: activo = Noche con texto Crema.
+function FilterChip({ label, active, onPress, disabled, icon: Icon, c }) {
+  const fg = active ? palette.crema : c.text;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active, disabled }}
+      style={[
+        styles.filterChip,
+        active
+          ? { backgroundColor: palette.noche, borderColor: palette.noche }
+          : { backgroundColor: c.card, borderColor: c.cardBorder },
+        disabled && { opacity: 0.5 },
+      ]}
+    >
+      {Icon ? <Icon size={16} color={fg} strokeWidth={2} /> : null}
+      <Text style={[styles.filterChipText, { color: fg, fontFamily: active ? fonts.bold : fonts.medium }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -116,6 +138,7 @@ const onAdsViewable = ({ viewableItems }) => {
 
 export default function VetsList() {
   const c = useTheme();
+  const bottomSpace = useTabBarSpace();
   const [vets, setVets] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -222,148 +245,127 @@ export default function VetsList() {
   const hasMore = vets.length < total;
 
   const header = (
-    <View>
-      <View style={styles.headerTop}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-        </Pressable>
-        <MenuButton />
-      </View>
+    <View style={styles.headerWrap}>
+      <SectionHeader
+        color={sectionColors.veterinarias}
+        kicker="Directorio Mimo"
+        title="Veterinarias aliadas"
+        subtitle="Encontrá una veterinaria cerca tuyo. Las marcadas como Socio Mimo colaboran activamente con la comunidad."
+        style={styles.sectionHeader}
+      />
 
-      <Text style={[styles.kicker, { color: c.subtitle }]}>DIRECTORIO MIMO</Text>
-      <Text style={[styles.title, { color: c.title }]}>Veterinarias aliadas.</Text>
-      <Text style={[styles.subtitle, { color: c.subtitle }]}>
-        Encontrá una veterinaria cerca tuyo. Las marcadas como ⭐ Socio Mimo colaboran
-        activamente con la comunidad.
-      </Text>
-
-      <Pressable
-        onPress={() => router.push('/vets/register')}
-        style={styles.registerCta}
-      >
-        <Text style={styles.registerCtaIcon}>🏥</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.registerCtaTitle}>Registrá tu veterinaria</Text>
-          <Text style={styles.registerCtaSub}>Sumate a la red y publicá mascotas encontradas.</Text>
-        </View>
-        <Text style={styles.registerCtaArrow}>›</Text>
-      </Pressable>
-
-      {/* Banner de Socios Mimo (publicidad) — carousel horizontal */}
-      {ads.length > 0 ? (
-        <View style={{ marginTop: 20 }}>
-          <View style={styles.adBannerHeader}>
-            <Text style={styles.adBannerKicker}>⭐ NUESTROS SOCIOS</Text>
-            <Text style={[styles.adBannerLabel, { color: c.subtitle }]}>Publicidad</Text>
+      <View style={styles.blocks}>
+        <Pressable
+          onPress={() => router.push('/vets/register')}
+          style={({ pressed }) => [styles.registerCta, { opacity: pressed ? 0.85 : 1 }]}
+        >
+          <View style={styles.registerIcon}>
+            <Stethoscope size={24} color={palette.arena} strokeWidth={2} />
           </View>
-          <FlatList
-            data={ads}
+          <View style={styles.registerTexts}>
+            <Text style={styles.registerTitle}>Registrá tu veterinaria</Text>
+            <Text style={styles.registerSub}>Sumate a la red y publicá mascotas encontradas.</Text>
+          </View>
+          <ChevronRight size={20} color={palette.arena} strokeWidth={2} />
+        </Pressable>
+
+        {/* Banner de Socios Mimo (publicidad) — carrusel horizontal */}
+        {ads.length > 0 ? (
+          <View style={styles.adsSection}>
+            <View style={styles.adsHeader}>
+              <View style={styles.adsTitleRow}>
+                <Star size={18} color={palette.sol} fill={palette.sol} strokeWidth={2} />
+                <Text style={[styles.adsTitle, { color: c.title }]}>Nuestros socios</Text>
+              </View>
+              <Text style={[styles.adsLabel, { color: c.text }]}>Publicidad</Text>
+            </View>
+            <FlatList
+              data={ads}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(v) => String(v.id)}
+              style={styles.bleed}
+              contentContainerStyle={styles.adsList}
+              onViewableItemsChanged={onAdsViewable}
+              viewabilityConfig={AD_VIEWABILITY}
+              renderItem={({ item: v }) => {
+                const color = tierOf(v)?.color || palette.coral;
+                return (
+                  <Pressable
+                    onPress={() => { trackAdClick(v.id); router.push(`/vets/${v.slug}`); }}
+                    style={({ pressed }) => [
+                      styles.adItem,
+                      { backgroundColor: c.card, borderColor: color, opacity: pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    <View style={styles.adTop}>
+                      <Logo vet={v} size={44} radius={14} color={color} />
+                      <View style={styles.cardTexts}>
+                        <Text style={[styles.adName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
+                        {v.city ? (
+                          <Text style={[styles.adCity, { color: c.text }]} numberOfLines={1}>{v.city}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <SponsorBadge vet={v} />
+                    {v.bio ? (
+                      <Text style={[styles.adBio, { color: c.text }]} numberOfLines={2}>{v.bio}</Text>
+                    ) : null}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        ) : null}
+
+        <View style={styles.filters}>
+          <SearchBar
+            value={city}
+            onChangeText={setCity}
+            onSubmit={submit}
+            placeholder="Ciudad (Montevideo, Salto…)"
+          />
+
+          {/* Filtros: Cerca mío + chips por servicio */}
+          <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(v) => String(v.id)}
-            contentContainerStyle={{ gap: 10, paddingRight: 8 }}
-            onViewableItemsChanged={onAdsViewable}
-            viewabilityConfig={AD_VIEWABILITY}
-            renderItem={({ item: v }) => {
-              const t = tierOf(v);
-              const borderColor = t?.color || '#FF5C6C';
-              return (
-                <Pressable
-                  onPress={() => { trackAdClick(v.id); router.push(`/vets/${v.slug}`); }}
-                  style={[styles.adBannerItem, { backgroundColor: c.card, borderColor }]}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    {v.logo_url ? (
-                      <Image source={{ uri: v.logo_url }} style={styles.adBannerLogo} />
-                    ) : (
-                      <View style={[styles.adBannerLogo, styles.adBannerLogoFallback]}>
-                        <Text style={styles.adBannerLogoLetter}>{v.name.charAt(0)}</Text>
-                      </View>
-                    )}
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.adBannerName, { color: c.title }]} numberOfLines={1}>{v.name}</Text>
-                      {v.city ? <Text style={[styles.adBannerCity, { color: c.subtitle }]} numberOfLines={1}>📍 {v.city}</Text> : null}
-                    </View>
-                  </View>
-                  <SponsorBadge vet={v} width={95} style={{ marginTop: 4 }} />
-                  {v.bio ? <Text style={[styles.adBannerBio, { color: c.subtitle }]} numberOfLines={2}>{v.bio}</Text> : null}
-                </Pressable>
-              );
-            }}
-          />
-        </View>
-      ) : null}
-
-      <View style={[styles.searchBar, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-        <TextInput
-          value={city}
-          onChangeText={setCity}
-          placeholder="Ciudad (Montevideo, Salto…)"
-          placeholderTextColor={c.subtitle}
-          style={[styles.input, { color: c.title }]}
-          returnKeyType="search"
-          onSubmitEditing={submit}
-        />
-        <Pressable onPress={submit} style={styles.searchBtn}>
-          <Text style={styles.searchBtnText}>Buscar</Text>
-        </Pressable>
-      </View>
-
-      {/* Filtros: Cerca mío + chips por servicio */}
-      <View style={styles.filtersRow}>
-        <Pressable
-          onPress={toggleNearMe}
-          disabled={geoLoading}
-          style={[
-            styles.filterChip,
-            coords
-              ? { backgroundColor: '#3ECFB2', borderColor: '#3ECFB2' }
-              : { backgroundColor: c.card, borderColor: c.cardBorder },
-            geoLoading && { opacity: 0.5 },
-          ]}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              { color: coords ? '#fff' : c.title },
-            ]}
+            style={styles.bleed}
+            contentContainerStyle={styles.chipsRow}
           >
-            {geoLoading ? 'Ubicando…' : coords ? '📍 Cerca mío ✓' : '📍 Cerca mío'}
-          </Text>
-        </Pressable>
-        {SERVICE_CATALOG.map((s) => {
-          const active = servicesSelected.has(s);
-          return (
-            <Pressable
-              key={s}
-              onPress={() => toggleService(s)}
-              style={[
-                styles.filterChip,
-                active
-                  ? { backgroundColor: '#FF5C6C', borderColor: '#FF5C6C' }
-                  : { backgroundColor: c.card, borderColor: c.cardBorder },
-              ]}
-            >
-              <Text style={[styles.filterChipText, { color: active ? '#fff' : c.title }]}>
-                {active ? '✓ ' : ''}{s}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            <FilterChip
+              label={geoLoading ? 'Ubicando…' : 'Cerca mío'}
+              icon={Locate}
+              active={!!coords}
+              disabled={geoLoading}
+              onPress={toggleNearMe}
+              c={c}
+            />
+            {SERVICE_CATALOG.map((s) => (
+              <FilterChip
+                key={s}
+                label={s}
+                active={servicesSelected.has(s)}
+                onPress={() => toggleService(s)}
+                c={c}
+              />
+            ))}
+          </ScrollView>
 
-      {!loading && (
-        <Text style={[styles.count, { color: c.subtitle }]}>
-          {total} {total === 1 ? 'RESULTADO' : 'RESULTADOS'}
-        </Text>
-      )}
+          {!loading && (
+            <Text style={[styles.count, { color: c.text }]}>
+              {total} {total === 1 ? 'resultado' : 'resultados'}
+            </Text>
+          )}
+        </View>
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       {loading ? (
-        <View style={styles.center}>
+        <View>
           {header}
           <ActivityIndicator color={c.title} style={{ marginTop: 40 }} />
         </View>
@@ -375,113 +377,101 @@ export default function VetsList() {
             <VetCard vet={item} c={c} onPress={() => router.push(`/vets/${item.slug}`)} />
           )}
           ListHeaderComponent={header}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={{ paddingBottom: bottomSpace }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.subtitle }]}>
+            <Text style={[styles.empty, { color: c.text }]}>
               Todavía no hay veterinarias por acá.
             </Text>
           }
           ListFooterComponent={
             hasMore ? (
-              <Pressable
+              <Button
+                variant="outline"
+                title={loadingMore ? 'Cargando…' : 'Cargar más'}
                 onPress={() => fetchVets(page + 1, committedCity, servicesSelected, coords, true)}
                 disabled={loadingMore}
-                style={[styles.moreBtn, { borderColor: c.cardBorder }]}
-              >
-                <Text style={[styles.moreBtnText, { color: c.text }]}>
-                  {loadingMore ? 'Cargando…' : 'Cargar más'}
-                </Text>
-              </Pressable>
+                style={styles.moreBtn}
+                textStyle={styles.moreBtnText}
+              />
             ) : null
           }
         />
       )}
-    </SafeAreaView>
+
+      <TabBar />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  center: { padding: 20 },
-  scroll: { padding: 20, paddingBottom: 40, gap: 12 },
-  headerTop: {
+  headerWrap: { marginBottom: 12 },
+  sectionHeader: { marginBottom: 20 },
+  blocks: { paddingHorizontal: 20, gap: 24 },
+  // Los carruseles van de borde a borde aunque el bloque tenga padding 20.
+  bleed: { marginHorizontal: -20 },
+
+  registerCta: {
+    backgroundColor: palette.coral,
+    borderRadius: 24,
+    padding: 16,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    gap: 14,
   },
-  back: { fontSize: 15, fontWeight: '600' },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2.5 },
-  title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.8, marginTop: 6 },
-  subtitle: { fontSize: 13, marginTop: 10, lineHeight: 19 },
-  searchBar: {
-    marginTop: 20,
+  registerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerTexts: { flex: 1, gap: 2 },
+  registerTitle: { fontFamily: fonts.display, fontSize: 17, color: palette.arena },
+  registerSub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: palette.arena },
+
+  adsSection: { gap: 12 },
+  adsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  adsTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  adsTitle: { fontFamily: fonts.display, fontSize: 20 },
+  adsLabel: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  adsList: { gap: 12, paddingHorizontal: 20, paddingBottom: 4 },
+  adItem: { width: 220, borderRadius: 22, borderWidth: 2, padding: 14, gap: 10 },
+  adTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  adName: { fontFamily: fonts.display, fontSize: 16 },
+  adCity: { fontFamily: fonts.regular, fontSize: 12 },
+  adBio: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+
+  filters: { gap: 10 },
+  chipsRow: { gap: 8, paddingHorizontal: 20 },
+  filterChip: {
+    height: 40,
+    paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-    padding: 4,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  input: { flex: 1, paddingHorizontal: 18, paddingVertical: 10, fontSize: 14, fontWeight: '500' },
-  searchBtn: { backgroundColor: '#1A1A2E', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 },
-  searchBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  filtersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
-  filterChip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  filterChipText: { fontSize: 12, fontWeight: '700' },
-  count: { fontSize: 10, fontWeight: '700', letterSpacing: 1.8, marginTop: 24, marginBottom: 4 },
-  card: {
-    borderRadius: 24,
-    padding: 18,
-    borderWidth: 1,
-    position: 'relative',
-  },
-  sponsorBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 10 },
-  logo: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#E5E7EB' },
-  logoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  logoLetter: { color: '#fff', fontWeight: '800', fontSize: 22 },
-  name: { fontSize: 16, fontWeight: '700' },
-  city: { fontSize: 12, fontWeight: '500', marginTop: 3 },
-  bio: { fontSize: 13, lineHeight: 18, marginTop: 4 },
-  services: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  chip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  chipText: { fontSize: 10, fontWeight: '700' },
-  empty: { textAlign: 'center', fontSize: 14, marginTop: 40 },
-  moreBtn: { borderRadius: 999, paddingVertical: 14, alignItems: 'center', borderWidth: 1, marginTop: 12 },
-  moreBtnText: { fontWeight: '700', fontSize: 13 },
-  registerCta: {
-    marginTop: 20,
-    padding: 14,
-    borderRadius: 20,
-    backgroundColor: '#1A1A2E',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  registerCtaIcon: { fontSize: 22 },
-  registerCtaTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  registerCtaSub: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
-  registerCtaArrow: { color: 'rgba(255,255,255,0.6)', fontSize: 22, fontWeight: '300' },
-
-  adBannerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  adBannerKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: '#C98800' },
-  adBannerLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
-  adBannerItem: {
-    // borderColor viene inline por tier de la vet
-    width: 220,
-    borderRadius: 18,
-    borderWidth: 2,
-    padding: 12,
     gap: 6,
   },
-  adBannerLogo: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F0EBE8' },
-  adBannerLogoFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  adBannerLogoLetter: { color: '#fff', fontWeight: '800', fontSize: 18 },
-  adBannerName: { fontSize: 13, fontWeight: '800' },
-  adBannerCity: { fontSize: 10, fontWeight: '600' },
-  adBannerBio: { fontSize: 11, lineHeight: 15, marginTop: 4 },
+  filterChipText: { fontSize: 14 },
+  count: {
+    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginTop: 6,
+  },
+
+  card: { borderRadius: 24, padding: 16, gap: 12, marginHorizontal: 20, marginBottom: 12 },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  cardTexts: { flex: 1, minWidth: 0, gap: 2 },
+  logoFallback: { alignItems: 'center', justifyContent: 'center' },
+  logoLetter: { fontFamily: fonts.display },
+  name: { fontFamily: fonts.display, fontSize: 18 },
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  city: { flex: 1, fontFamily: fonts.regular, fontSize: 13 },
+  bio: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  services: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  serviceChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  serviceChipText: { fontFamily: fonts.medium, fontSize: 12 },
+  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 40, paddingHorizontal: 20 },
+  moreBtn: { height: 52, borderRadius: 16, marginHorizontal: 20, marginTop: 4 },
+  moreBtnText: { fontSize: 15 },
 });

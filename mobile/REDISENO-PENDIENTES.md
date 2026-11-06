@@ -35,3 +35,13 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 - **Mensajes:** buscador de conversaciones.
 - **Refugio pendiente:** botón "Enviar comprobantes" (mailto).
 - **Adopción adoptada:** tarjeta "Final feliz" con botón a otras mascotas en adopción.
+
+## Bugs encontrados al rediseñar (no son visuales, no se tocaron)
+
+- **Los anuncios de vets sponsor pueden no aparecer nunca** · `app/pets.js` y
+  `app/vets/index.js` · si el usuario dio permiso de ubicación pero el teléfono no
+  tiene posición (GPS sin señal, bajo techo, emulador), `getCurrentPositionAsync`
+  queda esperando para siempre y el pedido a `/api/vets/ads` nunca sale: no hay
+  carrusel "Nuestros socios" ni anuncios en Explorar. Arreglo sugerido: usar
+  `getLastKnownPositionAsync` o ponerle un timeout, y si no hay posición pedir los
+  anuncios sin coordenadas (orden por plan).

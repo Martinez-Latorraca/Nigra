@@ -28,6 +28,11 @@ export default function SectionHeader({
   const { open } = useSidebar();
   const { unreadCount } = useSocket();
   const fg = onColor(color);
+  // Sobre Noche el diseño usa botones más tenues y kicker/bajada en gris claro.
+  const dark = color === palette.noche;
+  const btnBg = dark ? 'rgba(255,255,255,0.12)' : undefined;
+  const kickerColor = dark ? '#B4B4C6' : fg;
+  const subtitleColor = dark ? '#D9D9E3' : fg;
 
   return (
     <View style={[styles.header, { backgroundColor: color, paddingTop: 16 + insets.top }, style]}>
@@ -36,6 +41,7 @@ export default function SectionHeader({
           <IconButton
             icon={ChevronLeft}
             color={fg}
+            backgroundColor={btnBg}
             accessibilityLabel="Volver"
             onPress={onBack || (() => router.back())}
           />
@@ -44,7 +50,7 @@ export default function SectionHeader({
         )}
         {right ??
           (showMenu ? (
-            <IconButton icon={Menu} iconSize={22} color={fg} accessibilityLabel="Menú" onPress={open}>
+            <IconButton icon={Menu} iconSize={22} color={fg} backgroundColor={btnBg} accessibilityLabel="Menú" onPress={open}>
               {unreadCount > 0 ? <View style={[styles.dot, { borderColor: color }]} /> : null}
             </IconButton>
           ) : null)}
@@ -52,9 +58,9 @@ export default function SectionHeader({
 
       {kicker || title || subtitle ? (
         <View style={styles.texts}>
-          {kicker ? <Text style={[styles.kicker, { color: fg }]}>{kicker}</Text> : null}
+          {kicker ? <Text style={[styles.kicker, { color: kickerColor }]}>{kicker}</Text> : null}
           {title ? <Text style={[styles.title, { color: fg }]}>{title}</Text> : null}
-          {subtitle ? <Text style={[styles.subtitle, { color: fg }]}>{subtitle}</Text> : null}
+          {subtitle ? <Text style={[styles.subtitle, { color: subtitleColor }]}>{subtitle}</Text> : null}
         </View>
       ) : null}
 

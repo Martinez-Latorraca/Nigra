@@ -1,0 +1,37 @@
+# Rediseño — funcionalidades nuevas pendientes
+
+El rediseño (handoff en `Downloads/mimo design/HANDOFF.md`) se implementa **solo en lo
+visual**. Todo lo que el diseño muestra y la app todavía no hace queda **oculto** y se
+anota acá, para decidirlo y hacerlo aparte.
+
+Formato: qué es · dónde aparece en el diseño · qué haría falta.
+
+## Navegación
+
+- **Pantalla Mapa** · tab "Mapa" de la barra inferior, link "Ver mapa" de la Home ·
+  `Mapa.dc.html`: mapa a pantalla completa, buscador, chips de filtro, pins de reportes
+  (Coral perdido / Teal encontrado), refugios (cuadrado Sol), vets (cuadrado Noche),
+  clusters, ubicación del usuario con radio de alertas, tarjeta del pin seleccionado.
+  Hoy el tab Mapa se ve **deshabilitado** (decisión explícita) y el link "Ver mapa" no está.
+
+## Home (`Home-v2.dc.html`)
+
+- **"Cerca tuyo"** · carrusel de reportes con distancia ("a 0,8 km") · `GET /api/pets`
+  no filtra ni ordena por distancia: hace falta aceptar `lat`/`lng` en el servidor y
+  pedir ubicación en la app.
+- **Mimo Protect** · tarjeta "Registrá a tu mascota y pedí su chapita QR" · la feature
+  del tag QR no existe (está en el roadmap como parte del wedge).
+- **Héroes Mimo** · tarjeta de niveles ("Sos Vecino", 2/5, "Compartí 3 reportes más
+  para llegar a Rastreador") · no hay sistema de niveles ni conteo de compartidos.
+- **Modo oscuro** · `Home-v2-oscuro.dc.html` · los tokens oscuros ya están en
+  `src/lib/theme.js`, pero `app.json` fuerza `userInterfaceStyle: "light"`. Activarlo
+  requiere revisar todas las pantallas en oscuro.
+
+## Ya listadas en el handoff ("Funcionalidad nueva")
+
+- **Chat:** botón para enviar fotos (hoy solo texto).
+- **Cámara:** selector Perro/Gato y siluetas nuevas (Lucide `dog`/`cat`, trazo fijo).
+  Ojo: `SILHOUETTE_DP = 400` también define el recorte.
+- **Mensajes:** buscador de conversaciones.
+- **Refugio pendiente:** botón "Enviar comprobantes" (mailto).
+- **Adopción adoptada:** tarjeta "Final feliz" con botón a otras mascotas en adopción.

@@ -65,6 +65,11 @@ function RootLayout() {
         return () => clearTimeout(t);
     }, []);
 
+    // Patrón de la doc de Expo: no renderizar nada hasta tener las fuentes
+    // (el splash nativo sigue visible). Si montamos las pantallas antes,
+    // Android mide los textos con la fuente del sistema y después los corta.
+    if (!fontsReady) return null;
+
     return (
         <Provider store={store}>
             <PersistGate loading={null} persistor={persistor}>
@@ -73,13 +78,11 @@ function RootLayout() {
                         <SafeAreaProvider>
                             <View style={{ flex: 1, backgroundColor: '#FFF6F0' }} onLayout={onLayoutRootView}>
                                 <StatusBar style="auto" />
-                                {/* El Stack se monta siempre (expo-router lo exige para
-                                    navegar); el Splash lo tapa hasta que cargan las fuentes. */}
                                 <SidebarProvider>
                                     <Stack screenOptions={{ headerShown: false }} />
                                     <BannerHost />
                                 </SidebarProvider>
-                                {(showCustomSplash || !fontsReady) && (
+                                {showCustomSplash && (
                                     <Splash onFinish={() => setShowCustomSplash(false)} />
                                 )}
                             </View>

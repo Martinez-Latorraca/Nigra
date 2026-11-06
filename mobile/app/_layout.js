@@ -8,6 +8,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
+import { useFonts } from 'expo-font';
+import { Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { store, persistor } from '../src/store/store';
 import { SocketProvider } from '../src/lib/socket';
 import { SidebarProvider } from '../src/lib/sidebar';
@@ -36,6 +39,16 @@ Sentry.init({
 
 function RootLayout() {
     const [showCustomSplash, setShowCustomSplash] = useState(true);
+    // Nombres de familia en src/lib/theme.js (fonts). Si la carga falla
+    // seguimos igual con la fuente del sistema: no bloqueamos la app.
+    const [fontsLoaded, fontError] = useFonts({
+        Nunito_800ExtraBold,
+        Nunito_900Black,
+        DMSans_400Regular,
+        DMSans_500Medium,
+        DMSans_700Bold,
+    });
+    const fontsReady = fontsLoaded || !!fontError;
 
     const onLayoutRootView = useCallback(async () => {
         try {
@@ -60,11 +73,13 @@ function RootLayout() {
                         <SafeAreaProvider>
                             <View style={{ flex: 1, backgroundColor: '#FFF6F0' }} onLayout={onLayoutRootView}>
                                 <StatusBar style="auto" />
+                                {/* El Stack se monta siempre (expo-router lo exige para
+                                    navegar); el Splash lo tapa hasta que cargan las fuentes. */}
                                 <SidebarProvider>
                                     <Stack screenOptions={{ headerShown: false }} />
                                     <BannerHost />
                                 </SidebarProvider>
-                                {showCustomSplash && (
+                                {(showCustomSplash || !fontsReady) && (
                                     <Splash onFinish={() => setShowCustomSplash(false)} />
                                 )}
                             </View>

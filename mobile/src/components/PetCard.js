@@ -1,34 +1,37 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { MapPin, ArrowUpRight, Stethoscope } from '../lib/icons';
 import { translateType, translateColor } from '../lib/translations';
-import { useTheme } from '../lib/theme';
+import { useTheme, palette, fonts } from '../lib/theme';
+import StatusChip from './StatusChip';
 
+// Tarjeta de reporte en los listados (estilo de pantallas/Explorar).
 export default function PetCard({ pet, onPress, style }) {
   const c = useTheme();
   const isLost = pet.status === 'lost';
-  const statusColor = isLost ? '#EF4444' : '#22C55E';
 
   const matchPercentage =
     pet.visual_distance !== undefined ? ((1 - pet.visual_distance) * 100).toFixed(0) : null;
 
   const title = isLost ? pet.name || 'Sin nombre' : 'Encontrado';
 
+  const footer = matchPercentage
+    ? `${matchPercentage}% de coincidencia`
+    : pet.distance_km
+    ? `A ${parseFloat(pet.distance_km).toFixed(1)} km`
+    : `Mimo ID #${pet.id}`;
+
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }, style]}
+      style={({ pressed }) => [styles.card, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }, style]}
     >
-      {/* Imagen cuadrada */}
-      <Image source={{ uri: pet.photo_url }} style={[styles.image, { backgroundColor: c.inputBg }]} />
+      <Image source={{ uri: pet.photo_url }} style={[styles.image, { backgroundColor: c.arena }]} />
 
-      {/* Contenido */}
       <View style={styles.body}>
         <View style={styles.topRow}>
-          <View style={[styles.badge, { backgroundColor: statusColor }]}>
-            <Text style={styles.badgeText}>{isLost ? 'Perdido' : 'Encontrado'}</Text>
-          </View>
-
-          <Text style={[styles.kicker, { color: '#0d945c' }]} numberOfLines={1}>
-            {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' • ')}
+          <StatusChip status={pet.status} />
+          <Text style={[styles.kicker, { color: c.text }]} numberOfLines={1}>
+            {[translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ')}
           </Text>
         </View>
 
@@ -37,36 +40,37 @@ export default function PetCard({ pet, onPress, style }) {
         </Text>
 
         {pet.description && pet.description !== 'Desconocido' ? (
-          <Text style={[styles.description, { color: c.subtitle }]} numberOfLines={1}>
+          <Text style={[styles.secondary, { color: c.text }]} numberOfLines={1}>
             {pet.description}
           </Text>
         ) : null}
 
         {pet.address ? (
-          <Text style={[styles.address, { color: c.subtitle }]} numberOfLines={1}>
-            📍 {pet.address}
-          </Text>
+          <View style={styles.iconRow}>
+            <MapPin size={14} color={c.text} strokeWidth={2} />
+            <Text style={[styles.secondary, styles.flex, { color: c.text }]} numberOfLines={1}>
+              {pet.address}
+            </Text>
+          </View>
         ) : null}
 
         {pet.vet_name ? (
           <View style={styles.vetBadge}>
-            <Text style={styles.vetBadgeIcon}>🏥</Text>
+            <Stethoscope size={11} color={palette.crema} strokeWidth={2} />
             <Text style={styles.vetBadgeText} numberOfLines={1}>
               {pet.vet_name}
             </Text>
           </View>
         ) : null}
 
-        {/* Footer con divisor */}
         <View style={[styles.footer, { borderTopColor: c.cardBorder }]}>
-          <Text style={[styles.footerLeft, { color: matchPercentage ? '#0d945c' : c.label }]}>
-            {matchPercentage
-              ? `${matchPercentage}% de coincidencia`
-              : pet.distance_km
-              ? `📍 ${parseFloat(pet.distance_km).toFixed(1)} km`
-              : `Mimo ID #${pet.id}`}
+          <Text style={[styles.footerLeft, { color: c.text }]} numberOfLines={1}>
+            {footer}
           </Text>
-          <Text style={[styles.contact, { color: c.title }]}>Contactar ↗</Text>
+          <View style={styles.contact}>
+            <Text style={[styles.contactText, { color: c.text }]}>Contactar</Text>
+            <ArrowUpRight size={14} color={c.text} strokeWidth={2} />
+          </View>
         </View>
       </View>
     </Pressable>
@@ -76,52 +80,46 @@ export default function PetCard({ pet, onPress, style }) {
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    borderRadius: 28,
-    padding: 14,
-    gap: 16,
-    borderWidth: 1,
+    borderRadius: 24,
+    padding: 12,
+    gap: 14,
     marginBottom: 12,
   },
-  image: { width: 124, height: 124, borderRadius: 24, alignSelf: 'center' },
-  body: { flex: 1, justifyContent: 'space-between' },
+  image: { width: 104, height: 104, borderRadius: 18 },
+  body: { flex: 1, minWidth: 0, gap: 4 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  badge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  badgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, color: '#FFFFFF' },
-  matchWrap: { alignItems: 'flex-end' },
-  matchLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1 },
-  matchValue: { fontSize: 13, fontWeight: '700' },
   kicker: {
     flexShrink: 1,
+    fontFamily: fonts.bold,
     fontSize: 11,
-    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 0.66,
     textAlign: 'right',
   },
-  title: { fontSize: 19, fontWeight: '700', letterSpacing: -0.4, marginTop: 8 },
-  description: { fontSize: 13, fontWeight: '500', marginTop: 2 },
-  address: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  title: { fontFamily: fonts.display, fontSize: 18, marginTop: 2 },
+  secondary: { fontFamily: fonts.regular, fontSize: 13 },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  flex: { flex: 1 },
+  vetBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: palette.noche,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  vetBadgeText: { fontFamily: fonts.bold, fontSize: 10, color: palette.crema },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 'auto',
+    paddingTop: 8,
   },
-  footerLeft: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  contact: { fontSize: 13, fontWeight: '600' },
-  vetBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,184,48,0.15)',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 6,
-    alignSelf: 'flex-start',
-  },
-  vetBadgeIcon: { fontSize: 11 },
-  vetBadgeText: { fontSize: 10, fontWeight: '700', color: '#C98800', letterSpacing: 0.3 },
+  footerLeft: { flexShrink: 1, fontFamily: fonts.bold, fontSize: 12 },
+  contact: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  contactText: { fontFamily: fonts.bold, fontSize: 13 },
 });

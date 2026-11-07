@@ -20,6 +20,7 @@ export default function SectionHeader({
   showBack = true,
   showMenu = true,
   right,
+  centerLabel,
   children,
   style,
 }) {
@@ -48,6 +49,7 @@ export default function SectionHeader({
         ) : (
           <View style={styles.spacer} />
         )}
+        {centerLabel ? <Text style={[styles.centerLabel, { color: kickerColor }]}>{centerLabel}</Text> : null}
         {right ??
           (showMenu ? (
             <IconButton icon={Menu} iconSize={22} color={fg} backgroundColor={btnBg} accessibilityLabel="Menú" onPress={open}>
@@ -81,6 +83,7 @@ const styles = StyleSheet.create({
   spacer: { width: 44, height: 44 },
   texts: { gap: 6 },
   kicker: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  centerLabel: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38 },
   subtitle: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   dot: {

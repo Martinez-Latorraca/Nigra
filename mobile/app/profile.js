@@ -12,19 +12,23 @@ import {
   TextInput,
   Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../src/lib/api';
 import { updateLocationIfPermitted } from '../src/lib/location';
-import { useTheme } from '../src/lib/theme';
+import { useTheme, palette, fonts, sectionColors, onColor } from '../src/lib/theme';
+import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check } from '../src/lib/icons';
 import { clearCredentials, updateUserData } from '../src/store/userSlice';
-import MenuButton from '../src/components/MenuButton';
 import LinkedAccounts from '../src/components/LinkedAccounts';
 import MapPicker from '../src/components/MapPicker';
 import ShelterPanel from '../src/components/ShelterPanel';
-import { adRadiusOf } from '../src/lib/sponsorTiers';
+import { adRadiusOf, SPONSOR_TIERS } from '../src/lib/sponsorTiers';
+import SectionHeader from '../src/components/SectionHeader';
+import StatusChip from '../src/components/StatusChip';
+import SponsorBadge from '../src/components/SponsorBadge';
+import Button from '../src/components/Button';
+import TabBar, { useTabBarSpace } from '../src/components/TabBar';
 import { CONTACT_EMAIL, mailtoContact } from '../src/lib/config';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
@@ -106,10 +110,10 @@ function UserEditForm({ user, c, dispatch, onClose }) {
     }
   };
 
-  const inputStyle = [formStyles.input, { backgroundColor: c.bg, color: c.title, borderColor: c.cardBorder }];
+  const inputStyle = [formStyles.input, { backgroundColor: c.inputBg, color: c.inputText, borderColor: c.cardBorder }];
 
   return (
-    <View style={[formStyles.wrapper, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+    <View style={[formStyles.wrapper, { backgroundColor: c.card }]}>
       <View style={formStyles.headerRow}>
         <Text style={[formStyles.kicker, { color: c.subtitle }]}>EDITAR PERFIL</Text>
         <Pressable onPress={onClose} hitSlop={10}>
@@ -126,7 +130,7 @@ function UserEditForm({ user, c, dispatch, onClose }) {
             <Text style={formStyles.avatarLetter}>{(user?.name || '?').charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        <Pressable onPress={pickAvatar} disabled={uploading} style={[formStyles.pickBtn, { borderColor: c.cardBorder }]}>
+        <Pressable onPress={pickAvatar} disabled={uploading} style={formStyles.pickBtn}>
           <Text style={[formStyles.pickBtnText, { color: c.title }]}>{uploading ? 'Subiendo…' : 'Cambiar'}</Text>
         </Pressable>
       </View>
@@ -148,7 +152,7 @@ function UserEditForm({ user, c, dispatch, onClose }) {
         <Text style={formStyles.saveBtnText}>{saving ? 'Guardando…' : 'Guardar cambios'}</Text>
       </Pressable>
       {msg ? <Text style={[formStyles.savedMsg, { color: '#3ECFB2' }]}>{msg}</Text> : null}
-      {err ? <Text style={[formStyles.savedMsg, { color: '#EF4444' }]}>{err}</Text> : null}
+      {err ? <Text style={[formStyles.savedMsg, { color: palette.coral }]}>{err}</Text> : null}
     </View>
   );
 }
@@ -254,10 +258,10 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
     }
   };
 
-  const inputStyle = [formStyles.input, { backgroundColor: c.bg, color: c.title, borderColor: c.cardBorder }];
+  const inputStyle = [formStyles.input, { backgroundColor: c.inputBg, color: c.inputText, borderColor: c.cardBorder }];
 
   return (
-    <View style={[formStyles.wrapper, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+    <View style={[formStyles.wrapper, { backgroundColor: c.card }]}>
       <View style={formStyles.headerRow}>
         <Text style={[formStyles.kicker, { color: c.subtitle }]}>EDITAR PERFIL VET</Text>
         <Pressable onPress={onClose} hitSlop={10}>
@@ -271,14 +275,14 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
           {logoUrl ? (
             <Image source={{ uri: logoUrl }} style={formStyles.logoImg} />
           ) : (
-            <View style={[formStyles.logoImg, formStyles.avatarFallback]}>
-              <Text style={formStyles.avatarLetter}>{vet.name.charAt(0)}</Text>
+            <View style={[formStyles.logoImg, formStyles.avatarFallback, { backgroundColor: palette.noche }]}>
+              <Text style={[formStyles.avatarLetter, { color: palette.crema }]}>{vet.name.charAt(0)}</Text>
             </View>
           )}
           <Pressable
             onPress={() => pickAndUpload('logo')}
             disabled={uploadingKind !== null}
-            style={[formStyles.pickBtn, { borderColor: c.cardBorder }]}
+            style={formStyles.pickBtn}
           >
             <Text style={[formStyles.pickBtnText, { color: c.title }]}>
               {uploadingKind === 'logo' ? 'Subiendo…' : 'Cambiar'}
@@ -295,7 +299,7 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
           <Pressable
             onPress={() => pickAndUpload('cover')}
             disabled={uploadingKind !== null}
-            style={[formStyles.pickBtn, { borderColor: c.cardBorder }]}
+            style={formStyles.pickBtn}
           >
             <Text style={[formStyles.pickBtnText, { color: c.title }]}>
               {uploadingKind === 'cover' ? 'Subiendo…' : 'Cambiar'}
@@ -363,12 +367,12 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
                 style={[
                   formStyles.chip,
                   active
-                    ? { backgroundColor: '#FF5C6C', borderColor: '#FF5C6C' }
-                    : { backgroundColor: c.bg, borderColor: c.cardBorder },
+                    ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                    : { backgroundColor: c.card, borderColor: c.cardBorder },
                 ]}
               >
-                <Text style={[formStyles.chipText, { color: active ? '#fff' : c.title }]}>
-                  {active ? '✓ ' : ''}{s}
+                <Text style={[formStyles.chipText, { color: active ? palette.crema : c.title }]}>
+                  {s}
                 </Text>
               </Pressable>
             );
@@ -391,20 +395,59 @@ function VetEditForm({ vet, c, onClose, onSaved }) {
         <Text style={formStyles.saveBtnText}>{saving ? 'Guardando…' : 'Guardar cambios'}</Text>
       </Pressable>
       {msg ? <Text style={[formStyles.savedMsg, { color: '#3ECFB2' }]}>{msg}</Text> : null}
-      {err ? <Text style={[formStyles.savedMsg, { color: '#EF4444' }]}>{err}</Text> : null}
+      {err ? <Text style={[formStyles.savedMsg, { color: palette.coral }]}>{err}</Text> : null}
     </View>
   );
 }
 
+// ------------------------------------------------------------------ //
+// Piezas de presentación del perfil.
+// ------------------------------------------------------------------ //
 function StatTile({ label, value, hint, accent, c }) {
   return (
-    <View style={[styles.stat, { backgroundColor: c.card, borderColor: c.cardBorder, borderTopColor: accent, borderTopWidth: 3 }]}>
-      <Text style={[styles.statLabel, { color: c.subtitle }]}>{label}</Text>
+    <View style={[styles.stat, { backgroundColor: c.card, borderTopColor: accent }]}>
+      <Text style={[styles.statLabel, { color: c.text }]}>{label}</Text>
       <Text style={[styles.statValue, { color: c.title }]}>{value}</Text>
-      {hint ? <Text style={[styles.statHint, { color: c.subtitle }]}>{hint}</Text> : null}
+      {hint ? <Text style={[styles.statHint, { color: c.text }]}>{hint}</Text> : null}
     </View>
   );
 }
+
+function MetricTile({ label, value, c }) {
+  return (
+    <View style={[styles.metric, { backgroundColor: c.bg }]}>
+      <Text style={[styles.metricValue, { color: c.title }]}>{value}</Text>
+      <Text style={[styles.metricLabel, { color: c.text }]}>{label}</Text>
+    </View>
+  );
+}
+
+// Fila de la lista de reportes / alertas: foto, chip de estado, título,
+// bajada y flecha.
+function RecordRow({ photo, status, chipLabel, title, subtitle, unread, onPress, c }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
+    >
+      {photo ? (
+        <Image source={{ uri: photo }} style={[styles.rowImg, { backgroundColor: c.arena }]} />
+      ) : (
+        <View style={[styles.rowImg, { backgroundColor: c.arena }]} />
+      )}
+      <View style={styles.rowBody}>
+        <StatusChip status={status} label={chipLabel} />
+        <Text style={[styles.rowTitle, { color: c.title }]} numberOfLines={1}>{title}</Text>
+        {subtitle ? <Text style={[styles.rowSub, { color: c.text }]} numberOfLines={1}>{subtitle}</Text> : null}
+      </View>
+      {unread ? <View style={styles.unreadDot} /> : null}
+      <ChevronRight size={20} color={c.text} strokeWidth={2} />
+    </Pressable>
+  );
+}
+
+const formatDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
 // ------------------------------------------------------------------ //
 // Profile — página única para users y vets. Espejo mobile del Profile
@@ -414,6 +457,7 @@ export default function Profile() {
   const c = useTheme();
   const user = useSelector((s) => s.user.data);
   const dispatch = useDispatch();
+  const bottomSpace = useTabBarSpace();
 
   const isVet = !!user?.has_vet;
   const isShelter = !!user?.has_shelter;
@@ -551,33 +595,32 @@ export default function Profile() {
 
   // ---- Render helpers ---- //
   const renderItem = ({ item }) => {
-    const isLost = item.status === 'lost';
     const isResolved = !!item.resolved_at;
+    const status = isResolved ? 'reunited' : item.status;
+    const label = isResolved ? 'Reencontrada ✓' : STATUS_LABEL[item.status];
+    const title = item.name
+      || (item.description && item.description !== 'Desconocido' ? item.description : 'Sin descripción');
     return (
-      <Pressable
-        onPress={() => router.push(`/pet/${item.id}`)}
-        style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}
-      >
-        <Image source={{ uri: item.photo_url }} style={styles.cardImg} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.cardStatus, { color: isResolved ? '#3B82F6' : isLost ? '#EF4444' : '#22C55E' }]}>
-            {isResolved ? 'Reencontrada ✓' : isLost ? 'Buscando' : 'Registrado'}
-          </Text>
-          <Text style={[styles.cardTitle, { color: c.title }]} numberOfLines={1}>
-            {item.description && item.description !== 'Desconocido' ? item.description : 'Sin descripción'}
-          </Text>
-          <Text style={[styles.cardHint, { color: c.subtitle }]}>Ver publicación ›</Text>
-        </View>
-      </Pressable>
+      <View style={styles.itemWrap}>
+        <RecordRow
+          c={c}
+          photo={item.photo_url}
+          status={status}
+          chipLabel={label}
+          title={title}
+          subtitle="Ver publicación"
+          onPress={() => router.push(`/pet/${item.id}`)}
+        />
+      </View>
     );
   };
 
   // ---- Loading combinado ---- //
   if (loading || (isVet && !vetLoaded)) {
     return (
-      <SafeAreaView style={[styles.container, styles.center, { backgroundColor: c.bg }]}>
+      <View style={[styles.container, styles.center, { backgroundColor: c.bg }]}>
         <ActivityIndicator color={c.title} />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -592,310 +635,301 @@ export default function Profile() {
   const successRate = vetDash && vetDash.stats.total_pets > 0
     ? Math.round((vetDash.stats.resolved_pets / vetDash.stats.total_pets) * 100)
     : null;
+  const headerColor = isVet ? sectionColors.perfilVet : sectionColors.perfilUsuario;
+  const fg = onColor(headerColor);
+  const subColor = isVet ? '#D9D9E3' : palette.arena;
+
+  const editButton = (
+    <Pressable
+      onPress={() => setEditing((v) => !v)}
+      hitSlop={6}
+      style={({ pressed }) => [
+        styles.editBtn,
+        { borderColor: isVet ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.5)', opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <Pencil size={14} color={fg} strokeWidth={2} />
+      <Text style={[styles.editBtnText, { color: fg }]}>
+        {editing ? 'Cerrar' : isVet ? 'Editar perfil de la clínica' : 'Editar'}
+      </Text>
+    </Pressable>
+  );
 
   const header = (
     <View>
-      <View style={styles.headerTop}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-        </Pressable>
-        <MenuButton />
-      </View>
-
-      <Text style={[styles.kicker, { color: c.subtitle }]}>MI CUENTA</Text>
-
-      {/* HERO unificado: avatar (foto o inicial) + nombre + badges (si vet) o email (si user) */}
-      <View style={styles.heroRow}>
-        {displayAvatar ? (
-          <Image source={{ uri: displayAvatar }} style={styles.heroAvatar} />
-        ) : (
-          <View style={[styles.heroAvatar, styles.heroAvatarFallback]}>
-            <Text style={styles.heroAvatarLetter}>{displayName.charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          {/* Nombre y "Editar" en la misma línea: el botón ancho debajo del
-              hero empujaba todo el contenido útil fuera de la pantalla. */}
-          <View style={styles.nameRow}>
-            <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
-              {displayName}.
-            </Text>
-            <Pressable
-              onPress={() => setEditing((v) => !v)}
-              hitSlop={8}
-              style={[styles.editBtnSm, { borderColor: c.cardBorder, backgroundColor: c.card }]}
+      <SectionHeader color={headerColor} showBack={false} centerLabel="Mi cuenta" style={styles.sectionHeader}>
+        <View style={styles.heroRow}>
+          {displayAvatar ? (
+            <Image source={{ uri: displayAvatar }} style={[styles.avatar, isVet && styles.avatarSquare]} />
+          ) : (
+            <View
+              style={[
+                styles.avatar,
+                isVet && styles.avatarSquare,
+                { backgroundColor: isVet ? palette.crema : palette.violeta },
+              ]}
             >
-              <Text style={[styles.editBtnSmText, { color: c.title }]}>
-                {editing ? 'Cerrar' : 'Editar'}
-              </Text>
-            </Pressable>
-          </View>
-          {isVet && vet ? (
-            <View style={styles.badgeRow}>
-              {vet.is_sponsor ? (
-                <View style={styles.sponsorBadge}>
-                  <Text style={styles.sponsorText}>⭐ SOCIO MIMO</Text>
-                </View>
-              ) : (
-                <View style={[styles.miniBadge, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-                  <Text style={[styles.miniBadgeText, { color: c.subtitle }]}>ALIADA</Text>
-                </View>
-              )}
-              {!vet.approved && (
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingText}>PENDIENTE</Text>
-                </View>
-              )}
+              <Text style={styles.avatarLetter}>{displayName.charAt(0).toUpperCase()}</Text>
             </View>
-          ) : user?.email ? (
-            <Text style={[styles.email, { color: c.subtitle }]}>{user.email}</Text>
-          ) : null}
-        </View>
-      </View>
-
-      {editing ? (
-        isVet && vet ? (
-          <VetEditForm
-            vet={vet}
-            c={c}
-            onClose={() => setEditing(false)}
-            onSaved={fetchVetDashboard}
-          />
-        ) : (
-          <UserEditForm user={user} c={c} dispatch={dispatch} onClose={() => setEditing(false)} />
-        )
-      ) : null}
-
-      {/* STATS del vet — solo si es vet */}
-      {isVet && vetDash ? (
-        <View style={styles.statsGrid}>
-          <StatTile c={c} accent="#FF5C6C" label="MASCOTAS PUBLICADAS" value={vetDash.stats.total_pets} />
-          <StatTile c={c} accent="#3ECFB2" label="REENCONTRADAS"
-            value={vetDash.stats.resolved_pets}
-            hint={successRate !== null ? `${successRate}% tasa` : null}
-          />
-          <StatTile c={c} accent="#FFB830" label="ALERTAS"
-            value={vetDash.stats.total_alerts}
-            hint={vetDash.stats.unread_alerts > 0 ? `${vetDash.stats.unread_alerts} sin leer` : 'al día'}
-          />
-          <StatTile c={c} accent="#9B6DFF" label="RADIO"
-            value={`${vet.alert_radius_km} km`}
-          />
-        </View>
-      ) : null}
-
-      {/* Métricas de publicidad (solo sponsors — ally no aparece como ad) */}
-      {isVet && vet?.is_sponsor && vetDash?.ad_stats_30d ? (
-        <View style={{ marginTop: 8 }}>
-          <View style={styles.adStatsHeader}>
-            <Text style={[styles.adStatsKicker, { color: c.subtitle }]}>
-              MÉTRICAS DE PUBLICIDAD
-              {adRadiusOf(vet) ? <Text style={{ color: c.text }}>  ·  alcance {adRadiusOf(vet)} km</Text> : null}
-            </Text>
-            <Text style={[styles.adStatsSub, { color: c.subtitle }]}>Últimos 30 días</Text>
-          </View>
-          <View style={styles.statsGrid}>
-            <StatTile c={c} accent="#9B6DFF" label="IMPRESIONES"
-              value={String(vetDash.ad_stats_30d.impressions)}
-            />
-            <StatTile c={c} accent="#FF5C6C" label="CLICKS EN TU CARD"
-              value={String(vetDash.ad_stats_30d.ad_clicks)}
-            />
-            <StatTile c={c} accent="#3ECFB2" label="CONTACTOS"
-              value={String(vetDash.ad_stats_30d.contact_clicks)}
-              hint="WA · tel · web · IG"
-            />
-          </View>
-        </View>
-      ) : null}
-
-      {/* Reportes activos (user) — solo si NO es vet, para no duplicar con stats */}
-      {!isVet ? (
-        <View style={[styles.statCard, { backgroundColor: c.primary }]}>
-          <View>
-            <Text style={[styles.statCardLabel, { color: c.primaryText, opacity: 0.6 }]}>Reportes activos</Text>
-            <Text style={[styles.statNumber, { color: c.primaryText }]}>{total}</Text>
-          </View>
-          <Pressable
-            style={[styles.newBtn, { backgroundColor: c.primaryText }]}
-            onPress={() => router.push('/report')}
-          >
-            <Text style={[styles.newBtnText, { color: c.primary }]}>Nuevo reporte</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* SPONSOR CTA — solo si es vet no sponsor */}
-      {isVet && vet && !vet.is_sponsor ? (
-        <View style={styles.ctaSponsor}>
-          <Text style={styles.ctaKicker}>SUMATE COMO</Text>
-          <Text style={styles.ctaTitle}>Socio Mimo ⭐</Text>
-          <Text style={styles.ctaBody}>
-            Alcance hasta 50 km, card destacada en el directorio, badge visible en cada
-            publicación y dashboard extendido.
-          </Text>
-          <Pressable
-            onPress={() =>
-              Linking.openURL(mailtoContact('Quiero ser Socio Mimo'))
-            }
-            style={styles.ctaBtn}
-          >
-            <Text style={styles.ctaBtnText}>Contactar</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* MIS REPORTES (vet) — lista completa con paginación. Reemplaza al
-          bloque "ÚLTIMAS PUBLICACIONES" de vetDash (que estaba limitado a 5)
-          y también al bloque duplicado "Mis registros" que iba al final. */}
-      {isVet ? (
-        <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-          <Text style={[styles.sectionKicker, { color: c.subtitle }]}>MIS REPORTES</Text>
-          {reports.length === 0 ? (
-            <Text style={[styles.empty, { color: c.subtitle }]}>Todavía no publicaste ningún reporte.</Text>
-          ) : (
-            reports.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => router.push(`/pet/${p.id}`)}
-                style={[styles.itemRow, { borderColor: c.cardBorder }]}
-              >
-                {p.photo_url ? (
-                  <Image source={{ uri: p.photo_url }} style={styles.itemImg} />
-                ) : (
-                  <View style={[styles.itemImg, { backgroundColor: c.bg }]} />
-                )}
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.itemTitle, { color: c.title }]} numberOfLines={1}>
-                    {p.name || (p.status === 'lost' ? 'Sin nombre' : 'Encontrada')}
-                  </Text>
-                  <Text style={[styles.itemSub, { color: c.subtitle }]} numberOfLines={1}>
-                    {p.address || 'Sin ubicación'}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.itemChip,
-                    {
-                      backgroundColor: p.resolved_at
-                        ? '#3ECFB2'
-                        : p.status === 'lost'
-                        ? '#FF5C6C'
-                        : '#FFB830',
-                    },
-                  ]}
-                >
-                  <Text style={styles.itemChipText}>
-                    {p.resolved_at ? 'REENCONTRADA' : STATUS_LABEL[p.status]?.toUpperCase()}
-                  </Text>
-                </View>
-              </Pressable>
-            ))
           )}
-          {page < totalPages ? (
-            <Pressable
-              style={[styles.moreBtn, { borderColor: c.cardBorder, marginTop: 12 }]}
-              onPress={() => fetchReports(page + 1, true)}
-              disabled={loadingMore}
-            >
-              <Text style={[styles.moreBtnText, { color: c.text }]}>
-                {loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-
-      {/* ALERTAS RECIENTES vet */}
-      {isVet && vetDash ? (
-        <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-          <Text style={[styles.sectionKicker, { color: c.subtitle }]}>ALERTAS RECIENTES</Text>
-          {vetDash.recent_alerts.length === 0 ? (
-            <Text style={[styles.empty, { color: c.subtitle }]}>Sin alertas por ahora.</Text>
-          ) : (
-            vetDash.recent_alerts.map((a) => {
-              const isLost = a.type === 'nearby_vet_lost';
-              const petId = a.data?.pet_id;
-              return (
-                <Pressable
-                  key={a.id}
-                  onPress={() => petId && router.push(`/pet/${petId}`)}
-                  style={[styles.itemRow, { borderColor: c.cardBorder }]}
-                >
-                  {a.pet_photo ? (
-                    <Image source={{ uri: a.pet_photo }} style={styles.itemImg} />
-                  ) : (
-                    <View style={[styles.itemImg, { backgroundColor: c.bg }]} />
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.alertKicker, { color: isLost ? '#FF5C6C' : '#3ECFB2' }]}>
-                      {isLost ? 'PERDIDA CERCA' : 'ENCONTRADA CERCA'}
-                    </Text>
-                    <Text style={[styles.itemTitle, { color: c.title }]} numberOfLines={1}>
-                      {a.pet_name || 'Sin nombre'}
-                    </Text>
-                    <Text style={[styles.itemSub, { color: c.subtitle }]} numberOfLines={1}>
-                      {a.pet_address || 'Sin ubicación'}
-                    </Text>
+          <View style={styles.heroTexts}>
+            <Text style={[styles.name, { color: fg }]} numberOfLines={2}>{displayName}</Text>
+            {isVet && vet ? (
+              <View style={styles.badgeRow}>
+                {vet.is_sponsor ? <SponsorBadge vet={vet} /> : null}
+                {!vet.is_sponsor ? (
+                  <View style={styles.outlineBadge}>
+                    <Text style={[styles.outlineBadgeText, { color: fg }]}>Aliada</Text>
                   </View>
-                  {!a.read_at ? <View style={styles.unreadDot} /> : null}
-                </Pressable>
-              );
-            })
-          )}
+                ) : null}
+                {!vet.approved ? (
+                  <View style={[styles.outlineBadge, styles.pendingBadge]}>
+                    <Text style={[styles.outlineBadgeText, { color: palette.noche }]}>Pendiente</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            {(isVet ? vet?.email : user?.email) ? (
+              <Text style={[styles.email, { color: subColor }]} numberOfLines={1}>
+                {isVet ? vet.email : user.email}
+              </Text>
+            ) : null}
+          </View>
+          {!isVet ? editButton : null}
         </View>
-      ) : null}
+        {isVet ? editButton : null}
+      </SectionHeader>
 
-      {/* "Mis registros" cierra el header: los items del FlatList se
-          renderizan justo después, así que el título tiene que quedar pegado
-          a su lista. Todo lo que va debajo (alertas, cuentas vinculadas,
-          sesión) vive en el footer. */}
-      {!isVet ? <Text style={[styles.sectionTitle, { color: c.title }]}>Mis registros</Text> : null}
+      <View style={styles.body}>
+        {editing ? (
+          isVet && vet ? (
+            <VetEditForm vet={vet} c={c} onClose={() => setEditing(false)} onSaved={fetchVetDashboard} />
+          ) : (
+            <UserEditForm user={user} c={c} dispatch={dispatch} onClose={() => setEditing(false)} />
+          )
+        ) : null}
+
+        {/* STATS del vet */}
+        {isVet && vetDash ? (
+          <View style={styles.statsGrid}>
+            <StatTile c={c} accent={palette.coral} label="Mascotas publicadas" value={vetDash.stats.total_pets} />
+            <StatTile
+              c={c}
+              accent={palette.teal}
+              label="Reencontradas"
+              value={vetDash.stats.resolved_pets}
+              hint={successRate !== null ? `${successRate}% tasa` : null}
+            />
+            <StatTile
+              c={c}
+              accent={palette.sol}
+              label="Alertas"
+              value={vetDash.stats.total_alerts}
+              hint={vetDash.stats.unread_alerts > 0 ? `${vetDash.stats.unread_alerts} sin leer` : 'al día'}
+            />
+            <StatTile c={c} accent={palette.violeta} label="Radio" value={`${vet.alert_radius_km} km`} />
+          </View>
+        ) : null}
+
+        {/* Métricas de publicidad (solo sponsors — ally no aparece como ad) */}
+        {isVet && vet?.is_sponsor && vetDash?.ad_stats_30d ? (
+          <View style={[styles.card, { backgroundColor: c.card }]}>
+            <View>
+              <Text style={[styles.cardLabel, { color: c.text }]}>Métricas de publicidad</Text>
+              <Text style={[styles.small, { color: c.text }]}>
+                Últimos 30 días{adRadiusOf(vet) ? ` · alcance ${adRadiusOf(vet)} km` : ''}
+              </Text>
+            </View>
+            <View style={styles.metricsRow}>
+              <MetricTile c={c} label="Impresiones" value={String(vetDash.ad_stats_30d.impressions)} />
+              <MetricTile c={c} label="Clicks en tu card" value={String(vetDash.ad_stats_30d.ad_clicks)} />
+              <MetricTile c={c} label="Contactos" value={String(vetDash.ad_stats_30d.contact_clicks)} />
+            </View>
+            <Text style={[styles.tiny, { color: c.text }]}>Contactos: WhatsApp, teléfono, web e Instagram.</Text>
+          </View>
+        ) : null}
+
+        {/* SPONSOR CTA — solo si es vet no sponsor */}
+        {isVet && vet && !vet.is_sponsor ? (
+          <View style={[styles.card, styles.ctaCard, { backgroundColor: c.card }]}>
+            <View style={{ gap: 4 }}>
+              <Text style={[styles.cardLabel, { color: c.text }]}>Sumate como</Text>
+              <View style={styles.ctaTitleRow}>
+                <Text style={[styles.ctaTitle, { color: c.title }]}>Socio Mimo</Text>
+                <Star size={22} color={palette.sol} fill={palette.sol} strokeWidth={2} />
+              </View>
+            </View>
+            <View style={styles.tiersRow}>
+              {Object.values(SPONSOR_TIERS).map((t) => (
+                <View key={t.tierLabel} style={[styles.tierBox, { backgroundColor: t.color }]}>
+                  <Text style={styles.tierName}>{t.tierLabel}</Text>
+                  <Text style={styles.tierKm}>{t.adRadiusKm} km</Text>
+                  <Text style={styles.tierSub}>de alcance</Text>
+                </View>
+              ))}
+            </View>
+            <View style={{ gap: 8 }}>
+              {[
+                'Card destacada en el directorio y en Explorar',
+                'Badge Socio Mimo en cada publicación',
+                'Dashboard con métricas de publicidad',
+              ].map((b) => (
+                <View key={b} style={styles.benefit}>
+                  <Check size={16} color={c.text} strokeWidth={2.5} style={{ marginTop: 2 }} />
+                  <Text style={[styles.benefitText, { color: c.text }]}>{b}</Text>
+                </View>
+              ))}
+            </View>
+            <Button
+              variant="dark"
+              title="Quiero ser Socio Mimo"
+              onPress={() => Linking.openURL(mailtoContact('Quiero ser Socio Mimo'))}
+              style={styles.btn52}
+              textStyle={styles.btnText15}
+            />
+          </View>
+        ) : null}
+
+        {/* Reportes activos (user) */}
+        {!isVet ? (
+          <View style={styles.activeCard}>
+            <View>
+              <Text style={styles.activeLabel}>Reportes activos</Text>
+              <Text style={styles.activeNumber}>{total}</Text>
+            </View>
+            <Button
+              icon={Plus}
+              title="Nuevo reporte"
+              onPress={() => router.push('/report')}
+              style={styles.newBtn}
+              textStyle={styles.btnText14}
+            />
+          </View>
+        ) : null}
+
+        {/* MIS REPORTES (vet) — lista completa con paginación. */}
+        {isVet ? (
+          <View style={styles.listSection}>
+            <View style={styles.sectionHead}>
+              <Text style={[styles.sectionTitle, { color: c.title }]}>Mis reportes</Text>
+              <Button
+                icon={Plus}
+                title="Nuevo"
+                onPress={() => router.push('/report')}
+                style={styles.smallBtn}
+                textStyle={styles.btnText13}
+              />
+            </View>
+            {reports.length === 0 ? (
+              <Text style={[styles.empty, { color: c.text }]}>Todavía no publicaste ningún reporte.</Text>
+            ) : (
+              reports.map((p) => (
+                <RecordRow
+                  key={p.id}
+                  c={c}
+                  photo={p.photo_url}
+                  status={p.resolved_at ? 'reunited' : p.status}
+                  chipLabel={p.resolved_at ? 'Reencontrada ✓' : STATUS_LABEL[p.status]}
+                  title={p.name || (p.status === 'lost' ? 'Sin nombre' : 'Encontrada')}
+                  subtitle={formatDate(p.created_at) || p.address || 'Sin ubicación'}
+                  onPress={() => router.push(`/pet/${p.id}`)}
+                />
+              ))
+            )}
+            {page < totalPages ? (
+              <Button
+                variant="outline"
+                title={loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
+                onPress={() => fetchReports(page + 1, true)}
+                disabled={loadingMore}
+                style={styles.btn52}
+                textStyle={styles.btnText15}
+              />
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* ALERTAS RECIENTES vet */}
+        {isVet && vetDash ? (
+          <View style={styles.listSection}>
+            <Text style={[styles.sectionTitle, { color: c.title }]}>Alertas recientes</Text>
+            {vetDash.recent_alerts.length === 0 ? (
+              <Text style={[styles.empty, { color: c.text }]}>Sin alertas por ahora.</Text>
+            ) : (
+              vetDash.recent_alerts.map((a) => {
+                const isLost = a.type === 'nearby_vet_lost';
+                const petId = a.data?.pet_id;
+                return (
+                  <RecordRow
+                    key={a.id}
+                    c={c}
+                    photo={a.pet_photo}
+                    status={isLost ? 'lost' : 'found'}
+                    chipLabel={isLost ? 'Perdida cerca' : 'Encontrada cerca'}
+                    title={a.pet_name || 'Sin nombre'}
+                    subtitle={a.pet_address || 'Sin ubicación'}
+                    unread={!a.read_at}
+                    onPress={() => petId && router.push(`/pet/${petId}`)}
+                  />
+                );
+              })
+            )}
+          </View>
+        ) : null}
+
+        {/* "Mis registros" cierra el header: los items del FlatList se
+            renderizan justo después, así que el título tiene que quedar pegado
+            a su lista. Todo lo que va debajo (alertas, cuentas vinculadas,
+            sesión) vive en el footer. */}
+        {!isVet ? <Text style={[styles.sectionTitle, styles.recordsTitle, { color: c.title }]}>Mis registros</Text> : null}
+      </View>
     </View>
   );
 
   // Pie: ajustes y acciones de cuenta. Van DESPUÉS de los registros porque son
   // configuración que se toca una vez, no lo que uno viene a ver al entrar.
   const footer = (
-    <View style={{ gap: 12 }}>
+    <View style={styles.footer}>
       {/* CONFIGURACIÓN DE ALERTAS — mismos 3 controles para user y vet. El
-          endpoint destino cambia en saveAlerts según isVet. El cap del radio
-          (5km) solo aplica si es una vet en plan ally. */}
-      <View style={[styles.section, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-        <Text style={[styles.sectionKicker, { color: c.subtitle }]}>CONFIGURACIÓN DE ALERTAS</Text>
+          endpoint destino cambia en saveAlerts según isVet. */}
+      <View style={[styles.card, styles.alertsCard, { backgroundColor: c.card }]}>
+        <View style={styles.cardLabelRow}>
+          <Bell size={15} color={c.text} strokeWidth={2} />
+          <Text style={[styles.cardLabel, { color: c.text }]}>Configuración de alertas</Text>
+        </View>
 
-        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+        <View style={styles.toggleRow}>
+          <View style={styles.flex}>
             <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas perdidas</Text>
-            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
+            <Text style={[styles.small, { color: c.text }]}>
               Recibir alerta cuando reporten una perdida en tu radio.
             </Text>
           </View>
           <Switch
             value={receivesLost}
             onValueChange={setReceivesLost}
-            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
+            trackColor={{ false: palette.arena, true: palette.teal }}
+            thumbColor={palette.blanco}
           />
         </View>
 
-        <View style={[styles.toggleRow, { borderColor: c.cardBorder }]}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+        <View style={[styles.toggleRow, styles.divided, { borderTopColor: c.cardBorder }]}>
+          <View style={styles.flex}>
             <Text style={[styles.toggleTitle, { color: c.title }]}>Mascotas encontradas</Text>
-            <Text style={[styles.toggleHint, { color: c.subtitle }]}>
-              Recibir alerta cuando reporten una encontrada.
-            </Text>
+            <Text style={[styles.small, { color: c.text }]}>Recibir alerta cuando reporten una encontrada.</Text>
           </View>
           <Switch
             value={receivesFound}
             onValueChange={setReceivesFound}
-            trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }}
+            trackColor={{ false: palette.arena, true: palette.teal }}
+            thumbColor={palette.blanco}
           />
         </View>
 
-        <View style={[styles.radiusBox, { borderColor: c.cardBorder }]}>
+        <View style={[styles.radiusBox, styles.divided, { borderTopColor: c.cardBorder }]}>
           <View style={styles.radiusHeader}>
             <Text style={[styles.toggleTitle, { color: c.title }]}>Radio de alerta</Text>
-            <Text style={styles.radiusValue}>{radius} km</Text>
+            <Text style={[styles.radiusValue, { color: c.title }]}>{radius} km</Text>
           </View>
           <View style={styles.radiusPresets}>
             {RADIUS_PRESETS.map((r) => {
@@ -906,74 +940,80 @@ export default function Profile() {
                   onPress={() => setRadius(r)}
                   style={[
                     styles.radiusPreset,
-                    {
-                      backgroundColor: active ? '#FF5C6C' : c.bg,
-                      borderColor: active ? '#FF5C6C' : c.cardBorder,
-                    },
+                    active
+                      ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                      : { backgroundColor: c.card, borderColor: c.cardBorder },
                   ]}
                 >
-                  <Text style={[styles.radiusPresetText, { color: active ? '#fff' : c.title }]}>
-                    {r} km
-                  </Text>
+                  <Text style={[styles.radiusPresetText, { color: active ? palette.crema : c.title }]}>{r} km</Text>
                 </Pressable>
               );
             })}
           </View>
         </View>
 
-        <Pressable onPress={saveAlerts} disabled={savingAlerts} style={[styles.saveBtn, savingAlerts && { opacity: 0.5 }]}>
-          <Text style={styles.saveBtnText}>{savingAlerts ? 'Guardando…' : 'Guardar cambios'}</Text>
-        </Pressable>
-        {alertsMsg ? <Text style={[styles.savedMsg, { color: c.subtitle }]}>{alertsMsg}</Text> : null}
+        <Button
+          variant="dark"
+          title={savingAlerts ? 'Guardando…' : 'Guardar cambios'}
+          onPress={saveAlerts}
+          disabled={savingAlerts}
+          style={[styles.btn52, { marginTop: 12 }]}
+          textStyle={styles.btnText15}
+        />
+        {alertsMsg ? <Text style={[styles.savedMsg, { color: c.text }]}>{alertsMsg}</Text> : null}
       </View>
 
       <LinkedAccounts c={c} />
 
-      <Pressable onPress={handleLogout} style={styles.logoutBtn}>
-        <Text style={styles.logoutBtnText}>Cerrar sesión</Text>
-      </Pressable>
-      <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
-        <Text style={styles.deleteBtnText}>Eliminar cuenta</Text>
-      </Pressable>
+      <View style={{ gap: 4 }}>
+        <Button
+          variant="outline"
+          icon={LogOut}
+          title="Cerrar sesión"
+          onPress={handleLogout}
+          style={styles.btn52}
+          textStyle={styles.btnText15}
+        />
+        <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
+          <Text style={[styles.deleteBtnText, { color: c.text }]}>Eliminar cuenta</Text>
+        </Pressable>
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       <FlatList
         // Vet: reports ya se renderiza inline en el header (bloque MIS REPORTES).
-        // Non-vet: data={reports} + ListEmptyComponent + ListFooterComponent como antes.
         data={isVet ? [] : reports}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         ListHeaderComponent={header}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ paddingBottom: bottomSpace }}
         ListEmptyComponent={
           !isVet ? (
-            <Text style={[styles.empty, { color: c.subtitle }]}>
-              Todavía no publicaste ningún reporte.
-            </Text>
+            <Text style={[styles.empty, { color: c.text }]}>Todavía no publicaste ningún reporte.</Text>
           ) : null
         }
         ListFooterComponent={
-          <>
+          <View style={styles.body}>
             {/* "Cargar más" primero: pertenece a la lista de arriba. */}
             {!isVet && page < totalPages ? (
-              <Pressable
-                style={[styles.moreBtn, { borderColor: c.cardBorder }]}
+              <Button
+                variant="outline"
+                title={loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
                 onPress={() => fetchReports(page + 1, true)}
                 disabled={loadingMore}
-              >
-                <Text style={[styles.moreBtnText, { color: c.text }]}>
-                  {loadingMore ? 'Cargando…' : `Cargar más (${page} de ${totalPages})`}
-                </Text>
-              </Pressable>
+                style={styles.btn52}
+                textStyle={styles.btnText15}
+              />
             ) : null}
             {footer}
-          </>
+          </View>
         }
       />
-    </SafeAreaView>
+      <TabBar />
+    </View>
   );
 }
 
@@ -983,173 +1023,130 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 20, paddingBottom: 40, gap: 12 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  back: { fontSize: 15, fontWeight: '600' },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 3 },
+  flex: { flex: 1, minWidth: 0 },
+  sectionHeader: { marginBottom: 20 },
+  body: { paddingHorizontal: 20, gap: 24 },
+  footer: { gap: 24, marginTop: 12 },
+  itemWrap: { paddingHorizontal: 20, marginBottom: 12 },
+  recordsTitle: { marginBottom: 12 },
 
-  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 4 },
-  heroAvatar: { width: 68, height: 68, borderRadius: 20, backgroundColor: '#F0EBE8' },
-  heroAvatarFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  heroAvatarLetter: { color: '#fff', fontWeight: '800', fontSize: 30 },
-  // El nombre lleva flex:1 + numberOfLines para que un nombre largo no
-  // empuje el botón "Editar" fuera de la pantalla.
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  name: { flex: 1, fontSize: 32, fontWeight: '700', letterSpacing: -1 },
-  email: { fontSize: 13, marginTop: 2 },
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  avatar: {
+    width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: palette.arena,
+  },
+  avatarSquare: { borderRadius: 22 },
+  avatarLetter: { fontFamily: fonts.display, fontSize: 30, color: palette.noche },
+  heroTexts: { flex: 1, minWidth: 0, gap: 4 },
+  name: { fontFamily: fonts.display, fontSize: 26, lineHeight: 30 },
+  email: { fontFamily: fonts.regular, fontSize: 14 },
+  badgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  outlineBadge: {
+    height: 20, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+    justifyContent: 'center',
+  },
+  pendingBadge: { backgroundColor: palette.sol, borderColor: palette.sol },
+  outlineBadgeText: { fontFamily: fonts.bold, fontSize: 11 },
+  editBtn: {
+    alignSelf: 'flex-start', height: 40, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  editBtnText: { fontFamily: fonts.bold, fontSize: 13 },
 
-  badgeRow: { flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' },
-  sponsorBadge: { backgroundColor: '#FFB830', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  sponsorText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-  miniBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
-  miniBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-  pendingBadge: { backgroundColor: '#FEE2E2', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  pendingText: { color: '#DC2626', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-
-  // Botón chico al lado del nombre. Reemplaza al antiguo `editBtn` de ancho
-  // completo, que empujaba el contenido útil fuera de la primera pantalla.
-  editBtnSm: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  editBtnSmText: { fontSize: 12, fontWeight: '700' },
-
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  adStatsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
-  adStatsKicker: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  adStatsSub: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   stat: {
-    flex: 1,
-    minWidth: '46%',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
+    flexGrow: 1, flexBasis: '45%', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 20,
+    borderTopWidth: 4, gap: 4,
   },
-  statLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
-  statValue: { fontSize: 26, fontWeight: '700', marginTop: 6, letterSpacing: -0.5 },
-  statHint: { fontSize: 11, marginTop: 2, fontWeight: '500' },
+  statLabel: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.66, textTransform: 'uppercase' },
+  statValue: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32 },
+  statHint: { fontFamily: fonts.regular, fontSize: 12 },
 
-  statCard: {
-    borderRadius: 28,
-    padding: 24,
-    marginTop: 20,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+  card: { borderRadius: 24, padding: 18, gap: 14 },
+  cardLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  cardLabel: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  small: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+  tiny: { fontFamily: fonts.regular, fontSize: 12 },
+  metricsRow: { flexDirection: 'row', gap: 8 },
+  metric: { flex: 1, borderRadius: 16, padding: 12, gap: 2 },
+  metricValue: { fontFamily: fonts.display, fontSize: 22 },
+  metricLabel: { fontFamily: fonts.bold, fontSize: 11 },
+
+  ctaCard: { borderWidth: 2, borderColor: palette.sol },
+  ctaTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ctaTitle: { fontFamily: fonts.display, fontSize: 24 },
+  tiersRow: { flexDirection: 'row', gap: 8 },
+  tierBox: { flex: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 10, gap: 6 },
+  tierName: { fontFamily: fonts.bold, fontSize: 12, color: palette.arena },
+  tierKm: { fontFamily: fonts.display, fontSize: 20, color: palette.arena },
+  tierSub: { fontFamily: fonts.regular, fontSize: 11, color: palette.arena },
+  benefit: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  benefitText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+
+  activeCard: {
+    backgroundColor: palette.noche, borderRadius: 24, padding: 20, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between', gap: 16,
   },
-  statCardLabel: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5 },
-  statNumber: { fontSize: 48, fontWeight: '700', letterSpacing: -1 },
-  newBtn: { borderRadius: 999, paddingHorizontal: 20, paddingVertical: 12 },
-  newBtnText: { fontWeight: '700', fontSize: 13 },
+  activeLabel: { fontFamily: fonts.bold, fontSize: 13, color: palette.arena },
+  activeNumber: { fontFamily: fonts.display, fontSize: 44, lineHeight: 48, color: palette.arena },
+  newBtn: { height: 48, borderRadius: 16, paddingHorizontal: 18 },
+  smallBtn: { height: 40, borderRadius: 12, paddingHorizontal: 14 },
+  btn52: { height: 52, borderRadius: 16 },
+  btnText15: { fontSize: 15 },
+  btnText14: { fontSize: 14 },
+  btnText13: { fontSize: 13 },
 
-  ctaSponsor: {
-    borderRadius: 24,
-    padding: 20,
-    backgroundColor: '#FFB830',
-    marginTop: 16,
-  },
-  ctaKicker: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700', letterSpacing: 2 },
-  ctaTitle: { color: '#fff', fontSize: 26, fontWeight: '700', letterSpacing: -0.6, marginTop: 4 },
-  ctaBody: { color: 'rgba(255,255,255,0.92)', fontSize: 13, lineHeight: 19, marginTop: 8 },
-  ctaBtn: { backgroundColor: '#fff', borderRadius: 999, paddingVertical: 12, paddingHorizontal: 24, alignSelf: 'flex-start', marginTop: 14 },
-  ctaBtnText: { color: '#1A1A2E', fontWeight: '700' },
+  listSection: { gap: 12 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 20 },
+  row: { borderRadius: 20, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  rowImg: { width: 64, height: 64, borderRadius: 14 },
+  rowBody: { flex: 1, minWidth: 0, gap: 4 },
+  rowTitle: { fontFamily: fonts.display, fontSize: 16 },
+  rowSub: { fontFamily: fonts.regular, fontSize: 12 },
+  unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: palette.coral },
+  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 8, paddingHorizontal: 20 },
 
-  section: { borderRadius: 24, padding: 18, borderWidth: 1, marginTop: 16 },
-  sectionKicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 12 },
+  alertsCard: { gap: 0 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  divided: { borderTopWidth: 1 },
+  toggleTitle: { fontFamily: fonts.bold, fontSize: 15 },
+  radiusBox: { paddingTop: 12, paddingBottom: 4, gap: 10 },
+  radiusHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  radiusValue: { fontFamily: fonts.display, fontSize: 18 },
+  radiusPresets: { flexDirection: 'row', gap: 8 },
+  radiusPreset: { flex: 1, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  radiusPresetText: { fontFamily: fonts.bold, fontSize: 14 },
+  savedMsg: { fontFamily: fonts.bold, textAlign: 'center', fontSize: 13, marginTop: 8 },
 
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 10,
-  },
-  toggleTitle: { fontSize: 14, fontWeight: '700' },
-  toggleHint: { fontSize: 11, marginTop: 3, lineHeight: 15 },
-
-  radiusBox: { padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
-  radiusHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  radiusValue: { fontSize: 22, fontWeight: '700', color: '#FF5C6C' },
-  radiusPresets: { flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 4 },
-  radiusPreset: {
-    flex: 1,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  radiusPresetText: { fontSize: 13, fontWeight: '700' },
-
-  saveBtn: { backgroundColor: '#1A1A2E', borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 6 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  savedMsg: { textAlign: 'center', fontSize: 12, marginTop: 8, fontWeight: '600' },
-
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  itemImg: { width: 48, height: 48, borderRadius: 12 },
-  itemTitle: { fontSize: 14, fontWeight: '700' },
-  itemSub: { fontSize: 11, marginTop: 2 },
-  alertKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
-  itemChip: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
-  itemChipText: { color: '#fff', fontSize: 8, fontWeight: '800', letterSpacing: 0.8 },
-  unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF5C6C' },
-
-  logoutBtn: { marginTop: 20, backgroundColor: '#3ECFB2', borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
-  logoutBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1.2, textTransform: 'uppercase' },
-  deleteBtn: { marginTop: 10, backgroundColor: '#FF5C6C', borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
-  deleteBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1.2, textTransform: 'uppercase' },
-
-  sectionTitle: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5, marginTop: 28, marginBottom: 4 },
-
-  card: {
-    flexDirection: 'row',
-    gap: 14,
-    padding: 12,
-    borderRadius: 24,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  cardImg: { width: 80, height: 80, borderRadius: 18, backgroundColor: '#E5E7EB' },
-  cardStatus: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 2 },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  cardHint: { fontSize: 12, fontWeight: '600' },
-  empty: { textAlign: 'center', fontSize: 14, marginTop: 30 },
-  moreBtn: { borderRadius: 999, paddingVertical: 14, alignItems: 'center', borderWidth: 1, marginTop: 8 },
-  moreBtnText: { fontWeight: '700', fontSize: 13 },
+  deleteBtn: { height: 48, alignItems: 'center', justifyContent: 'center' },
+  deleteBtnText: { fontFamily: fonts.medium, fontSize: 14, textDecorationLine: 'underline' },
 });
 
 const formStyles = StyleSheet.create({
-  wrapper: { marginTop: 12, padding: 18, borderRadius: 24, borderWidth: 1 },
+  wrapper: { marginTop: 12, padding: 18, borderRadius: 24 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2 },
-  close: { fontSize: 12, fontWeight: '700' },
-  label: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
-  input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14 },
-  hint: { fontSize: 11, marginTop: 6, lineHeight: 15 },
-  avatar: { width: 60, height: 60, borderRadius: 16, backgroundColor: '#F0EBE8' },
-  avatarFallback: { backgroundColor: '#FF5C6C', alignItems: 'center', justifyContent: 'center' },
-  avatarLetter: { color: '#fff', fontWeight: '800', fontSize: 24 },
-  pickBtn: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1 },
-  pickBtnText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  saveBtn: { backgroundColor: '#1A1A2E', borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 16 },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  savedMsg: { textAlign: 'center', fontSize: 12, marginTop: 8, fontWeight: '700' },
+  kicker: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  close: { fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
+  label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
+  input: {
+    minHeight: 52, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12,
+    fontFamily: fonts.regular, fontSize: 15,
+  },
+  hint: { fontFamily: fonts.regular, fontSize: 13, marginTop: 6, lineHeight: 18 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: palette.arena },
+  avatarFallback: { backgroundColor: palette.violeta, alignItems: 'center', justifyContent: 'center' },
+  avatarLetter: { fontFamily: fonts.display, color: palette.noche, fontSize: 24 },
+  pickBtn: { height: 40, borderRadius: 12, paddingHorizontal: 14, borderWidth: 2, borderColor: palette.noche, justifyContent: 'center', marginTop: 8 },
+  pickBtnText: { fontFamily: fonts.bold, fontSize: 13 },
+  saveBtn: { backgroundColor: palette.noche, borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  saveBtnText: { fontFamily: fonts.bold, color: palette.crema, fontSize: 15 },
+  savedMsg: { fontFamily: fonts.bold, textAlign: 'center', fontSize: 13, marginTop: 8 },
   imageRow: { flexDirection: 'row', gap: 12, marginBottom: 6 },
-  logoImg: { width: 60, height: 60, borderRadius: 16, backgroundColor: '#F0EBE8' },
+  logoImg: { width: 60, height: 60, borderRadius: 18, backgroundColor: palette.arena },
   coverImg: { width: 96, height: 60, borderRadius: 16 },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
-  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8 },
-  chipText: { fontSize: 12, fontWeight: '700' },
-  mapWrap: {
-    height: 240,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#F0EBE8',
-    marginTop: 2,
-  },
+  chip: { height: 40, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
+  chipText: { fontFamily: fonts.medium, fontSize: 14 },
+  mapWrap: { height: 240, borderRadius: 16, overflow: 'hidden', backgroundColor: palette.arena, marginTop: 2 },
 });

@@ -17,7 +17,9 @@ export { default as HeartHandshake } from 'lucide-react-native/icons/heart-hands
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as HouseHeart } from 'lucide-react-native/icons/house-heart';
+export { default as Link } from 'lucide-react-native/icons/link';
 export { default as Locate } from 'lucide-react-native/icons/locate';
+export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Flashlight } from 'lucide-react-native/icons/flashlight';
 export { default as Mail } from 'lucide-react-native/icons/mail';
 export { default as Map } from 'lucide-react-native/icons/map';
@@ -26,6 +28,7 @@ export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as Minus } from 'lucide-react-native/icons/minus';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
 export { default as PawPrint } from 'lucide-react-native/icons/paw-print';
+export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Phone } from 'lucide-react-native/icons/phone';
 export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as Scissors } from 'lucide-react-native/icons/scissors';

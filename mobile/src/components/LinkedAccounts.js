@@ -11,10 +11,12 @@ import {
   linkFacebookToAccount,
   unlinkOAuthProvider,
 } from '../lib/oauth';
+import { palette, fonts } from '../lib/theme';
+import { Link } from '../lib/icons';
 
 const PROVIDERS = [
-  { id: 'google', label: 'Google' },
-  { id: 'facebook', label: 'Facebook' },
+  { id: 'google', label: 'Google', letter: 'G' },
+  { id: 'facebook', label: 'Facebook', letter: 'f' },
 ];
 
 export default function LinkedAccounts({ c }) {
@@ -100,40 +102,49 @@ export default function LinkedAccounts({ c }) {
   const linkedSet = new Set(links.map((l) => l.provider));
 
   return (
-    <View style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-      <Text style={[styles.title, { color: c.subtitle }]}>CUENTAS VINCULADAS</Text>
+    <View style={[styles.card, { backgroundColor: c.card }]}>
+      <View style={styles.titleRow}>
+        <Link size={15} color={c.text} strokeWidth={2} />
+        <Text style={[styles.title, { color: c.text }]}>Cuentas vinculadas</Text>
+      </View>
+      <Text style={[styles.subtitle, { color: c.text }]}>Iniciá sesión más rápido con tus otras cuentas.</Text>
 
       {loading ? (
         <ActivityIndicator color={c.title} style={{ marginTop: 12 }} />
       ) : (
-        PROVIDERS.map((p) => {
+        PROVIDERS.map((p, i) => {
           const isLinked = linkedSet.has(p.id);
           const isOnlyMethod = isLinked && !hasPassword && links.length === 1;
           const isBusy = busy === p.id;
+          const disabled = isBusy || (isLinked && isOnlyMethod);
           const handler = isLinked ? () => unlink(p.id) : p.id === 'google' ? linkGoogle : linkFacebook;
           return (
-            <View key={p.id} style={styles.row}>
-              <View style={styles.left}>
-                <View style={[styles.dot, { backgroundColor: isLinked ? '#22C55E' : '#E5E7EB' }]} />
+            <View key={p.id} style={[styles.row, i > 0 && { borderTopWidth: 1, borderTopColor: c.cardBorder }]}>
+              <View style={[styles.logo, { backgroundColor: c.bg }]}>
+                <Text style={[styles.logoText, { color: c.text }]}>{p.letter}</Text>
+              </View>
+              <View style={styles.texts}>
                 <Text style={[styles.label, { color: c.title }]}>{p.label}</Text>
-                <Text style={[styles.state, { color: c.subtitle }]}>
-                  {isLinked ? 'Conectada' : 'No conectada'}
-                </Text>
+                <View style={styles.stateRow}>
+                  <View
+                    style={[
+                      styles.dot,
+                      isLinked ? { backgroundColor: palette.teal } : { backgroundColor: palette.arena, borderWidth: 1, borderColor: palette.noche },
+                    ]}
+                  />
+                  <Text style={[styles.state, { color: c.text }]}>{isLinked ? 'Conectada' : 'No conectada'}</Text>
+                </View>
               </View>
               <Pressable
                 onPress={handler}
-                disabled={isBusy || (isLinked && isOnlyMethod)}
+                disabled={disabled}
                 style={({ pressed }) => [
                   styles.action,
-                  { opacity: isBusy || (isLinked && isOnlyMethod) ? 0.3 : pressed ? 0.6 : 1 },
+                  isLinked ? styles.actionOutline : styles.actionDark,
+                  { opacity: disabled ? 0.35 : pressed ? 0.7 : 1 },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.actionText,
-                    { color: isLinked ? '#EF4444' : c.title },
-                  ]}
-                >
+                <Text style={[styles.actionText, { color: isLinked ? palette.noche : palette.crema }]}>
                   {isBusy ? '···' : isLinked ? 'Desvincular' : 'Conectar'}
                 </Text>
               </Pressable>
@@ -142,48 +153,30 @@ export default function LinkedAccounts({ c }) {
         })
       )}
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
-      {!!notice && <Text style={styles.notice}>{notice}</Text>}
+      {!!error && <Text style={[styles.msg, styles.error, { color: c.text }]}>{error}</Text>}
+      {!!notice && <Text style={[styles.msg, styles.notice, { color: c.text }]}>{notice}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    marginTop: 20,
-    padding: 20,
-    borderRadius: 24,
-    borderWidth: 1,
-  },
-  title: { fontSize: 10, fontWeight: '700', letterSpacing: 2, marginBottom: 12 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  left: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  card: { padding: 18, borderRadius: 24, gap: 4 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  title: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  subtitle: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  logo: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  logoText: { fontFamily: fonts.display, fontSize: 18 },
+  texts: { flex: 1, gap: 2 },
+  label: { fontFamily: fonts.bold, fontSize: 15 },
+  stateRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  label: { fontSize: 15, fontWeight: '700' },
-  state: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  action: { paddingVertical: 6, paddingHorizontal: 8 },
-  actionText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  error: {
-    marginTop: 12,
-    backgroundColor: '#FEE2E2',
-    color: '#DC2626',
-    padding: 10,
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  notice: {
-    marginTop: 12,
-    backgroundColor: '#DCFCE7',
-    color: '#15803D',
-    padding: 10,
-    borderRadius: 12,
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  state: { fontFamily: fonts.regular, fontSize: 13 },
+  action: { height: 40, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  actionOutline: { borderWidth: 2, borderColor: palette.noche },
+  actionDark: { backgroundColor: palette.noche, paddingHorizontal: 16 },
+  actionText: { fontFamily: fonts.bold, fontSize: 13 },
+  msg: { marginTop: 8, padding: 12, borderRadius: 14, fontFamily: fonts.bold, fontSize: 13, borderWidth: 2 },
+  error: { borderColor: palette.coral },
+  notice: { borderColor: palette.teal },
 });

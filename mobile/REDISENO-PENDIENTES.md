@@ -65,3 +65,12 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   usando el código **NIGRA20**" con un link genérico a mercadolibre.com.uy. Es un placeholder
   con la marca vieja y lo ve cualquiera que reporte. Decidir: sacarlo, reemplazarlo por un
   sponsor real, o mostrar algo propio (p. ej. consejos mientras busca).
+
+## Detalles visuales que quedaron afuera
+
+- **Cámara: oscurecer todo lo que está fuera de la silueta** (`Camara.dc.html` usa una
+  máscara Noche al 62 %). Hay que dibujar la máscara a pantalla completa alineada con la
+  silueta de 400 dp, que también define el recorte. Conviene hacerlo junto con las
+  siluetas nuevas de Perro/Gato.
+- **Cámara: zoom en "1,0×"** · se dejó en porcentaje porque el zoom de expo-camera va de
+  0 a 1 y no es un multiplicador real.

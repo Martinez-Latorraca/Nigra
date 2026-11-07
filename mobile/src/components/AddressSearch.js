@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import api from '../lib/api';
+import { fonts } from '../lib/theme';
+import { Search } from '../lib/icons';
 
-export default function AddressSearch({ onSelect, c, placeholder = 'Buscar dirección o barrio' }) {
+export default function AddressSearch({ onSelect, c, placeholder = 'Dirección o barrio' }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -36,24 +38,26 @@ export default function AddressSearch({ onSelect, c, placeholder = 'Buscar direc
 
   return (
     <View>
-      <View style={[styles.inputRow, { backgroundColor: c.inputBg }]}>
+      <View style={[styles.inputRow, { backgroundColor: c.inputBg, borderColor: c.cardBorder }]}>
+        <Search size={18} color={c.text} strokeWidth={2} />
         <TextInput
           style={[styles.input, { color: c.inputText }]}
           value={query}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={c.label}
+          placeholderTextColor="rgba(26,26,46,0.45)"
+          accessibilityLabel={placeholder}
         />
-        {loading ? <ActivityIndicator color={c.subtitle} style={styles.spinner} /> : null}
+        {loading ? <ActivityIndicator color={c.text} /> : null}
       </View>
 
       {suggestions.length > 0 && (
         <View style={[styles.list, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-          {suggestions.map((s) => (
+          {suggestions.map((s, i) => (
             <Pressable
               key={String(s.place_id)}
               onPress={() => choose(s)}
-              style={[styles.item, { borderBottomColor: c.cardBorder }]}
+              style={[styles.item, i > 0 && { borderTopWidth: 1, borderTopColor: c.cardBorder }]}
             >
               <Text style={[styles.itemText, { color: c.text }]} numberOfLines={2}>
                 {s.display_name}
@@ -67,10 +71,17 @@ export default function AddressSearch({ onSelect, c, placeholder = 'Buscar direc
 }
 
 const styles = StyleSheet.create({
-  inputRow: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, paddingRight: 12 },
-  input: { flex: 1, padding: 16, fontSize: 16 },
-  spinner: { marginLeft: 8 },
+  inputRow: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+  },
+  input: { flex: 1, height: 40, fontFamily: fonts.regular, fontSize: 15, paddingVertical: 0 },
   list: { borderRadius: 16, borderWidth: 1, marginTop: 8, overflow: 'hidden' },
-  item: { padding: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  itemText: { fontSize: 14, lineHeight: 19 },
+  item: { padding: 14 },
+  itemText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 19 },
 });

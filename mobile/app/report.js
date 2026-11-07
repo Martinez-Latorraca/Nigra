@@ -1,53 +1,156 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   Image,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import api from '../src/lib/api';
-import { useTheme } from '../src/lib/theme';
+import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
+import {
+  Camera, Search, Locate, Check, MapPin, ArrowUpRight, ChevronRight, X, Plus, Info, Send, Phone,
+} from '../src/lib/icons';
+import { translateType, translateColor } from '../src/lib/translations';
 import CameraCapture from '../src/components/CameraCapture';
 import ReportLoading from '../src/components/ReportLoading';
-import ChipGroup from '../src/components/ChipGroup';
-import PetCard from '../src/components/PetCard';
 import PetMap from '../src/components/PetMap';
 import AddressSearch from '../src/components/AddressSearch';
+import SectionHeader from '../src/components/SectionHeader';
+import StatusChip from '../src/components/StatusChip';
+import TextField from '../src/components/TextField';
+import Button from '../src/components/Button';
 
 const SITUATIONS = [
   { value: 'lost', label: 'Perdí mi mascota' },
-  { value: 'found', label: 'Encontré una mascota' },
+  { value: 'found', label: 'Encontré una' },
 ];
 const TYPES = [
   { value: 'dog', label: 'Perro' },
   { value: 'cat', label: 'Gato' },
 ];
+// swatch: cómo se dibuja la muestrita de color (ver ColorSwatch).
 const COLORS = [
-  { value: 'black', label: 'Negro' },
-  { value: 'white', label: 'Blanco' },
-  { value: 'brown', label: 'Marrón' },
-  { value: 'golden', label: 'Dorado' },
-  { value: 'mixed', label: 'Mixto' },
-  { value: 'orange', label: 'Naranja' },
-  { value: 'grey', label: 'Gris' },
-  { value: 'spotted', label: 'Manchado' },
-  { value: 'striped', label: 'Atigrado' },
+  { value: 'black', label: 'Negro', swatch: { solid: '#1F1F1F' } },
+  { value: 'white', label: 'Blanco', swatch: { solid: '#FFFFFF' } },
+  { value: 'brown', label: 'Marrón', swatch: { solid: '#7A4A2A' } },
+  { value: 'golden', label: 'Dorado', swatch: { solid: '#D9A441' } },
+  { value: 'mixed', label: 'Mixto', swatch: { split: ['#1F1F1F', '#FFFFFF'] } },
+  { value: 'orange', label: 'Naranja', swatch: { solid: '#E07B2E' } },
+  { value: 'grey', label: 'Gris', swatch: { solid: '#9A9AA5' } },
+  { value: 'spotted', label: 'Manchado', swatch: { spots: true } },
+  { value: 'striped', label: 'Atigrado', swatch: { stripes: ['#7A4A2A', '#D9A441'] } },
 ];
 
 // Radio generoso para la pre-búsqueda: preferimos mostrar de más que perder un match.
 const SEARCH_RADIUS_KM = 50;
 
+const STEP_INFO = {
+  form: { n: 1, label: 'Buscar' },
+  results: { n: 2, label: 'Coincidencias' },
+  report: { n: 3, label: 'Publicar' },
+};
+
+// Muestrita circular del color (sin librerías de gradientes).
+function ColorSwatch({ swatch }) {
+  return (
+    <View style={styles.swatch}>
+      {swatch.solid ? <View style={[StyleSheet.absoluteFill, { backgroundColor: swatch.solid }]} /> : null}
+      {swatch.split ? (
+        <View style={[StyleSheet.absoluteFill, styles.split]}>
+          <View style={{ flex: 1, backgroundColor: swatch.split[0] }} />
+          <View style={{ flex: 1, backgroundColor: swatch.split[1] }} />
+        </View>
+      ) : null}
+      {swatch.spots ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }]}>
+          <View style={[styles.spot, { top: 4, left: 4, width: 8, height: 8 }]} />
+          <View style={[styles.spot, { bottom: 4, right: 4, width: 6, height: 6 }]} />
+        </View>
+      ) : null}
+      {swatch.stripes ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: swatch.stripes[1] }]}>
+          <View style={styles.stripes}>
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.stripe, { backgroundColor: swatch.stripes[0] }]} />
+            ))}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function Pill({ label, active, onPress, children, c }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={[
+        styles.pill,
+        children ? styles.pillWithSwatch : null,
+        active
+          ? { backgroundColor: palette.noche, borderColor: palette.noche }
+          : { backgroundColor: c.card, borderColor: c.cardBorder },
+      ]}
+    >
+      {children}
+      <Text style={[styles.pillText, { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// Tarjeta de coincidencia: parecido en grande + barra + distancia.
+function MatchCard({ pet, onPress, c }) {
+  const pct = pet.visual_distance !== undefined ? Math.max(0, Math.round((1 - pet.visual_distance) * 100)) : null;
+  const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.match, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}>
+      <Image source={{ uri: pet.photo_url }} style={[styles.matchImg, { backgroundColor: c.arena }]} />
+      <View style={styles.matchBody}>
+        <View style={styles.matchTop}>
+          <StatusChip status={pet.status} />
+          <Text style={[styles.matchMeta, { color: c.text }]} numberOfLines={1}>{meta}</Text>
+        </View>
+        {pct !== null ? (
+          <>
+            <Text style={[styles.matchPct, { color: c.title }]}>
+              {pct}% <Text style={styles.matchPctLabel}>de parecido</Text>
+            </Text>
+            <View style={[styles.bar, { backgroundColor: c.arena }]}>
+              <View style={[styles.barFill, { width: `${pct}%` }]} />
+            </View>
+          </>
+        ) : null}
+        {pet.distance_km != null ? (
+          <View style={styles.row}>
+            <MapPin size={14} color={c.text} strokeWidth={2} />
+            <Text style={[styles.small, { color: c.text }]}>
+              a {parseFloat(pet.distance_km).toFixed(1).replace('.', ',')} km
+            </Text>
+          </View>
+        ) : null}
+        <View style={[styles.matchFoot, { borderTopColor: c.cardBorder }]}>
+          <Text style={[styles.matchContact, { color: c.text }]}>Contactar</Text>
+          <ArrowUpRight size={14} color={c.text} strokeWidth={2} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function Find() {
   const c = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState('form'); // 'form' | 'results' | 'report'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +161,8 @@ export default function Find() {
   const [type, setType] = useState('dog');
   const [color, setColor] = useState('black');
   const [position, setPosition] = useState(null);
+  // Nombre del lugar elegido en el buscador (solo para mostrar en el resumen).
+  const [placeName, setPlaceName] = useState('');
   const [locating, setLocating] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
 
@@ -131,6 +236,7 @@ export default function Find() {
       }
       const loc = await Location.getCurrentPositionAsync({});
       setPosition({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      setPlaceName('');
     } catch {
       Alert.alert('Error', 'No pudimos obtener tu ubicación.');
     } finally {
@@ -213,314 +319,441 @@ export default function Find() {
 
   if (busy) return <ReportLoading />;
 
-  const headerTitle =
-    step === 'results' ? 'Posibles coincidencias' : step === 'report' ? 'Publicar reporte' : 'Perdí / Encontré';
+  const header = {
+    form: { title: 'Perdí / Encontré', sub: 'Subí una foto y la buscamos entre los reportes cercanos.' },
+    results: {
+      title: 'Posibles coincidencias',
+      sub: isLost
+        ? 'Estas mascotas fueron reportadas como encontradas. ¿Alguna es la tuya?'
+        : 'Estas mascotas fueron reportadas como perdidas. ¿Alguna es la que encontraste?',
+    },
+    report: { title: 'Publicar reporte', sub: 'Completá los datos para que la comunidad pueda ayudarte.' },
+  }[step];
+  const { n: stepN, label: stepLabel } = STEP_INFO[step];
+  const shortPlace = placeName ? placeName.split(',').slice(0, 2).join(',').trim() : '';
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const searchSummary = [translateType(type), translateColor(color), shortPlace].filter(Boolean).map(cap).join(' · ');
+
+  const errorBox = error ? (
+    <View style={[styles.errorBox, { backgroundColor: c.card }]}>
+      <Info size={20} color={palette.coral} strokeWidth={2} />
+      <Text style={[styles.errorText, { color: c.text }]}>{error}</Text>
+    </View>
+  ) : null;
+
+  const photoPreview = (height) => (
+    <View style={[styles.photo, { height, backgroundColor: c.arena }]}>
+      {mainImage ? <Image source={{ uri: mainImage.uri }} style={StyleSheet.absoluteFill} /> : null}
+      <Pressable onPress={pickMainImage} style={[styles.changePhoto, { backgroundColor: c.card }]}>
+        <Camera size={16} color={c.text} strokeWidth={2} />
+        <Text style={[styles.changePhotoText, { color: c.text }]}>Cambiar foto</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
       <CameraCapture
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}
         onCapture={setMainImage}
       />
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Pressable onPress={goBack} hitSlop={12}>
-            <Text style={[styles.back, { color: c.subtitle }]}>‹ Volver</Text>
-          </Pressable>
-          <Text style={[styles.title, { color: c.title }]}>{headerTitle}</Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <SectionHeader
+          color={sectionColors.reportar}
+          title={header.title}
+          subtitle={header.sub}
+          onBack={goBack}
+          style={styles.sectionHeader}
+        >
+          <View style={styles.progressWrap}>
+            <View style={styles.progress}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={[styles.progressSeg, i <= stepN && styles.progressSegOn]} />
+              ))}
+            </View>
+            <Text style={styles.progressText}>Paso {stepN} de 3 · {stepLabel}</Text>
+          </View>
+        </SectionHeader>
 
-        {/* ─── PASO 1: datos para buscar ─── */}
-        {step === 'form' && (
-          <>
-            <Text style={[styles.label, { color: c.label }]}>Tu situación</Text>
-            <ChipGroup options={SITUATIONS} value={situation} onChange={setSituation} c={c} />
+        <View style={styles.body}>
+          {/* ─── PASO 1: datos para buscar ─── */}
+          {step === 'form' && (
+            <>
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>Tu situación</Text>
+                <View style={[styles.segmented, { backgroundColor: c.arena }]}>
+                  {SITUATIONS.map((s) => {
+                    const active = situation === s.value;
+                    return (
+                      <Pressable
+                        key={s.value}
+                        onPress={() => setSituation(s.value)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        style={[styles.segment, active && { backgroundColor: palette.noche }]}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium },
+                          ]}
+                        >
+                          {s.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
-            <Text style={[styles.label, { color: c.label }]}>Foto de la mascota</Text>
-            <Text style={[styles.locationHint, { color: c.subtitle }]}>
-              Solo la cara del animal: orejas y hocico. Es lo que mejor lo distingue para el match.
-            </Text>
-            {mainImage ? (
-              <View>
-                <Image source={{ uri: mainImage.uri }} style={styles.mainImage} />
-                <Pressable onPress={pickMainImage} style={[styles.changePhoto, { backgroundColor: c.inputBg }]}>
-                  <Text style={[styles.changePhotoText, { color: c.text }]}>Cambiar foto</Text>
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>Foto de la mascota</Text>
+                {mainImage ? (
+                  photoPreview(260)
+                ) : (
+                  <Pressable onPress={pickMainImage} style={[styles.upload, { backgroundColor: c.card }]}>
+                    <View style={styles.uploadIcon}>
+                      <Camera size={28} color={palette.arena} strokeWidth={2} />
+                    </View>
+                    <Text style={[styles.uploadTitle, { color: c.title }]}>Cámara o galería</Text>
+                    <Text style={[styles.uploadText, { color: c.text }]}>
+                      Solo la cara: orejas y hocico. Es lo que mejor la distingue para encontrar coincidencias.
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>Especie</Text>
+                <View style={styles.pills}>
+                  {TYPES.map((t) => (
+                    <Pill key={t.value} label={t.label} active={type === t.value} onPress={() => setType(t.value)} c={c} />
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>Color predominante</Text>
+                <View style={styles.pills}>
+                  {COLORS.map((col) => (
+                    <Pill key={col.value} label={col.label} active={color === col.value} onPress={() => setColor(col.value)} c={c}>
+                      <ColorSwatch swatch={col.swatch} />
+                    </Pill>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>
+                  {isLost ? '¿Dónde se perdió?' : '¿Dónde la encontraste?'}
+                </Text>
+                <AddressSearch
+                  c={c}
+                  onSelect={(lat, lng, label) => {
+                    setPosition({ lat, lng });
+                    setPlaceName(label || '');
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  icon={Locate}
+                  title="Usar mi ubicación actual"
+                  loading={locating}
+                  onPress={useCurrentLocation}
+                  style={styles.locationBtn}
+                  textStyle={styles.locationBtnText}
+                />
+                {position ? (
+                  <>
+                    <View style={[styles.mapWrap, { backgroundColor: c.arena }]} pointerEvents="none">
+                      <PetMap lat={position.lat} lng={position.lng} isDark={c.isDark} style={styles.map} />
+                    </View>
+                    <View style={styles.row}>
+                      <View style={styles.okDot}>
+                        <Check size={12} color={palette.noche} strokeWidth={3} />
+                      </View>
+                      <Text style={[styles.okText, { color: c.text }]}>Ubicación seleccionada</Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
+
+              {errorBox}
+
+              <View style={styles.ctaBlock}>
+                <Button
+                  variant="dark"
+                  icon={Search}
+                  title="Buscar coincidencias"
+                  onPress={handleSearch}
+                  disabled={!mainImage}
+                />
+                {!mainImage ? (
+                  <Text style={[styles.hintCenter, { color: c.text }]}>Agregá la foto para poder buscar.</Text>
+                ) : null}
+              </View>
+            </>
+          )}
+
+          {/* ─── PASO 2: candidatas ─── */}
+          {step === 'results' && (
+            <>
+              <View style={[styles.summary, { backgroundColor: c.card }]}>
+                <Image source={{ uri: mainImage?.uri }} style={[styles.summaryImg, { backgroundColor: c.arena }]} />
+                <View style={styles.flex}>
+                  <Text style={[styles.label, { color: c.text }]}>Tu búsqueda</Text>
+                  <Text style={[styles.summaryText, { color: c.text }]} numberOfLines={1}>{searchSummary}</Text>
+                </View>
+                <Pressable onPress={goBack} hitSlop={8}>
+                  <Text style={[styles.summaryEdit, { color: c.text }]}>Editar</Text>
                 </Pressable>
               </View>
-            ) : (
-              <Pressable onPress={pickMainImage} style={[styles.uploadBox, { borderColor: c.cardBorder, backgroundColor: c.card }]}>
-                <Text style={[styles.uploadPlus, { color: c.subtitle }]}>＋</Text>
-                <Text style={[styles.uploadText, { color: c.subtitle }]}>Cámara o galería</Text>
-              </Pressable>
-            )}
 
-            <Text style={[styles.label, { color: c.label }]}>Especie</Text>
-            <ChipGroup options={TYPES} value={type} onChange={setType} c={c} />
-
-            <Text style={[styles.label, { color: c.label }]}>Color predominante</Text>
-            <ChipGroup options={COLORS} value={color} onChange={setColor} c={c} />
-
-            <Text style={[styles.label, { color: c.label }]}>
-              {isLost ? '¿Dónde se perdió?' : '¿Dónde la encontraste?'}
-            </Text>
-            <Text style={[styles.locationHint, { color: '#22C55E' }]}>
-              Buscá la dirección o barrio, o usá tu ubicación actual.
-            </Text>
-            <AddressSearch c={c} onSelect={(lat, lng) => setPosition({ lat, lng })} />
-            <Pressable
-              onPress={useCurrentLocation}
-              style={[styles.locationBtn, { borderColor: '#22C55E', backgroundColor: c.card }]}
-            >
-              {locating ? (
-                <ActivityIndicator color="#22C55E" />
-              ) : (
-                <Text style={[styles.locationText, { color: '#22C55E' }]}>📍 Usar mi ubicación actual</Text>
-              )}
-            </Pressable>
-            {position ? (
-              <>
-                <View style={[styles.mapWrap, { borderColor: c.cardBorder }]} pointerEvents="none">
-                  <PetMap lat={position.lat} lng={position.lng} isDark={c.isDark} style={styles.map} />
-                </View>
-                <Text style={styles.locationOk}>✓ Ubicación seleccionada</Text>
-              </>
-            ) : null}
-
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            <Pressable
-              style={[styles.submit, { backgroundColor: c.primary }, !mainImage && styles.disabled]}
-              onPress={handleSearch}
-              disabled={!mainImage}
-            >
-              <Text style={[styles.submitText, { color: c.primaryText }]}>Buscar coincidencias</Text>
-            </Pressable>
-            {!mainImage ? (
-              <Text style={[styles.hintText, { color: c.subtitle }]}>
-                Agregá la foto para poder buscar.
+              <Text style={[styles.text, { color: c.text }]}>
+                {isLost
+                  ? 'Tocá una para contactar a quien la encontró. Están ordenadas por parecido.'
+                  : 'Tocá una para contactar a su dueño. Están ordenadas por parecido.'}
               </Text>
-            ) : null}
-          </>
-        )}
 
-        {/* ─── PASO 2: candidatas ─── */}
-        {step === 'results' && (
-          <>
-            <Text style={[styles.resultsSub, { color: c.subtitle }]}>
-              {isLost
-                ? 'Estas mascotas fueron reportadas como encontradas. ¿Alguna es la tuya? Tocala para contactar a quien la encontró.'
-                : 'Estas mascotas fueron reportadas como perdidas. ¿Alguna es la que encontraste? Tocala para contactar a su dueño.'}
-            </Text>
-            <View style={styles.results}>
-              {matches.map((pet) => (
-                <PetCard key={pet.id} pet={pet} onPress={() => router.push(`/pet/${pet.id}?origen=coincidencias`)} />
-              ))}
-            </View>
+              <View style={styles.matches}>
+                {matches.map((pet) => (
+                  <MatchCard
+                    key={pet.id}
+                    pet={pet}
+                    c={c}
+                    onPress={() => router.push(`/pet/${pet.id}?origen=coincidencias`)}
+                  />
+                ))}
+              </View>
 
-            <Pressable
-              style={[styles.secondaryBtn, { borderColor: c.cardBorder }]}
-              onPress={() => setStep('report')}
-            >
-              <Text style={[styles.secondaryBtnText, { color: c.text }]}>
-                Ninguna es {isLost ? 'mi mascota' : 'la que encontré'} → Publicar reporte
-              </Text>
-            </Pressable>
-          </>
-        )}
-
-        {/* ─── PASO 3: completar reporte ─── */}
-        {step === 'report' && (
-          <>
-            <Text
-              style={[
-                styles.resultsSub,
-                matches.length === 0 ? styles.noMatch : { color: c.subtitle },
-              ]}
-            >
-              {matches.length === 0
-                ? 'No encontramos coincidencias por ahora. Publicá el reporte así queda visible para la comunidad.'
-                : 'Completá los datos para publicar el reporte.'}
-            </Text>
-
-            <Text style={[styles.label, { color: c.label }]}>Foto principal</Text>
-            {mainImage && <Image source={{ uri: mainImage.uri }} style={styles.mainImage} />}
-            <Pressable onPress={pickMainImage} style={[styles.changePhoto, { backgroundColor: c.inputBg }]}>
-              <Text style={[styles.changePhotoText, { color: c.text }]}>Cambiar foto</Text>
-            </Pressable>
-
-            <Text style={[styles.label, { color: c.label }]}>Más fotos</Text>
-            {/* El copy explica el beneficio concreto: cada foto extra se
-                vectoriza y suma una chance más de matchear. Sin esto la gente
-                lo lee como "opcional" y sube una sola. */}
-            <Text style={[styles.hint, { color: c.subtitle }]}>
-              Cuantas más fotos subas (distintos ángulos y luz), más fácil es
-              reconocerla. Recomendado: 3 o 4.
-            </Text>
-            <View style={styles.extraRow}>
-              {extraImages.map((img, i) => (
-                <Pressable key={i} onPress={() => removeExtra(i)} style={styles.extraThumbWrap}>
-                  <Image source={{ uri: img.uri }} style={styles.extraThumb} />
-                  <View style={styles.extraRemove}>
-                    <Text style={styles.extraRemoveText}>✕</Text>
-                  </View>
-                </Pressable>
-              ))}
-              {extraImages.length < 5 && (
+              <View style={styles.noneBlock}>
+                <Text style={[styles.text, { color: c.text }]}>
+                  ¿Ninguna es {isLost ? 'tu mascota' : 'la que encontraste'}?
+                </Text>
                 <Pressable
-                  onPress={pickExtraImages}
-                  style={[styles.extraAdd, { borderColor: c.cardBorder, backgroundColor: c.card }]}
+                  onPress={() => setStep('report')}
+                  style={({ pressed }) => [styles.outlineLink, { opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={[styles.uploadPlus, { color: c.subtitle }]}>＋</Text>
+                  <Text style={[styles.outlineLinkText, { color: c.text }]}>Publicar reporte</Text>
+                  <ChevronRight size={18} color={c.text} strokeWidth={2} />
                 </Pressable>
-              )}
-            </View>
+              </View>
+            </>
+          )}
 
-            {isLost && (
-              <>
-                <Text style={[styles.label, { color: c.label }]}>Nombre</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
+          {/* ─── PASO 3: completar reporte ─── */}
+          {step === 'report' && (
+            <>
+              {matches.length === 0 ? (
+                <View style={[styles.notice, { backgroundColor: c.card }]}>
+                  <Info size={20} color={palette.coral} strokeWidth={2} />
+                  <Text style={[styles.noticeText, { color: c.text }]}>
+                    No encontramos coincidencias por ahora. Publicá el reporte así queda visible para la comunidad.
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={styles.section}>
+                <Text style={[styles.label, { color: c.text }]}>Foto principal</Text>
+                {photoPreview(220)}
+              </View>
+
+              <View style={styles.section}>
+                <View style={styles.labelRow}>
+                  <Text style={[styles.label, { color: c.text }]}>Más fotos</Text>
+                  <Text style={[styles.counter, { color: c.text }]}>{extraImages.length} / 5</Text>
+                </View>
+                {/* El copy explica el beneficio concreto: cada foto extra se
+                    vectoriza y suma una chance más de matchear. Sin esto la gente
+                    lo lee como "opcional" y sube una sola. */}
+                <Text style={[styles.small, { color: c.text }]}>
+                  Cuantas más fotos subas (distintos ángulos y luz), más fácil es reconocerla. Recomendado: 3 o 4.
+                </Text>
+                <View style={styles.extraRow}>
+                  {extraImages.map((img, i) => (
+                    <View key={i} style={[styles.extraThumb, { backgroundColor: c.arena }]}>
+                      <Image source={{ uri: img.uri }} style={styles.extraImg} />
+                      <Pressable
+                        onPress={() => removeExtra(i)}
+                        accessibilityLabel="Quitar foto"
+                        hitSlop={6}
+                        style={[styles.extraRemove, { borderColor: c.bg }]}
+                      >
+                        <X size={12} color={palette.crema} strokeWidth={3} />
+                      </Pressable>
+                    </View>
+                  ))}
+                  {extraImages.length < 5 && (
+                    <Pressable
+                      onPress={pickExtraImages}
+                      accessibilityLabel="Agregar fotos"
+                      style={[styles.extraAdd, { backgroundColor: c.card }]}
+                    >
+                      <Plus size={24} color={c.text} strokeWidth={2} />
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+
+              {isLost && (
+                <TextField
+                  label="Nombre"
                   value={name}
                   onChangeText={setName}
                   placeholder="Nombre de la mascota"
-                  placeholderTextColor={c.label}
                 />
-              </>
-            )}
+              )}
 
-            <Text style={[styles.label, { color: c.label }]}>Descripción</Text>
-            <TextInput
-              style={[styles.input, styles.multiline, { backgroundColor: c.inputBg, color: c.inputText }]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Señas particulares, zona, detalles"
-              placeholderTextColor={c.label}
-              multiline
-            />
+              <TextField
+                label="Descripción"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Señas particulares, zona, detalles"
+                multiline
+              />
 
-            <Text style={[styles.label, { color: c.label }]}>Contacto</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
-              value={contactInfo}
-              onChangeText={setContactInfo}
-              placeholder="Teléfono o WhatsApp"
-              placeholderTextColor={c.label}
-              keyboardType="phone-pad"
-            />
+              <TextField
+                label="Contacto"
+                icon={Phone}
+                value={contactInfo}
+                onChangeText={setContactInfo}
+                placeholder="Teléfono o WhatsApp"
+                keyboardType="phone-pad"
+              />
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+              {errorBox}
 
-            <Pressable
-              style={[styles.submit, { backgroundColor: c.primary }]}
-              onPress={handleSubmitReport}
-            >
-              <Text style={[styles.submitText, { color: c.primaryText }]}>Publicar reporte</Text>
-            </Pressable>
-          </>
-        )}
+              <Button variant="dark" icon={Send} title="Publicar reporte" onPress={handleSubmitReport} />
+            </>
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 20, paddingBottom: 48 },
-  header: { gap: 4, marginBottom: 12 },
-  back: { fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 34, fontWeight: '700', letterSpacing: -0.5 },
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 20,
-    marginBottom: 8,
+  flex: { flex: 1, minWidth: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sectionHeader: { paddingBottom: 24 },
+  progressWrap: { gap: 8 },
+  progress: { flexDirection: 'row', gap: 6 },
+  progressSeg: { flex: 1, height: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.3)' },
+  progressSegOn: { backgroundColor: palette.arena },
+  progressText: {
+    fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', color: palette.arena,
   },
-  hint: { fontSize: 12, lineHeight: 17, marginTop: -4, marginBottom: 10 },
-  mainImage: { width: '100%', aspectRatio: 1, borderRadius: 24, backgroundColor: '#E5E7EB' },
-  changePhoto: { borderRadius: 16, paddingVertical: 12, alignItems: 'center', marginTop: 10 },
-  changePhotoText: { fontWeight: '600', fontSize: 13 },
-  uploadBox: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
+
+  body: { paddingHorizontal: 20, paddingTop: 24, gap: 24 },
+  section: { gap: 10 },
+  label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  counter: { fontFamily: fonts.bold, fontSize: 12 },
+  text: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  small: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
+
+  segmented: { flexDirection: 'row', gap: 8, padding: 4, borderRadius: 18 },
+  segment: { flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: 14 },
+
+  upload: {
+    height: 200,
     borderRadius: 24,
-    paddingVertical: 48,
-    alignItems: 'center',
-    gap: 6,
-  },
-  uploadPlus: { fontSize: 28, fontWeight: '300' },
-  uploadText: { fontSize: 13, fontWeight: '500' },
-  extraRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  extraThumbWrap: { position: 'relative' },
-  extraThumb: { width: 72, height: 72, borderRadius: 14, backgroundColor: '#E5E7EB' },
-  extraRemove: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  extraRemoveText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  extraAdd: {
-    width: 72,
-    height: 72,
-    borderRadius: 14,
     borderWidth: 2,
     borderStyle: 'dashed',
+    borderColor: palette.coral,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 40,
   },
-  input: { borderRadius: 16, padding: 16, fontSize: 16 },
-  multiline: { minHeight: 90, textAlignVertical: 'top' },
-  locationHint: { fontSize: 13, marginBottom: 10, marginTop: -2 },
-  mapWrap: { height: 240, borderRadius: 20, overflow: 'hidden', borderWidth: 1, marginTop: 10 },
+  uploadIcon: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: palette.coral, alignItems: 'center', justifyContent: 'center',
+  },
+  uploadTitle: { fontFamily: fonts.display, fontSize: 17 },
+  uploadText: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  photo: { borderRadius: 24, overflow: 'hidden' },
+  changePhoto: {
+    position: 'absolute', right: 12, bottom: 12, height: 40, paddingHorizontal: 14, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  changePhotoText: { fontFamily: fonts.bold, fontSize: 13 },
+
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: { height: 40, paddingHorizontal: 20, borderRadius: 999, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pillWithSwatch: { paddingLeft: 8, paddingRight: 14 },
+  pillText: { fontSize: 14 },
+  swatch: {
+    width: 22, height: 22, borderRadius: 11, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(26,26,46,0.15)',
+  },
+  split: { flexDirection: 'row' },
+  spot: { position: 'absolute', borderRadius: 999, backgroundColor: '#1F1F1F' },
+  stripes: {
+    position: 'absolute', top: -8, left: -8, right: -8, bottom: -8, flexDirection: 'row', gap: 3,
+    transform: [{ rotate: '45deg' }],
+  },
+  stripe: { width: 3 },
+
+  locationBtn: { height: 48, borderRadius: 16 },
+  locationBtnText: { fontSize: 14 },
+  mapWrap: { height: 170, borderRadius: 20, overflow: 'hidden' },
   map: { flex: 1 },
-  locationBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', borderWidth: 1, marginTop: 10 },
-  locationText: { fontWeight: '600', fontSize: 15 },
-  locationOk: { textAlign: 'center', fontWeight: '700', fontSize: 13, marginTop: 8, color: '#22C55E' },
-  resultsSub: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  noMatch: { color: '#EF4444', fontWeight: '700' },
-  results: { marginTop: 12 },
-  secondaryBtn: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', borderWidth: 1, marginTop: 16 },
-  secondaryBtnText: { fontWeight: '700', fontSize: 14 },
-  error: {
-    color: '#EF4444',
-    textAlign: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: 12,
-    borderRadius: 16,
-    marginTop: 16,
-    fontSize: 13,
-    fontWeight: '600',
+  okDot: {
+    width: 20, height: 20, borderRadius: 10, backgroundColor: palette.teal, alignItems: 'center', justifyContent: 'center',
   },
-  submit: { borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
-  submitText: { fontWeight: '700', fontSize: 16 },
-  disabled: { opacity: 0.5 },
-  hintText: { textAlign: 'center', fontSize: 12, marginTop: 10 },
-  vetToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 16,
-    borderRadius: 20,
-    marginTop: 20,
+  okText: { fontFamily: fonts.bold, fontSize: 13 },
+
+  ctaBlock: { gap: 10 },
+  hintCenter: { fontFamily: fonts.regular, fontSize: 13, textAlign: 'center' },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 18,
+    borderWidth: 2, borderColor: palette.coral,
   },
-  vetToggleTextWrap: { flex: 1 },
-  vetToggleTitle: { fontSize: 14, fontWeight: '700' },
-  vetToggleSub: { fontSize: 12, marginTop: 2 },
-  vetToggleCheck: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+  errorText: { flex: 1, fontFamily: fonts.bold, fontSize: 14, lineHeight: 20 },
+  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 18 },
+  noticeText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+
+  summary: { borderRadius: 20, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryImg: { width: 56, height: 56, borderRadius: 14 },
+  summaryText: { fontFamily: fonts.bold, fontSize: 14, marginTop: 2 },
+  summaryEdit: { fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
+  matches: { gap: 12 },
+  match: { borderRadius: 24, padding: 12, flexDirection: 'row', gap: 14 },
+  matchImg: { width: 104, height: 104, borderRadius: 18 },
+  matchBody: { flex: 1, minWidth: 0, gap: 4 },
+  matchTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  matchMeta: { flexShrink: 1, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.66, textTransform: 'uppercase' },
+  matchPct: { fontFamily: fonts.display, fontSize: 26, marginTop: 2 },
+  matchPctLabel: { fontFamily: fonts.bold, fontSize: 13 },
+  bar: { height: 6, borderRadius: 999, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 999, backgroundColor: palette.coral },
+  matchFoot: {
+    marginTop: 'auto', paddingTop: 8, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'flex-end',
+    alignItems: 'center', gap: 2,
   },
-  vetToggleCheckText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  matchContact: { fontFamily: fonts.bold, fontSize: 13 },
+  noneBlock: { alignItems: 'center', gap: 10, marginTop: 8 },
+  outlineLink: {
+    alignSelf: 'stretch', height: 52, borderWidth: 2, borderColor: palette.noche, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  outlineLinkText: { fontFamily: fonts.bold, fontSize: 15 },
+
+  extraRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  extraThumb: { width: 76, height: 76, borderRadius: 16 },
+  extraImg: { width: '100%', height: '100%', borderRadius: 16 },
+  extraRemove: {
+    position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, borderWidth: 2,
+    backgroundColor: palette.noche, alignItems: 'center', justifyContent: 'center',
+  },
+  extraAdd: {
+    width: 76, height: 76, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: palette.coral,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });

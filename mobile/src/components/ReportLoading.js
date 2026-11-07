@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet, Linking } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../lib/theme';
+import { useTheme, palette, fonts } from '../lib/theme';
+import Wordmark from './Wordmark';
+import Button from './Button';
 
 const PHRASES = [
   'Iniciando motor de IA...',
@@ -12,6 +14,8 @@ const PHRASES = [
   'Generando reporte inteligente...',
 ];
 
+// TODO(contenido): el anuncio por defecto es de ejemplo (código con la marca
+// vieja). Ver REDISENO-PENDIENTES.md.
 export default function ReportLoading({
   title = 'Protección inteligente.',
   description = 'Conseguí un collar con tecnología de rastreo y un 20% de descuento usando el código NIGRA20.',
@@ -30,50 +34,48 @@ export default function ReportLoading({
     <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
       {/* Carrusel de carga */}
       <View style={styles.top}>
-        <ActivityIndicator size="large" color={c.title} />
-        <Text style={[styles.phrase, { color: c.title }]}>{PHRASES[idx]}</Text>
+        <Wordmark size={30} />
+        <ActivityIndicator size="large" color={palette.coral} />
+        <Text style={[styles.phrase, { color: c.text }]}>{PHRASES[idx]}</Text>
       </View>
 
       {/* Publicidad patrocinada */}
-      <View style={[styles.ad, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-        <Text style={[styles.sponsored, { color: c.label }]}>CONTENIDO PATROCINADO</Text>
+      <View style={[styles.ad, { backgroundColor: c.card }]}>
+        <Text style={[styles.sponsored, { color: c.text }]}>Contenido patrocinado</Text>
         <Text style={[styles.adTitle, { color: c.title }]}>{title}</Text>
-        <Text style={[styles.adDesc, { color: c.subtitle }]}>{description}</Text>
-        <Pressable style={[styles.adBtn, { backgroundColor: c.primary }]} onPress={() => Linking.openURL(link)}>
-          <Text style={[styles.adBtnText, { color: c.primaryText }]}>{buttonText}</Text>
-        </Pressable>
+        <Text style={[styles.adDesc, { color: c.text }]}>{description}</Text>
+        <Button title={buttonText} onPress={() => Linking.openURL(link)} style={styles.adBtn} />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 40 },
-  top: { alignItems: 'center', gap: 18 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 40 },
+  top: { alignItems: 'center', gap: 20 },
   phrase: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
+    fontSize: 12,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
     textAlign: 'center',
   },
   ad: {
     width: '100%',
     maxWidth: 360,
-    borderRadius: 28,
-    borderWidth: 1,
-    padding: 28,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
+    gap: 8,
   },
   sponsored: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 2.5,
-    marginBottom: 14,
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  adTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3, marginBottom: 8, textAlign: 'center' },
-  adDesc: { fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 22 },
-  adBtn: { borderRadius: 999, paddingHorizontal: 32, paddingVertical: 13 },
-  adBtnText: { fontWeight: '700', fontSize: 14 },
+  adTitle: { fontFamily: fonts.display, fontSize: 20, textAlign: 'center' },
+  adDesc: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 12 },
+  adBtn: { alignSelf: 'stretch' },
 });

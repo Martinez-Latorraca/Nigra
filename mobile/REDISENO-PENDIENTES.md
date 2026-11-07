@@ -57,3 +57,11 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   commit `0a765fc` se decidió que el caso se cierra **solo desde el chat** (opción A).
   La ficha propia muestra "Esta es tu publicación", Compartir y Eliminar, y "Reabrir"
   si ya está cerrada. Si querés el botón de vuelta, es reactivar `handleResolve(true)`.
+
+## Contenido a revisar (no es diseño)
+
+- **Anuncio de ejemplo en la pantalla de carga del reporte** · `src/components/ReportLoading.js` ·
+  mientras se busca la coincidencia se muestra "Contenido patrocinado: Protección inteligente…
+  usando el código **NIGRA20**" con un link genérico a mercadolibre.com.uy. Es un placeholder
+  con la marca vieja y lo ve cualquiera que reporte. Decidir: sacarlo, reemplazarlo por un
+  sponsor real, o mostrar algo propio (p. ej. consejos mientras busca).

@@ -4,6 +4,7 @@
 // su línea con el nombre en kebab-case (ver lucide.dev/icons).
 export { default as ArrowUpRight } from 'lucide-react-native/icons/arrow-up-right';
 export { default as AtSign } from 'lucide-react-native/icons/at-sign';
+export { default as Ban } from 'lucide-react-native/icons/ban';
 export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Camera } from 'lucide-react-native/icons/camera';
@@ -15,6 +16,7 @@ export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left';
 export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right';
 export { default as ChevronUp } from 'lucide-react-native/icons/chevron-up';
 export { default as Clock } from 'lucide-react-native/icons/clock';
+export { default as Ellipsis } from 'lucide-react-native/icons/ellipsis';
 export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as HeartHandshake } from 'lucide-react-native/icons/heart-handshake';
 export { default as Info } from 'lucide-react-native/icons/info';
@@ -40,6 +42,7 @@ export { default as RefreshCw } from 'lucide-react-native/icons/refresh-cw';
 export { default as Scissors } from 'lucide-react-native/icons/scissors';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as Send } from 'lucide-react-native/icons/send';
+export { default as SendHorizontal } from 'lucide-react-native/icons/send-horizontal';
 export { default as Share2 } from 'lucide-react-native/icons/share-2';
 export { default as Shield } from 'lucide-react-native/icons/shield';
 export { default as Sparkle } from 'lucide-react-native/icons/sparkle';

@@ -3,7 +3,7 @@ import {
   Modal, View, Text, Pressable, TextInput, Switch, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import api from '../lib/api';
-import { useTheme } from '../lib/theme';
+import { useTheme, palette, fonts } from '../lib/theme';
 
 const REASONS = [
   { key: 'spam', label: 'Spam' },
@@ -53,16 +53,16 @@ export default function ReportModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <Pressable style={styles.backdrop} onPress={close}>
-        <Pressable style={[styles.sheet, { backgroundColor: c.card }]} onPress={() => {}}>
+        <Pressable style={[styles.sheet, { backgroundColor: c.bg }]} onPress={() => {}}>
           <View style={styles.handle} />
           <Text style={[styles.title, { color: c.title }]}>
             {messageId ? 'Denunciar mensaje' : `Denunciar a ${reportedName || 'esta persona'}`}
           </Text>
-          <Text style={[styles.sub, { color: c.subtitle }]}>
+          <Text style={[styles.sub, { color: c.text }]}>
             Un admin revisa las denuncias. Esto no le avisa a la persona.
           </Text>
 
-          <Text style={[styles.label, { color: c.subtitle }]}>MOTIVO</Text>
+          <Text style={[styles.label, { color: c.text }]}>Motivo</Text>
           <View style={styles.reasons}>
             {REASONS.map((r) => {
               const active = reason === r.key;
@@ -73,35 +73,35 @@ export default function ReportModal({
                   style={[
                     styles.chip,
                     active
-                      ? { backgroundColor: '#FF5C6C', borderColor: '#FF5C6C' }
-                      : { backgroundColor: c.bg, borderColor: c.cardBorder },
+                      ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                      : { backgroundColor: c.card, borderColor: c.cardBorder },
                   ]}
                 >
-                  <Text style={[styles.chipText, { color: active ? '#fff' : c.title }]}>{r.label}</Text>
+                  <Text style={[styles.chipText, { color: active ? palette.crema : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>{r.label}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <Text style={[styles.label, { color: c.subtitle, marginTop: 16 }]}>NOTA (OPCIONAL)</Text>
+          <Text style={[styles.label, { color: c.text }]}>Nota (opcional)</Text>
           <TextInput
             value={note}
             onChangeText={setNote}
             placeholder="Contá qué pasó (opcional)"
-            placeholderTextColor={c.subtitle}
+            placeholderTextColor="rgba(26,26,46,0.45)"
             multiline
             maxLength={1000}
-            style={[styles.input, { color: c.title, borderColor: c.cardBorder, backgroundColor: c.bg }]}
+            style={[styles.input, { color: c.inputText, borderColor: c.cardBorder, backgroundColor: c.card }]}
           />
 
-          <View style={[styles.blockRow, { borderColor: c.cardBorder }]}>
+          <View style={[styles.blockRow, { backgroundColor: c.card }]}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={[styles.blockTitle, { color: c.title }]}>Bloquear a esta persona</Text>
-              <Text style={[styles.blockHint, { color: c.subtitle }]}>
+              <Text style={[styles.blockHint, { color: c.text }]}>
                 Dejás de ver y recibir sus mensajes.
               </Text>
             </View>
-            <Switch value={block} onValueChange={setBlock} trackColor={{ false: '#E5E7EB', true: '#FF5C6C' }} />
+            <Switch value={block} onValueChange={setBlock} trackColor={{ false: palette.arena, true: palette.teal }} thumbColor={palette.blanco} />
           </View>
 
           <Pressable
@@ -110,13 +110,13 @@ export default function ReportModal({
             style={[styles.submitBtn, sending && { opacity: 0.5 }]}
           >
             {sending ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={palette.arena} />
             ) : (
               <Text style={styles.submitText}>Enviar denuncia</Text>
             )}
           </Pressable>
           <Pressable onPress={close} style={styles.cancelBtn}>
-            <Text style={[styles.cancelText, { color: c.subtitle }]}>Cancelar</Text>
+            <Text style={[styles.cancelText, { color: c.text }]}>Cancelar</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -125,32 +125,31 @@ export default function ReportModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(26,26,46,0.55)', justifyContent: 'flex-end' },
   sheet: {
-    borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: 34,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 10, paddingHorizontal: 20, paddingBottom: 34, gap: 14,
   },
   handle: {
-    alignSelf: 'center', width: 40, height: 4, borderRadius: 999,
-    backgroundColor: 'rgba(128,128,128,0.4)', marginBottom: 16,
+    alignSelf: 'center', width: 44, height: 5, borderRadius: 999,
+    backgroundColor: palette.arena, borderWidth: 1, borderColor: 'rgba(26,26,46,0.12)', marginBottom: 4,
   },
-  title: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  sub: { fontSize: 12, marginTop: 6, lineHeight: 17 },
-  label: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginTop: 20, marginBottom: 8 },
-  reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9 },
-  chipText: { fontSize: 13, fontWeight: '700' },
+  title: { fontFamily: fonts.display, fontSize: 22, lineHeight: 26 },
+  sub: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, marginTop: -10 },
+  label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: -4 },
+  chip: { height: 38, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
+  chipText: { fontSize: 14 },
   input: {
-    borderRadius: 16, borderWidth: 1, padding: 14, fontSize: 14, minHeight: 80, textAlignVertical: 'top',
+    borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, minHeight: 84,
+    fontFamily: fonts.regular, fontSize: 15, textAlignVertical: 'top', marginTop: -4,
   },
-  blockRow: {
-    flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, marginTop: 20, paddingTop: 16,
-  },
-  blockTitle: { fontSize: 15, fontWeight: '700' },
-  blockHint: { fontSize: 12, marginTop: 2 },
+  blockRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 18 },
+  blockTitle: { fontFamily: fonts.bold, fontSize: 15 },
+  blockHint: { fontFamily: fonts.regular, fontSize: 13, marginTop: 2 },
   submitBtn: {
-    marginTop: 20, backgroundColor: '#FF5C6C', borderRadius: 999, paddingVertical: 15, alignItems: 'center',
+    height: 52, backgroundColor: palette.coral, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
-  submitText: { color: '#fff', fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
-  cancelBtn: { marginTop: 10, alignItems: 'center', paddingVertical: 8 },
-  cancelText: { fontSize: 14, fontWeight: '600' },
+  submitText: { fontFamily: fonts.bold, color: palette.arena, fontSize: 15 },
+  cancelBtn: { height: 40, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontFamily: fonts.medium, fontSize: 14, textDecorationLine: 'underline' },
 });

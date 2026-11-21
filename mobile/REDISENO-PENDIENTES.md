@@ -74,3 +74,13 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   siluetas nuevas de Perro/Gato.
 - **Cámara: zoom en "1,0×"** · se dejó en porcentaje porque el zoom de expo-camera va de
   0 a 1 y no es un multiplicador real.
+
+## Mensajes (`Mensajes.dc.html`)
+
+- **"Sobre [Nombre] · Perdido" y punto de color sobre la foto** · el diseño muestra en cada
+  conversación el nombre y el estado de la mascota. `GET /api/messages/inbox` no devuelve
+  `pets.name` ni `pets.status`/`resolved_at`: hay que sumarlos al SELECT.
+- **Bug: punto de "no leído" en Chats sin nada sin leer** · `unreadCount` de `src/lib/socket.js`
+  suma todas las notificaciones sin leer, incluidos tipos que la pantalla Mensajes no muestra
+  (solo muestra `match` y `resolve_reminder`). El punto de la TabBar / menú aparece y en la
+  lista no hay nada marcado.

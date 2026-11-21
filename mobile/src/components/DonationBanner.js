@@ -1,7 +1,8 @@
 import { View, Text, Pressable, StyleSheet, Linking, Alert } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { markDismissedTemp, markDismissedPermanent } from '../store/donationSlice';
-import { useTheme } from '../lib/theme';
+import { palette, fonts } from '../lib/theme';
+import { Coffee } from '../lib/icons';
 import api from '../lib/api';
 import { MP_DONATION_URL as MP_URL } from '../lib/config';
 
@@ -9,8 +10,7 @@ import { MP_DONATION_URL as MP_URL } from '../lib/config';
 // mascota como reunida. Ofrece un CTA a Mercado Pago + dismissal (temp / "ya doné").
 // onDismiss (opcional): se llama después de "Ahora no" / "Ya doné" — sirve
 // para cerrar el modal de celebración que envuelve el banner.
-export default function DonationBanner({ petId, petName, onDismiss }) {
-    const c = useTheme();
+export default function DonationBanner({ petId, petName, onDismiss, style }) {
     const dispatch = useDispatch();
 
     const openDonation = async () => {
@@ -40,29 +40,31 @@ export default function DonationBanner({ petId, petName, onDismiss }) {
     };
 
     return (
-        <View style={[styles.wrap, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-            <Text style={[styles.title, { color: c.title }]}>
-                {petName ? `${petName} ya está en casa 🐾` : '¡Reencuentro exitoso! 🐾'}
-            </Text>
-            <Text style={[styles.body, { color: c.subtitle }]}>
+        <View style={[styles.wrap, style]}>
+            <View style={styles.head}>
+                <View style={styles.icon}>
+                    <Coffee size={22} color={palette.arena} strokeWidth={2} />
+                </View>
+                <Text style={styles.title}>
+                    {petName ? `${petName} ya está en casa` : '¡Reencuentro exitoso!'}
+                </Text>
+            </View>
+            <Text style={styles.body}>
                 Mimo se banca con lo que la comunidad aporta. Si te ayudó, un cafecito
                 nos deja seguir conectando familias.
             </Text>
             <Pressable
                 onPress={openDonation}
-                style={({ pressed }) => [
-                    styles.cta,
-                    { backgroundColor: c.primary, opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={({ pressed }) => [styles.cta, { opacity: pressed ? 0.85 : 1 }]}
             >
-                <Text style={[styles.ctaText, { color: c.primaryText }]}>Donar por Mercado Pago</Text>
+                <Text style={styles.ctaText}>Donar por Mercado Pago</Text>
             </Pressable>
             <View style={styles.footer}>
                 <Pressable onPress={handleLater} hitSlop={8}>
-                    <Text style={[styles.link, { color: c.subtitle }]}>Ahora no</Text>
+                    <Text style={styles.link}>Ahora no</Text>
                 </Pressable>
                 <Pressable onPress={handleDonated} hitSlop={8}>
-                    <Text style={[styles.link, { color: c.subtitle }]}>Ya doné</Text>
+                    <Text style={styles.link}>Ya doné</Text>
                 </Pressable>
             </View>
         </View>
@@ -71,25 +73,31 @@ export default function DonationBanner({ petId, petName, onDismiss }) {
 
 const styles = StyleSheet.create({
     wrap: {
-        margin: 16,
-        borderRadius: 20,
-        borderWidth: 1,
-        padding: 20,
+        alignSelf: 'stretch',
+        backgroundColor: palette.coral,
+        borderRadius: 24,
+        padding: 18,
         gap: 10,
     },
-    title: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
-    body: { fontSize: 13, lineHeight: 19 },
-    cta: {
+    head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    icon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderRadius: 999,
-        marginTop: 6,
+        justifyContent: 'center',
     },
-    ctaText: { fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 4,
+    title: { flex: 1, fontFamily: fonts.display, fontSize: 18, lineHeight: 22, color: palette.arena },
+    body: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: palette.arena },
+    cta: {
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: palette.noche,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    link: { fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
+    ctaText: { fontFamily: fonts.bold, fontSize: 15, color: palette.crema },
+    footer: { flexDirection: 'row', justifyContent: 'center', gap: 24 },
+    link: { fontFamily: fonts.bold, fontSize: 13, color: palette.arena, textDecorationLine: 'underline', padding: 4 },
 });

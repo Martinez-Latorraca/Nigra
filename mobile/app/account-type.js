@@ -6,35 +6,15 @@
 // Sin esto, quien quería registrar su veterinaria o refugio y entró por
 // "Continuar con Google" quedaba como particular sin forma de convertirse.
 import { useState } from 'react';
-import { Text, Pressable, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import api from '../src/lib/api';
 import { updateUser } from '../src/store/userSlice';
 import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
-
-// Mismas opciones y textos que el registro por email, para que la app se
-// sienta coherente sin importar por dónde entraste.
-const ACCOUNT_TYPES = [
-  {
-    id: 'user',
-    emoji: '🐾',
-    title: 'Busco / reporto mascotas',
-    desc: 'Uso Mimo para encontrar o reportar mascotas.',
-  },
-  {
-    id: 'vet',
-    emoji: '🏥',
-    title: 'Represento una veterinaria',
-    desc: 'Publico mascotas encontradas y recibo alertas.',
-  },
-  {
-    id: 'shelter',
-    emoji: '🏡',
-    title: 'Represento un refugio',
-    desc: 'Publico mascotas en adopción y las promociono.',
-  },
-];
+import AccountTypePicker from '../src/components/AccountTypePicker';
+import Button from '../src/components/Button';
+import { fonts } from '../src/lib/theme';
 
 export default function AccountType() {
   const c = useAuthColors();
@@ -75,81 +55,23 @@ export default function AccountType() {
     <AuthScreen
       title="¿Cómo vas a usar Mimo?"
       subtitle="Elegí el tipo de cuenta. Podés cambiarlo después escribiéndonos."
+      footer={<Button title="Continuar" onPress={handleContinue} loading={loading} />}
     >
-      <View style={{ gap: 8, marginTop: 4 }}>
-        {ACCOUNT_TYPES.map((t) => {
-          const active = accountType === t.id;
-          return (
-            <Pressable
-              key={t.id}
-              onPress={() => setAccountType(t.id)}
-              disabled={loading}
-              style={[
-                styles.typeCard,
-                {
-                  backgroundColor: active ? c.inputBg : 'transparent',
-                  borderColor: active ? c.title : c.label,
-                  borderWidth: active ? 2 : 1,
-                },
-              ]}
-            >
-              <Text style={styles.typeEmoji}>{t.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.typeTitle, { color: c.inputText }]}>{t.title}</Text>
-                <Text style={[styles.typeDesc, { color: c.subtitle }]}>{t.desc}</Text>
-              </View>
-              <View
-                style={[
-                  styles.typeRadio,
-                  { borderColor: active ? c.title : c.label, backgroundColor: active ? c.title : 'transparent' },
-                ]}
-              />
-            </Pressable>
-          );
-        })}
-      </View>
+      <AccountTypePicker value={accountType} onChange={setAccountType} disabled={loading} />
 
-      {isEntity && (
-        <Text style={[styles.note, { color: c.subtitle }]}>
+      {isEntity ? (
+        <Text style={[styles.note, { color: c.text }]}>
           Vas a poder completar los datos desde tu perfil. Un administrador
           revisa la cuenta antes de que aparezca en el directorio.
         </Text>
-      )}
+      ) : null}
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
-
-      <Pressable
-        onPress={handleContinue}
-        disabled={loading}
-        style={[styles.button, { backgroundColor: c.primary, opacity: loading ? 0.6 : 1 }]}
-      >
-        {loading
-          ? <ActivityIndicator color={c.primaryText} />
-          : <Text style={[styles.buttonText, { color: c.primaryText }]}>Continuar</Text>}
-      </Pressable>
+      {error ? <Text style={[styles.error, { color: c.coral }]}>{error}</Text> : null}
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  typeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 16,
-  },
-  typeEmoji: { fontSize: 22 },
-  typeTitle: { fontSize: 14, fontWeight: '600' },
-  typeDesc: { fontSize: 12, marginTop: 2 },
-  typeRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
-  note: { fontSize: 12, lineHeight: 17, marginTop: 14 },
-  error: { color: '#DC2626', fontSize: 13, marginTop: 14 },
-  button: {
-    marginTop: 20,
-    borderRadius: 16,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  buttonText: { fontSize: 15, fontWeight: '600' },
+  note: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 10 },
+  error: { fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
 });

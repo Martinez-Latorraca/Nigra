@@ -254,6 +254,6 @@ const styles = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { fontFamily: fonts.bold, fontSize: 13 },
-  footerText: { fontFamily: fonts.regular, fontSize: 15 },
+  footerText: { fontFamily: fonts.regular, fontSize: 15, textAlign: 'center' },
   footerLink: { fontFamily: fonts.bold, textDecorationLine: 'underline' },
 });

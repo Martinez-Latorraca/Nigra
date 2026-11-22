@@ -1,30 +1,18 @@
 import { useState } from 'react';
-import { Text, TextInput, Pressable, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
 import { router, Link } from 'expo-router';
 import api from '../src/lib/api';
-import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
+import AuthScreen, {
+  useAuthColors,
+  AuthField,
+  AuthHeroIcon,
+  PasswordField,
+} from '../src/components/AuthScreen';
+import AccountTypePicker from '../src/components/AccountTypePicker';
+import Button from '../src/components/Button';
+import { ClipboardList, Mail, MailCheck, User } from '../src/lib/icons';
+import { palette, fonts } from '../src/lib/theme';
 import { CONTACT_EMAIL } from '../src/lib/config';
-
-const ACCOUNT_TYPES = [
-  {
-    id: 'user',
-    emoji: '🐾',
-    title: 'Busco / reporto mascotas',
-    desc: 'Uso Mimo para encontrar o reportar mascotas.',
-  },
-  {
-    id: 'vet',
-    emoji: '🏥',
-    title: 'Represento una veterinaria',
-    desc: 'Publico mascotas encontradas y recibo alertas.',
-  },
-  {
-    id: 'shelter',
-    emoji: '🏡',
-    title: 'Represento un refugio',
-    desc: 'Publico mascotas en adopción y las promociono.',
-  },
-];
 
 export default function Register() {
   const c = useAuthColors();
@@ -41,6 +29,8 @@ export default function Register() {
 
   const canSubmit =
     name.trim() && email.trim() && password.length >= 6 && password === passwordConfirm;
+  const mismatch = !!passwordConfirm && password !== passwordConfirm;
+  const isEntity = accountType === 'vet' || accountType === 'shelter';
 
   const handleRegister = async () => {
     setError('');
@@ -71,44 +61,62 @@ export default function Register() {
 
   if (registered) {
     const title = restored ? 'Recuperando tu cuenta' : 'Revisá tu email';
-    const subtitle = restored
-      ? `Te mandamos un link a ${email} para confirmar que sos vos. Al tocarlo, tus reportes y datos vuelven intactos.`
-      : `Te mandamos un link a ${email} para confirmar tu cuenta. Después de tocarlo, iniciá sesión.`;
+    const subtitle = restored ? (
+      <>
+        Te mandamos un link a <Text style={styles.strong}>{email}</Text> para confirmar que sos vos. Al
+        tocarlo, tus reportes y datos vuelven intactos.
+      </>
+    ) : (
+      <>
+        Te mandamos un link a <Text style={styles.strong}>{email}</Text> para confirmar tu cuenta.
+        Después de tocarlo, iniciá sesión.
+      </>
+    );
     return (
-      <AuthScreen title={title} subtitle={subtitle}>
+      <AuthScreen
+        compact
+        hero={<AuthHeroIcon icon={MailCheck} color={palette.teal} />}
+        title={title}
+        subtitle={subtitle}
+        footer={
+          <Text style={[styles.footerText, { color: c.text }]}>
+            ¿No te llegó?{' '}
+            <Text onPress={resendVerification} style={[styles.footerLink, { color: c.title }]}>
+              Reenviar mail
+            </Text>
+          </Text>
+        }
+      >
         {accountType === 'shelter' && !restored ? (
-          <View style={styles.shelterNotice}>
-            <Text style={styles.shelterNoticeKicker}>📋 UN PASO MÁS</Text>
-            <Text style={styles.shelterNoticeText}>
+          <View style={styles.notice}>
+            <View style={styles.noticeKickerRow}>
+              <ClipboardList size={15} color={palette.arena} strokeWidth={2} />
+              <Text style={styles.noticeKicker}>Un paso más</Text>
+            </View>
+            <Text style={styles.noticeTitle}>
               Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-              Enviá a {CONTACT_EMAIL} los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes, etc.) desde el email de tu cuenta.
-              {'\n\n'}
+            </Text>
+            <Text style={styles.noticeText}>
+              Enviá a {CONTACT_EMAIL} los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del
+              refugio, redes, etc.) desde el email de tu cuenta.
+            </Text>
+            <Text style={styles.noticeText}>
               Mientras tanto podés editar el perfil. Un admin te aprueba y ya podés publicar.
             </Text>
           </View>
         ) : null}
-        <Pressable
-          style={[styles.button, { backgroundColor: c.primary, marginTop: 8 }]}
-          onPress={() => router.replace('/login')}
-        >
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>Ir al login</Text>
-        </Pressable>
-        <Pressable style={{ marginTop: 12 }} onPress={resendVerification}>
-          <Text style={[styles.footerText, { color: c.subtitle, textAlign: 'center' }]}>
-            ¿No te llegó?{' '}
-            <Text style={[styles.footerLink, { color: c.title }]}>Reenviar mail</Text>
-          </Text>
-        </Pressable>
+        <Button title="Ir al login" onPress={() => router.replace('/login')} />
       </AuthScreen>
     );
   }
 
   return (
     <AuthScreen
+      compact
       title="Crear cuenta"
       subtitle="Unite a la comunidad de búsqueda y rescate de Mimo"
       footer={
-        <Text style={[styles.footerText, { color: c.subtitle }]}>
+        <Text style={[styles.footerText, { color: c.text }]}>
           ¿Ya tenés cuenta?{' '}
           <Link href="/login" style={[styles.footerLink, { color: c.title }]}>
             Iniciar sesión
@@ -116,174 +124,87 @@ export default function Register() {
         </Text>
       }
     >
-      <Text style={[styles.label, { color: c.label }]}>Tipo de cuenta</Text>
-      <View style={{ gap: 8, marginTop: 8 }}>
-        {ACCOUNT_TYPES.map((t) => {
-          const active = accountType === t.id;
-          return (
-            <Pressable
-              key={t.id}
-              onPress={() => setAccountType(t.id)}
-              disabled={loading}
-              style={[
-                styles.typeCard,
-                {
-                  backgroundColor: active ? c.inputBg : 'transparent',
-                  borderColor: active ? c.title : c.label,
-                  borderWidth: active ? 2 : 1,
-                },
-              ]}
-            >
-              <Text style={styles.typeEmoji}>{t.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.typeTitle, { color: c.inputText }]}>{t.title}</Text>
-                <Text style={[styles.typeDesc, { color: c.subtitle }]}>{t.desc}</Text>
-              </View>
-              <View
-                style={[
-                  styles.typeRadio,
-                  { borderColor: active ? c.title : c.label, backgroundColor: active ? c.title : 'transparent' },
-                ]}
-              />
-            </Pressable>
-          );
-        })}
+      <AccountTypePicker
+        label="Tipo de cuenta"
+        value={accountType}
+        onChange={setAccountType}
+        disabled={loading}
+      />
+
+      <View style={styles.fields}>
+        <AuthField
+          label={isEntity ? 'Nombre del responsable' : 'Nombre completo'}
+          icon={User}
+          value={name}
+          onChangeText={setName}
+          placeholder="Nombre y apellido"
+          autoCapitalize="words"
+          editable={!loading}
+        />
+
+        <AuthField
+          label="Email"
+          icon={Mail}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="nombre@ejemplo.com"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          editable={!loading}
+        />
+
+        <PasswordField
+          label="Contraseña"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Mínimo 6 caracteres"
+          autoComplete="password-new"
+          editable={!loading}
+        />
+
+        <PasswordField
+          label="Repetir contraseña"
+          value={passwordConfirm}
+          onChangeText={setPasswordConfirm}
+          placeholder="Escribí la contraseña de nuevo"
+          autoComplete="password-new"
+          editable={!loading}
+          error={mismatch ? 'Las contraseñas no coinciden.' : undefined}
+        />
+
+        {error ? <Text style={[styles.error, { color: c.coral }]}>{error}</Text> : null}
+
+        <Button
+          title={isEntity ? 'Crear cuenta y continuar' : 'Crear cuenta'}
+          onPress={handleRegister}
+          loading={loading}
+          disabled={!canSubmit}
+          style={styles.submit}
+        />
       </View>
-
-      <Text style={[styles.label, { color: c.label }]}>
-        {(accountType === 'vet' || accountType === 'shelter') ? 'Nombre del responsable' : 'Nombre completo'}
-      </Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
-        value={name}
-        onChangeText={setName}
-        placeholder="Nombre y apellido"
-        placeholderTextColor={c.label}
-        autoCapitalize="words"
-        editable={!loading}
-      />
-
-      <Text style={[styles.label, { color: c.label }]}>Email</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="nombre@ejemplo.com"
-        placeholderTextColor={c.label}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
-        autoComplete="email"
-        editable={!loading}
-      />
-
-      <Text style={[styles.label, { color: c.label }]}>Contraseña</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Mínimo 6 caracteres"
-        placeholderTextColor={c.label}
-        secureTextEntry
-        autoComplete="password-new"
-        editable={!loading}
-      />
-
-      <Text style={[styles.label, { color: c.label }]}>Repetir contraseña</Text>
-      <TextInput
-        style={[
-          styles.input,
-          { backgroundColor: c.inputBg, color: c.inputText },
-          passwordConfirm && password !== passwordConfirm ? styles.inputError : null,
-        ]}
-        value={passwordConfirm}
-        onChangeText={setPasswordConfirm}
-        placeholder="Escribí la contraseña de nuevo"
-        placeholderTextColor={c.label}
-        secureTextEntry
-        autoComplete="password-new"
-        editable={!loading}
-      />
-      {passwordConfirm && password !== passwordConfirm ? (
-        <Text style={[styles.hint, { color: '#EF4444' }]}>Las contraseñas no coinciden.</Text>
-      ) : null}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Pressable
-        style={[
-          styles.button,
-          { backgroundColor: c.primary, marginTop: 16 },
-          (loading || !canSubmit) && styles.buttonDisabled,
-        ]}
-        onPress={handleRegister}
-        disabled={loading || !canSubmit}
-      >
-        {loading ? (
-          <ActivityIndicator color={c.primaryText} />
-        ) : (
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>
-            {(accountType === 'vet' || accountType === 'shelter') ? 'Crear cuenta y continuar' : 'Crear cuenta'}
-          </Text>
-        )}
-      </Pressable>
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  label: {
-    fontSize: 11,
-    fontWeight: '600',
+  // gap 14 del cuerpo + 10 = los 24 que separan los grupos en el diseño.
+  fields: { gap: 14, marginTop: 10 },
+  submit: { marginTop: 6 },
+  error: { fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
+  strong: { fontFamily: fonts.bold },
+  footerText: { fontFamily: fonts.regular, fontSize: 15, textAlign: 'center' },
+  footerLink: { fontFamily: fonts.bold, textDecorationLine: 'underline' },
+  notice: { backgroundColor: palette.teal, borderRadius: 24, padding: 18, gap: 8 },
+  noticeKickerRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  noticeKicker: {
+    fontFamily: fonts.bold,
+    fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginTop: 12,
+    color: palette.arena,
   },
-  input: { borderRadius: 16, padding: 16, fontSize: 16 },
-  inputError: { borderWidth: 1, borderColor: '#EF4444' },
-  hint: { fontSize: 11, marginTop: 6, lineHeight: 15 },
-  typeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: 16,
-    padding: 12,
-  },
-  typeEmoji: { fontSize: 22 },
-  typeTitle: { fontSize: 14, fontWeight: '700' },
-  typeDesc: { fontSize: 11, marginTop: 2, lineHeight: 15 },
-  typeRadio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
-  error: {
-    color: '#EF4444',
-    textAlign: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: 12,
-    borderRadius: 16,
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  button: {
-    borderRadius: 999,
-    padding: 16,
-    alignItems: 'center',
-    height: 56,
-    justifyContent: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { fontWeight: '600', fontSize: 16 },
-  footerText: { fontSize: 14, fontWeight: '500' },
-  footerLink: { fontWeight: '700' },
-  shelterNotice: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FCD34D',
-  },
-  shelterNoticeKicker: {
-    color: '#92400E', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8,
-  },
-  shelterNoticeText: { color: '#78350F', fontSize: 12, lineHeight: 18 },
+  noticeTitle: { fontFamily: fonts.display, fontSize: 18, lineHeight: 23, color: palette.arena },
+  noticeText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: palette.arena },
 });

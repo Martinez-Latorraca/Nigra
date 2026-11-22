@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Switch,
-  Alert,
   Linking,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -16,7 +15,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import api from '../src/lib/api';
 import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../src/lib/theme';
-import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check, ClipboardList } from '../src/lib/icons';
+import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check, ClipboardList, UserX } from '../src/lib/icons';
+import { confirm, toast } from '../src/lib/feedback';
 
 // Vacío de "Mis reportes" (Estados.dc.html).
 function EmptyReports() {
@@ -218,27 +218,23 @@ export default function Profile() {
     router.replace('/home');
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Eliminar tu cuenta',
-      'Tus datos y tus reportes se conservan y podés recuperarla iniciando sesión con este mismo email más adelante.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/api/users/me');
-              dispatch(clearCredentials());
-              router.replace('/home');
-            } catch (e) {
-              Alert.alert('Error', e.response?.data?.error || 'No se pudo eliminar la cuenta.');
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteAccount = async () => {
+    const ok = await confirm({
+      tone: 'danger',
+      icon: UserX,
+      title: '¿Eliminar tu cuenta?',
+      text: 'Se ocultan tus publicaciones y tu perfil.',
+      note: 'Tus datos y tus reportes se conservan: podés recuperarla más adelante registrándote con el mismo email.',
+      confirmText: 'Eliminar cuenta',
+    });
+    if (!ok) return;
+    try {
+      await api.delete('/api/users/me');
+      dispatch(clearCredentials());
+      router.replace('/home');
+    } catch (e) {
+      toast(e.response?.data?.error || 'No se pudo eliminar la cuenta.', 'error');
+    }
   };
 
   // ---- Render helpers ---- //

@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Keyboard,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -17,7 +16,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts } from '../../src/lib/theme';
 import { useSocket } from '../../src/lib/socket';
-import { ChevronLeft, Ellipsis, Check, Shield, SendHorizontal, Info, Ban } from '../../src/lib/icons';
+import { ChevronLeft, Ellipsis, Check, Shield, SendHorizontal, Info, Ban, CircleCheck } from '../../src/lib/icons';
+import { confirm, toast } from '../../src/lib/feedback';
 import { translateType, translateColor } from '../../src/lib/translations';
 import DonationBanner from '../../src/components/DonationBanner';
 import ReportModal from '../../src/components/ReportModal';
@@ -164,15 +164,15 @@ export default function Chat() {
   );
   const chatIsClosedElsewhere = isResolved && !iAmPartOfReunion;
 
-  const confirmResolve = () => {
-    Alert.alert(
-      '¿Cerrar el caso?',
-      `Vas a marcar${pet?.name ? ` a ${pet.name}` : ''} como reunida. Se le avisa a la otra persona y podrás ver un mensaje de gracias.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sí, cerrar caso', onPress: doResolve },
-      ]
-    );
+  const confirmResolve = async () => {
+    const ok = await confirm({
+      tone: 'good',
+      icon: CircleCheck,
+      title: '¿Cerrar el caso?',
+      text: `Vas a marcar${pet?.name ? ` a ${pet.name}` : ' la mascota'} como reunida. Le avisamos a la otra persona.`,
+      confirmText: 'Sí, cerrar caso',
+    });
+    if (ok) doResolve();
   };
 
   // Tras enviar una denuncia. Si bloqueó, la conversación queda oculta:
@@ -181,11 +181,10 @@ export default function Chat() {
     setReportTarget(null);
     if (blocked) {
       refreshInbox();
-      Alert.alert('Listo', 'Enviamos tu denuncia y bloqueaste a esta persona.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      toast('Enviamos tu denuncia y bloqueaste a esta persona.');
+      router.back();
     } else {
-      Alert.alert('Gracias', 'Recibimos tu denuncia. Un admin la va a revisar.');
+      toast('Gracias, recibimos tu denuncia. Un admin la va a revisar.');
     }
   };
 
@@ -203,7 +202,7 @@ export default function Chat() {
       } : prev);
       dispatch(resetDismissal(petId));
     } catch (e) {
-      Alert.alert('Error', 'No se pudo cerrar el caso. Probá de nuevo.');
+      toast('No se pudo cerrar el caso. Probá de nuevo.', 'error');
     } finally {
       setResolving(false);
     }

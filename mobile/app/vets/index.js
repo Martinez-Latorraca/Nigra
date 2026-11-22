@@ -7,7 +7,6 @@ import {
   Pressable,
   Image,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
@@ -16,6 +15,7 @@ import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/
 import { SkeletonList } from '../../src/components/Skeleton';
 import { Stethoscope, ChevronRight, Star, MapPin, Locate, SearchX } from '../../src/lib/icons';
 import EmptyState from '../../src/components/EmptyState';
+import { toast } from '../../src/lib/feedback';
 import { tierOf } from '../../src/lib/sponsorTiers';
 import SectionHeader from '../../src/components/SectionHeader';
 import SearchBar from '../../src/components/SearchBar';
@@ -214,7 +214,7 @@ export default function VetsList() {
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permiso necesario', 'Necesitamos tu ubicación para mostrar vets cerca tuyo.');
+        toast('Necesitamos tu ubicación para mostrar vets cerca tuyo.', 'error');
         return;
       }
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -222,7 +222,7 @@ export default function VetsList() {
       setCoords(g);
       fetchVets(1, committedCity, servicesSelected, g);
     } catch (e) {
-      Alert.alert('Error', 'No pudimos obtener tu ubicación.');
+      toast('No pudimos obtener tu ubicación.', 'error');
     } finally {
       setGeoLoading(false);
     }

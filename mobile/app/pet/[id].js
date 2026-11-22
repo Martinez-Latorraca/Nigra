@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Linking,
   Share,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -18,8 +17,9 @@ import { useTheme, palette, fonts } from '../../src/lib/theme';
 import { SkeletonDetail } from '../../src/components/Skeleton';
 import {
   ChevronLeft, User, Calendar, Stethoscope, Star, MapPin, HeartHandshake,
-  MessageCircle, Share2, Trash2, Shield,
+  MessageCircle, Share2, Trash2, Shield, RotateCcw,
 } from '../../src/lib/icons';
+import { confirm, toast } from '../../src/lib/feedback';
 import { translateType, translateColor } from '../../src/lib/translations';
 import { API_URL } from '../../src/lib/config';
 import PetMap from '../../src/components/PetMap';
@@ -115,46 +115,48 @@ export default function PetDetail() {
   };
   // El caso se cierra solo desde el chat (commit 0a765fc). Desde la ficha el
   // dueño solo puede reabrir un caso ya cerrado.
-  const handleResolve = (resolved) => {
-    const title = resolved ? 'Marcar como reunida' : 'Reabrir reporte';
-    const message = resolved
-      ? '¿Confirmás que se reunió con su familia? Se ocultará de búsquedas y del feed.'
-      : '¿Reabrir el reporte? Vuelve a aparecer en búsquedas y feed.';
-    Alert.alert(title, message, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: resolved ? 'Marcar reunida' : 'Reabrir',
-        onPress: async () => {
-          try {
-            const { data } = await api.patch(`/api/pets/${pet.id}/resolve`, { resolved });
-            setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
-          } catch {
-            Alert.alert('Error', 'No se pudo actualizar el estado.');
+  const handleResolve = async (resolved) => {
+    const ok = await confirm(
+      resolved
+        ? {
+            tone: 'good',
+            icon: HeartHandshake,
+            title: `¿${pet.name || 'Tu mascota'} volvió a casa?`,
+            text: 'Se ocultará de las búsquedas y del feed. Si te equivocás, lo podés reabrir.',
+            confirmText: 'Sí, marcar reunida',
           }
-        },
-      },
-    ]);
-  };
-  const handleDelete = () => {
-    Alert.alert(
-      'Eliminar publicación',
-      '¿Eliminar este reporte permanentemente? No se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/pets/${pet.id}`);
-              router.back();
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar la publicación.');
-            }
-          },
-        },
-      ]
+        : {
+            tone: 'neutral',
+            icon: RotateCcw,
+            title: '¿Reabrir el reporte?',
+            text: 'Vuelve a aparecer en las búsquedas y en el feed.',
+            confirmText: 'Reabrir',
+          }
     );
+    if (!ok) return;
+    try {
+      const { data } = await api.patch(`/api/pets/${pet.id}/resolve`, { resolved });
+      setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
+    } catch {
+      toast('No se pudo actualizar el estado. Probá de nuevo.', 'error');
+    }
+  };
+  const handleDelete = async () => {
+    const ok = await confirm({
+      tone: 'danger',
+      icon: Trash2,
+      title: '¿Eliminar esta publicación?',
+      text: 'Se borra de forma permanente, con sus fotos.',
+      note: 'No se puede deshacer.',
+      confirmText: 'Eliminar',
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/pets/${pet.id}`);
+      router.back();
+    } catch {
+      toast('No se pudo eliminar la publicación. Probá de nuevo.', 'error');
+    }
   };
 
   return (

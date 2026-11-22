@@ -15,6 +15,7 @@ import { store, persistor } from '../src/store/store';
 import { SocketProvider } from '../src/lib/socket';
 import { PushProvider } from '../src/lib/push';
 import BannerHost from '../src/components/BannerHost';
+import FeedbackHost from '../src/components/FeedbackHost';
 import Splash from '../src/components/Splash';
 
 // Mantenemos el splash nativo (solo bg crema) hasta que el árbol React esté
@@ -80,6 +81,7 @@ function RootLayout() {
                                 <>
                                     <Stack screenOptions={{ headerShown: false }} />
                                     <BannerHost />
+                                    <FeedbackHost />
                                 </>
                                 {showCustomSplash && (
                                     <Splash onFinish={() => setShowCustomSplash(false)} />

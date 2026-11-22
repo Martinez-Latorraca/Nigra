@@ -6,7 +6,6 @@ import {
   Image,
   ScrollView,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -15,7 +14,7 @@ import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
 import {
-  Camera, Search, Locate, Check, MapPin, ArrowUpRight, ChevronRight, X, Plus, Info, Send, Phone, ScanSearch,
+  Camera, Search, Locate, Check, MapPin, ArrowUpRight, ChevronRight, X, Plus, Info, Send, Phone, ScanSearch, Images,
 } from '../src/lib/icons';
 import { translateType, translateColor } from '../src/lib/translations';
 import CameraCapture from '../src/components/CameraCapture';
@@ -27,6 +26,7 @@ import StatusChip from '../src/components/StatusChip';
 import TextField from '../src/components/TextField';
 import Button from '../src/components/Button';
 import EmptyState from '../src/components/EmptyState';
+import { choose, toast } from '../src/lib/feedback';
 
 const SITUATIONS = [
   { value: 'lost', label: 'Perdí mi mascota' },
@@ -183,7 +183,7 @@ export default function Find() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permiso necesario', 'Necesitamos acceso para cargar la foto.');
+      toast('Necesitamos acceso para cargar la foto.', 'error');
       return;
     }
     const launch = source === 'camera' ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
@@ -191,25 +191,19 @@ export default function Find() {
     if (!result.canceled) setMainImage(result.assets[0]);
   };
 
-  const openGallery = () => {
-    // El recortador nativo no se puede personalizar, así que avisamos justo antes.
-    Alert.alert(
-      'Recortá la cara del animal',
-      'En la pantalla de recorte que sigue, dejá dentro del cuadro SOLO las orejas y el hocico.',
-      [{ text: 'Entendido', onPress: () => openPicker('library') }]
-    );
-  };
-
-  const pickMainImage = () => {
-    Alert.alert(
-      'Foto de la cara del animal',
-      'Que entren solo las orejas y el hocico. Después vas a poder recortarla.',
-      [
-        { text: 'Cámara', onPress: () => setCameraVisible(true) },
-        { text: 'Galería', onPress: openGallery },
-        { text: 'Cancelar', style: 'cancel' },
-      ]
-    );
+  // El recortador nativo no se puede personalizar: el aviso de dejar solo la
+  // cara va como bajada de la opción de galería (Confirmaciones.dc.html).
+  const pickMainImage = async () => {
+    const source = await choose({
+      title: 'Foto de la cara',
+      text: 'Que entren solo las orejas y el hocico.',
+      options: [
+        { value: 'camera', icon: Camera, title: 'Sacar una foto', text: 'Con la guía para encuadrar la cara.' },
+        { value: 'library', icon: Images, title: 'Elegir de la galería', text: 'Después recortás dejando solo la cara.' },
+      ],
+    });
+    if (source === 'camera') setCameraVisible(true);
+    else if (source === 'library') openPicker('library');
   };
 
   const pickExtraImages = async () => {
@@ -232,14 +226,14 @@ export default function Find() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso necesario', 'Necesitamos tu ubicación para centrar el mapa.');
+        toast('Necesitamos tu ubicación para centrar el mapa.', 'error');
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
       setPosition({ lat: loc.coords.latitude, lng: loc.coords.longitude });
       setPlaceName('');
     } catch {
-      Alert.alert('Error', 'No pudimos obtener tu ubicación.');
+      toast('No pudimos obtener tu ubicación.', 'error');
     } finally {
       setLocating(false);
     }

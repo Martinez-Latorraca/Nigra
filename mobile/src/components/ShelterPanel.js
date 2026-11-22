@@ -12,8 +12,10 @@ import { useTheme, palette, fonts, sectionColors } from '../lib/theme';
 import {
   ChevronRight, ChevronDown, ChevronUp, RefreshCw, X, Plus, Pencil, LogOut, ClipboardIcon, ImageIcon,
   HouseHeart, PawPrint, MapPin, Palette, Phone, MessageCircle, Mail, Globe, AtSign, Camera,
+  UserX, Trash2,
 } from '../lib/icons';
 import EmptyState from './EmptyState';
+import { confirm, toast } from '../lib/feedback';
 import { clearCredentials } from '../store/userSlice';
 import LinkedAccounts from './LinkedAccounts';
 import SectionHeader from './SectionHeader';
@@ -539,39 +541,44 @@ export default function ShelterPanel() {
   // Eliminar cuenta = soft-delete del user (server cascade a vet + shelter).
   // Un shelter que "elimina su refugio" está cerrando la cuenta entera.
   // Reactivable via re-registro con el mismo email.
-  const deleteAccount = () => {
-    Alert.alert(
-      'Eliminar cuenta',
-      'Se ocultarán tus publicaciones y el perfil público del refugio. Podés recuperar la cuenta registrándote de nuevo con el mismo email.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar', style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/api/users/me');
-              dispatch(clearCredentials());
-              router.replace('/login');
-            } catch { Alert.alert('Error', 'No se pudo eliminar la cuenta.'); }
-          },
-        },
-      ]
-    );
+  const deleteAccount = async () => {
+    const ok = await confirm({
+      tone: 'danger',
+      icon: UserX,
+      title: '¿Eliminar tu cuenta?',
+      text: 'Se ocultan tus publicaciones y el perfil público del refugio.',
+      note: 'Podés recuperarla más adelante registrándote con el mismo email.',
+      confirmText: 'Eliminar cuenta',
+    });
+    if (!ok) return;
+    try {
+      await api.delete('/api/users/me');
+      dispatch(clearCredentials());
+      router.replace('/login');
+    } catch {
+      toast('No se pudo eliminar la cuenta. Probá de nuevo.', 'error');
+    }
   };
 
   const markAdopted = async (id) => {
     try { await api.post(`/api/adoption-pets/${id}/adopted`); load(); } catch { /* silencioso */ }
   };
-  const removePet = (id) => {
-    Alert.alert('Borrar publicación', '¿Confirmás que querés borrar esta publicación?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Borrar', style: 'destructive',
-        onPress: async () => {
-          try { await api.delete(`/api/adoption-pets/${id}`); load(); } catch { /* silencioso */ }
-        },
-      },
-    ]);
+  const removePet = async (id) => {
+    const ok = await confirm({
+      tone: 'danger',
+      icon: Trash2,
+      title: '¿Eliminar esta publicación?',
+      text: 'Se borra de forma permanente, con sus fotos.',
+      note: 'No se puede deshacer.',
+      confirmText: 'Eliminar',
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/adoption-pets/${id}`);
+      load();
+    } catch {
+      toast('No se pudo eliminar la publicación. Probá de nuevo.', 'error');
+    }
   };
 
   if (loading || !shelter) {

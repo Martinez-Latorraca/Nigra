@@ -16,7 +16,7 @@ export default function Wordmark({ size = 26, color, showPin = true, style }) {
         <Text style={text}>m</Text>
         <View>
           <Text style={text}>i</Text>
-          <View style={[styles.dotClip, { height: size * 0.47 }]}>
+          <View style={[styles.dotClip, { height: size * 0.29 }]}>
             <Text style={[text, { color: palette.coral }]}>i</Text>
           </View>
         </View>

@@ -5,7 +5,8 @@ import {
 import { router } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../../src/lib/theme';
-import { ChevronDown, Check, HouseHeart, PawPrint } from '../../src/lib/icons';
+import { ChevronDown, Check, HouseHeart, PawPrint, SearchX } from '../../src/lib/icons';
+import EmptyState from '../../src/components/EmptyState';
 import SectionHeader from '../../src/components/SectionHeader';
 import SearchBar from '../../src/components/SearchBar';
 import StatusChip from '../../src/components/StatusChip';
@@ -188,6 +189,12 @@ export default function Adoptions() {
   };
 
   const hasMore = pets.length < total;
+  const hasFilters = Object.values(filters).some(Boolean);
+  const clearFilters = () => {
+    setCityDraft('');
+    setFilters(EMPTY_FILTERS);
+    fetchPets(1, EMPTY_FILTERS);
+  };
 
   const header = (
     <View style={styles.headerWrap}>
@@ -270,9 +277,13 @@ export default function Adoptions() {
           ListHeaderComponent={header}
           contentContainerStyle={{ paddingBottom: bottomSpace }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.text }]}>
-              No encontramos mascotas con esos filtros.
-            </Text>
+            <EmptyState
+              icon={SearchX}
+              color={sectionColors.adopcion}
+              title="No encontramos resultados"
+              text="Probá con otra ciudad o sacá algún filtro."
+              action={hasFilters ? { title: 'Limpiar filtros', variant: 'dark', onPress: clearFilters } : null}
+            />
           }
           ListFooterComponent={
             hasMore ? (
@@ -341,7 +352,6 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.regular, fontSize: 12 },
   shelterRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   shelter: { flex: 1, fontFamily: fonts.bold, fontSize: 12 },
-  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 40, paddingHorizontal: 20 },
   moreBtn: { height: 52, borderRadius: 16, marginHorizontal: 20, marginTop: 4 },
   moreBtnText: { fontSize: 15 },
 });

@@ -13,6 +13,7 @@ import {
   ChevronRight, ChevronDown, ChevronUp, RefreshCw, X, Plus, Pencil, LogOut, ClipboardIcon, ImageIcon,
   HouseHeart, PawPrint, MapPin, Palette, Phone, MessageCircle, Mail, Globe, AtSign, Camera,
 } from '../lib/icons';
+import EmptyState from './EmptyState';
 import { clearCredentials } from '../store/userSlice';
 import LinkedAccounts from './LinkedAccounts';
 import SectionHeader from './SectionHeader';
@@ -714,9 +715,13 @@ export default function ShelterPanel() {
                   onSaved={() => { setEditingPet(null); load(); }}
                 />
               ) : active.length === 0 ? (
-                <Text style={[styles.empty, { color: c.text }]}>
-                  Todavía no publicaste ninguna mascota en adopción.
-                </Text>
+                <EmptyState
+                  icon={HouseHeart}
+                  color={palette.violeta}
+                  title="Publicá tu primera mascota"
+                  text='Las mascotas que publiques aparecen en "En adopción" para toda la comunidad.'
+                  action={{ title: 'Nueva publicación', icon: Plus, color: palette.violeta, onPress: () => setCreatingPet(true) }}
+                />
               ) : (
                 active.map((p) => (
                   <PetRow key={p.id} pet={p} c={c} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
@@ -872,7 +877,6 @@ const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontFamily: fonts.display, fontSize: 20 },
   historyTitle: { fontSize: 17 },
-  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, paddingVertical: 12 },
   petCard: { borderRadius: 20, padding: 10, gap: 10 },
   petTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   petThumb: { width: 60, height: 60, borderRadius: 14 },

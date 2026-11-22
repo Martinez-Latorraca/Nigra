@@ -14,7 +14,8 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
-import { MapPin } from '../src/lib/icons';
+import { MapPin, PawPrint } from '../src/lib/icons';
+import EmptyState from '../src/components/EmptyState';
 import PetCard from '../src/components/PetCard';
 import SectionHeader from '../src/components/SectionHeader';
 import ChipGroup from '../src/components/ChipGroup';
@@ -205,9 +206,16 @@ export default function Pets() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.title} />
           }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.text }]}>
-              {error || 'No hay mascotas para mostrar todavía.'}
-            </Text>
+            error ? (
+              <EmptyState icon={PawPrint} color={sectionColors.explorar} title="No pudimos cargar los reportes" text={error} />
+            ) : (
+              <EmptyState
+                icon={PawPrint}
+                color={sectionColors.explorar}
+                title="No hay reportes cerca"
+                text="Por ahora nadie reportó mascotas perdidas ni encontradas en tu zona. Buena señal."
+              />
+            )
           }
         />
       )}
@@ -224,7 +232,6 @@ const styles = StyleSheet.create({
   columnWrapper: { gap: 12 },
   gridCard: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { textAlign: 'center', marginTop: 48, fontFamily: fonts.medium, fontSize: 15 },
 
   adCard: {
     borderRadius: 24,

@@ -5,7 +5,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { useTheme, palette, fonts } from '../src/lib/theme';
 import { useSocket } from '../src/lib/socket';
-import { ChevronRight, Sparkle, PartyPopper } from '../src/lib/icons';
+import { ChevronRight, Sparkle, PartyPopper, MessageCircle } from '../src/lib/icons';
+import EmptyState from '../src/components/EmptyState';
 import api from '../src/lib/api';
 import DonationBanner from '../src/components/DonationBanner';
 import TabBar, { useTabBarSpace } from '../src/components/TabBar';
@@ -239,9 +240,12 @@ export default function Messages() {
         renderItem={renderItem}
         contentContainerStyle={[{ paddingBottom: bottomSpace }, items.length === 0 && styles.emptyWrap]}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: c.text }]}>
-            No tenés actividad todavía. Cuando contactes (o te contacten) por una mascota, aparece acá.
-          </Text>
+          <EmptyState
+            icon={MessageCircle}
+            color={palette.coral}
+            title="Todavía no hay conversaciones"
+            text="Cuando contactes (o te contacten) por una mascota, aparece acá."
+          />
         }
       />
 
@@ -315,7 +319,6 @@ const styles = StyleSheet.create({
   reminderBtnText: { fontFamily: fonts.bold, fontSize: 13 },
 
   emptyWrap: { flexGrow: 1, justifyContent: 'center' },
-  empty: { textAlign: 'center', fontFamily: fonts.regular, fontSize: 15, paddingHorizontal: 40, lineHeight: 22 },
 
   celebrationBackdrop: {
     flex: 1, backgroundColor: 'rgba(26,26,46,0.55)', justifyContent: 'center', padding: 20,

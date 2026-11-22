@@ -5,7 +5,8 @@ import {
 import { router } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
-import { MapPin, ChevronRight } from '../../src/lib/icons';
+import { MapPin, ChevronRight, HouseHeart, SearchX } from '../../src/lib/icons';
+import EmptyState from '../../src/components/EmptyState';
 import SectionHeader from '../../src/components/SectionHeader';
 import SearchBar from '../../src/components/SearchBar';
 import Button from '../../src/components/Button';
@@ -84,6 +85,11 @@ export default function SheltersList() {
   };
 
   const hasMore = shelters.length < total;
+  const clearFilters = () => {
+    setCity('');
+    setCommittedCity('');
+    fetchShelters(1, '');
+  };
 
   const header = (
     <View style={styles.headerWrap}>
@@ -127,9 +133,22 @@ export default function SheltersList() {
           ListHeaderComponent={header}
           contentContainerStyle={{ paddingBottom: bottomSpace }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.text }]}>
-              Todavía no hay refugios registrados por acá.
-            </Text>
+            committedCity ? (
+              <EmptyState
+                icon={SearchX}
+                color={sectionColors.refugios}
+                title="No encontramos resultados"
+                text="Probá con otra ciudad."
+                action={{ title: 'Limpiar filtros', variant: 'dark', onPress: clearFilters }}
+              />
+            ) : (
+              <EmptyState
+                icon={HouseHeart}
+                color={sectionColors.refugios}
+                title="Todavía no hay refugios"
+                text="Todavía no hay refugios registrados por acá."
+              />
+            )
           }
           ListFooterComponent={
             hasMore ? (
@@ -169,7 +188,6 @@ const styles = StyleSheet.create({
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   city: { flex: 1, fontFamily: fonts.regular, fontSize: 13 },
   bio: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
-  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 40, paddingHorizontal: 20 },
   moreBtn: { height: 52, borderRadius: 16, marginHorizontal: 20, marginTop: 4 },
   moreBtnText: { fontSize: 15 },
 });

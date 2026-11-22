@@ -15,7 +15,7 @@ import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
 import {
-  Camera, Search, Locate, Check, MapPin, ArrowUpRight, ChevronRight, X, Plus, Info, Send, Phone,
+  Camera, Search, Locate, Check, MapPin, ArrowUpRight, ChevronRight, X, Plus, Info, Send, Phone, ScanSearch,
 } from '../src/lib/icons';
 import { translateType, translateColor } from '../src/lib/translations';
 import CameraCapture from '../src/components/CameraCapture';
@@ -26,6 +26,7 @@ import SectionHeader from '../src/components/SectionHeader';
 import StatusChip from '../src/components/StatusChip';
 import TextField from '../src/components/TextField';
 import Button from '../src/components/Button';
+import EmptyState from '../src/components/EmptyState';
 
 const SITUATIONS = [
   { value: 'lost', label: 'Perdí mi mascota' },
@@ -550,12 +551,13 @@ export default function Find() {
           {step === 'report' && (
             <>
               {matches.length === 0 ? (
-                <View style={[styles.notice, { backgroundColor: c.card }]}>
-                  <Info size={20} color={palette.coral} strokeWidth={2} />
-                  <Text style={[styles.noticeText, { color: c.text }]}>
-                    No encontramos coincidencias por ahora. Publicá el reporte así queda visible para la comunidad.
-                  </Text>
-                </View>
+                <EmptyState
+                  icon={ScanSearch}
+                  color={palette.coral}
+                  title="Ninguna coincidencia por ahora"
+                  text="No vimos mascotas parecidas cerca. Publicá el reporte y te avisamos si aparece una."
+                  style={styles.noMatches}
+                />
               ) : null}
 
               <View style={styles.section}>
@@ -716,8 +718,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: palette.coral,
   },
   errorText: { flex: 1, fontFamily: fonts.bold, fontSize: 14, lineHeight: 20 },
-  notice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 18 },
-  noticeText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
+  noMatches: { paddingVertical: 8 },
 
   summary: { borderRadius: 20, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   summaryImg: { width: 56, height: 56, borderRadius: 14 },

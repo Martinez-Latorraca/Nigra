@@ -16,7 +16,20 @@ import { useSelector, useDispatch } from 'react-redux';
 import api from '../src/lib/api';
 import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../src/lib/theme';
-import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check } from '../src/lib/icons';
+import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check, ClipboardList } from '../src/lib/icons';
+
+// Vacío de "Mis reportes" (Estados.dc.html).
+function EmptyReports() {
+  return (
+    <EmptyState
+      icon={ClipboardList}
+      color={palette.coral}
+      title="Todavía no hiciste reportes"
+      text="Si perdés o encontrás una mascota, reportala acá y la comunidad te ayuda a buscar."
+      action={{ title: 'Nuevo reporte', icon: Plus, onPress: () => router.push('/report') }}
+    />
+  );
+}
 import { clearCredentials, updateUserData } from '../src/store/userSlice';
 import LinkedAccounts from '../src/components/LinkedAccounts';
 import ShelterPanel from '../src/components/ShelterPanel';
@@ -25,6 +38,7 @@ import SectionHeader from '../src/components/SectionHeader';
 import StatusChip from '../src/components/StatusChip';
 import SponsorBadge from '../src/components/SponsorBadge';
 import Button from '../src/components/Button';
+import EmptyState from '../src/components/EmptyState';
 import TabBar, { useTabBarSpace } from '../src/components/TabBar';
 import { mailtoContact } from '../src/lib/config';
 import { EditModal, UserEditForm, VetEditForm } from '../src/components/ProfileEditForms';
@@ -461,7 +475,7 @@ export default function Profile() {
               />
             </View>
             {reports.length === 0 ? (
-              <Text style={[styles.empty, { color: c.text }]}>Todavía no publicaste ningún reporte.</Text>
+              <EmptyReports />
             ) : (
               reports.map((p) => (
                 <RecordRow
@@ -631,9 +645,7 @@ export default function Profile() {
         ListHeaderComponent={header}
         contentContainerStyle={{ paddingBottom: bottomSpace }}
         ListEmptyComponent={
-          !isVet ? (
-            <Text style={[styles.empty, { color: c.text }]}>Todavía no publicaste ningún reporte.</Text>
-          ) : null
+          !isVet ? <EmptyReports /> : null
         }
         ListFooterComponent={
           <View style={styles.body}>

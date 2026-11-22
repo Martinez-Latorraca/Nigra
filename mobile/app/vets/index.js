@@ -14,7 +14,8 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
-import { Stethoscope, ChevronRight, Star, MapPin, Locate } from '../../src/lib/icons';
+import { Stethoscope, ChevronRight, Star, MapPin, Locate, SearchX } from '../../src/lib/icons';
+import EmptyState from '../../src/components/EmptyState';
 import { tierOf } from '../../src/lib/sponsorTiers';
 import SectionHeader from '../../src/components/SectionHeader';
 import SearchBar from '../../src/components/SearchBar';
@@ -228,6 +229,15 @@ export default function VetsList() {
   };
 
   const hasMore = vets.length < total;
+  const hasFilters = !!committedCity || servicesSelected.size > 0 || !!coords;
+  const clearFilters = () => {
+    const none = new Set();
+    setCity('');
+    setCommittedCity('');
+    setServicesSelected(none);
+    setCoords(null);
+    fetchVets(1, '', none, null);
+  };
 
   const header = (
     <View style={styles.headerWrap}>
@@ -364,9 +374,22 @@ export default function VetsList() {
           ListHeaderComponent={header}
           contentContainerStyle={{ paddingBottom: bottomSpace }}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: c.text }]}>
-              Todavía no hay veterinarias por acá.
-            </Text>
+            hasFilters ? (
+              <EmptyState
+                icon={SearchX}
+                color={sectionColors.veterinarias}
+                title="No encontramos resultados"
+                text="Probá con otra ciudad o sacá algún filtro."
+                action={{ title: 'Limpiar filtros', variant: 'dark', onPress: clearFilters }}
+              />
+            ) : (
+              <EmptyState
+                icon={Stethoscope}
+                color={sectionColors.veterinarias}
+                title="Todavía no hay veterinarias"
+                text="Todavía no hay veterinarias registradas por acá."
+              />
+            )
           }
           ListFooterComponent={
             hasMore ? (
@@ -456,7 +479,6 @@ const styles = StyleSheet.create({
   services: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   serviceChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   serviceChipText: { fontFamily: fonts.medium, fontSize: 12 },
-  empty: { textAlign: 'center', fontFamily: fonts.medium, fontSize: 15, marginTop: 40, paddingHorizontal: 20 },
   moreBtn: { height: 52, borderRadius: 16, marginHorizontal: 20, marginTop: 4 },
   moreBtnText: { fontSize: 15 },
 });

@@ -1,12 +1,11 @@
 import { WebView } from 'react-native-webview';
+import { cartoTiles } from '../lib/config';
 
 export default function PetMap({ lat, lng, isDark, style }) {
   const latitude = Number(lat);
   const longitude = Number(lng);
 
-  const tiles = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  const tiles = cartoTiles(isDark);
 
   const html = `<!DOCTYPE html>
 <html>

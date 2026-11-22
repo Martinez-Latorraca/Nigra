@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { openChat } from '../store/chatSlice';
 import { translateColor, translateType } from '../utils/translations';
+import { CARTO_LIGHT_TILES } from '../utils/links';
 
 
 
@@ -253,7 +254,7 @@ function Pet() {
                             {pet.lat && (
                                 <div className="h-full rounded-[24px] overflow-hidden border border-gray-50 grayscale group-hover:grayscale-0 transition-all">
                                     <MapContainer center={[pet.lat, pet.lng]} zoom={17} zoomControl={false} scrollWheelZoom={false} dragging={false} className="w-full h-full z-0">
-                                        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                                        <TileLayer url={CARTO_LIGHT_TILES} />
                                         <Marker position={[pet.lat, pet.lng]} />
                                     </MapContainer>
                                 </div>

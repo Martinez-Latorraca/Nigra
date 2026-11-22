@@ -7,6 +7,7 @@ import { tierOf } from '../utils/sponsorTiers';
 import SponsorBadge from '../components/SponsorBadge';
 import { trackAdClick } from '../utils/vetTracking';
 import { useTrackImpression } from '../utils/useTrackImpressions';
+import { CARTO_LIGHT_TILES } from '../utils/links';
 
 const API = import.meta.env.VITE_API_URL || '';
 const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
@@ -309,7 +310,7 @@ function PetList() {
                             {pet.lat && (
                                 <div className="h-28 rounded-[24px] overflow-hidden border border-gray-50 grayscale group-hover:grayscale-0 transition-all">
                                     <MapContainer center={[pet.lat, pet.lng]} zoom={17} zoomControl={false} scrollWheelZoom={false} dragging={false} className="w-full h-full z-0">
-                                        <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                                        <TileLayer url={CARTO_LIGHT_TILES} />
                                         <Marker position={[pet.lat, pet.lng]} />
                                     </MapContainer>
                                 </div>

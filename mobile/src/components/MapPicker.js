@@ -1,10 +1,11 @@
 import { useRef, useEffect } from 'react';
 import { WebView } from 'react-native-webview';
+import { cartoTiles } from '../lib/config';
 
 export default function MapPicker({ value, onChange, centerOn, isDark, style }) {
   const ref = useRef(null);
   const initial = value || centerOn || { lat: -34.9011, lng: -56.1645 }; // Montevideo
-  const tiles = isDark ? 'dark_all' : 'light_all';
+  const tiles = cartoTiles(isDark);
 
   const html = `<!DOCTYPE html>
 <html>
@@ -18,7 +19,7 @@ export default function MapPicker({ value, onChange, centerOn, isDark, style }) 
 <div id="map"></div>
 <script>
   var map = L.map('map', { attributionControl: false, zoomControl: true }).setView([${initial.lat}, ${initial.lng}], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/${tiles}/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+  L.tileLayer('${tiles}', { maxZoom: 19 }).addTo(map);
   var marker = ${value ? `L.circleMarker([${value.lat},${value.lng}],{radius:9,color:'#fff',weight:3,fillColor:'#EF4444',fillOpacity:1}).addTo(map)` : 'null'};
   function place(lat, lng) {
     if (marker) { marker.setLatLng([lat, lng]); }

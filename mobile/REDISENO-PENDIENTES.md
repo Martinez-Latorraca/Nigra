@@ -61,13 +61,12 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Contenido a revisar (no es diseño)
 
-- **Carrusel de la pantalla de espera del reporte: oculto hasta que haya sponsors** ·
-  el anuncio viejo (NIGRA20) se sacó. Los slides salen de `GET /api/ads/loading`
-  (`server/lib/loadingSlides.js`), que hoy devuelve `[]` a propósito: sin slides el carrusel
-  no se muestra. En desarrollo la app usa un mock (`src/lib/loadingSlides.js`, se apaga con
-  `EXPO_PUBLIC_LOADING_SLIDES_MOCK=0`). Para activarlo cuando haya vets socias o anunciantes,
-  cargar los slides en `LOADING_SLIDES` del servidor (tipos vet / producto / donacion / consejo)
-  y deployar; no hace falta publicar la app.
+- **Carrusel de la pantalla de espera: publicidad pendiente hasta tener usuarios reales** ·
+  `GET /api/ads/loading` (`server/lib/loadingSlides.js`) sirve hoy solo donación y un consejo
+  (distinto si la persona perdió o encontró). Los slides de publicidad — vet socia, producto y
+  refugio (este último sin diseño en el handoff, armado igual que el de la vet en Teal) — ya están
+  en la app; para activarlos se cargan en `LOADING_SLIDES` y se deploya, sin publicar la app.
+  Para verlos en desarrollo: `EXPO_PUBLIC_LOADING_SLIDES_MOCK=1` en `mobile/.env`.
 
 ## Detalles visuales que quedaron afuera
 

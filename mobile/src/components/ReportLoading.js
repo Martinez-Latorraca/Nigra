@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import MimoPin from '../../assets/mimo-pin.svg';
 import { useTheme, palette, fonts } from '../lib/theme';
-import { Coffee, Star, Tag, ArrowRight } from '../lib/icons';
+import { Coffee, Star, Tag, ArrowRight, HouseHeart } from '../lib/icons';
 import { useLoadingSlides } from '../lib/loadingSlides';
 import { SPONSOR_TIERS } from '../lib/sponsorTiers';
 import { MP_DONATION_URL } from '../lib/config';
@@ -40,10 +40,11 @@ const MODES = {
 const SLIDE_MS = 5000;
 const ARENA = palette.arena;
 
-export default function ReportLoading({ mode = 'search' }) {
+// audience: 'lost' | 'found', para elegir el consejo que corresponde.
+export default function ReportLoading({ mode = 'search', audience }) {
   const c = useTheme();
   const { title, footer, phrases } = MODES[mode] || MODES.search;
-  const slides = useLoadingSlides();
+  const slides = useLoadingSlides(audience);
   const [phraseIdx, setPhraseIdx] = useState(0);
 
   useEffect(() => {
@@ -200,6 +201,8 @@ function Slide({ slide }) {
       return <DonationSlide slide={slide} />;
     case 'producto':
       return <ProductSlide slide={slide} />;
+    case 'refugio':
+      return <ShelterSlide slide={slide} />;
     case 'consejo':
       return <TipSlide slide={slide} />;
     default:
@@ -270,6 +273,36 @@ function VetSlide({ slide }) {
           <Text style={styles.tierText}>{`${tier.label} · ${tier.tierLabel}`}</Text>
         </View>
         <Text style={[styles.cardTitle, { color: c.title }]} numberOfLines={2}>{slide.title || vet.name}</Text>
+        {slide.text ? <Text style={[styles.cardText, { color: c.text }]}>{slide.text}</Text> : null}
+        {slide.button_text ? <SlideButton title={slide.button_text} onPress={open} /> : null}
+      </View>
+    </View>
+  );
+}
+
+// Publicidad de un refugio (sin diseño en el handoff): misma estructura que la
+// de la vet socia, con el Teal de la sección Refugios.
+function ShelterSlide({ slide }) {
+  const c = useTheme();
+  const open = useOpenSlide(slide);
+  const shelter = slide.shelter || {};
+  return (
+    <View style={[styles.card, { backgroundColor: c.card, borderWidth: 2, borderColor: palette.teal }]}>
+      <ImageArea uri={slide.image_url} height={150}>
+        <View style={[styles.logo, { borderColor: c.card, backgroundColor: palette.teal }]}>
+          {shelter.logo_url ? (
+            <Image source={{ uri: shelter.logo_url }} style={StyleSheet.absoluteFill} />
+          ) : (
+            <HouseHeart size={28} color={ARENA} strokeWidth={2} />
+          )}
+        </View>
+      </ImageArea>
+      <View style={[styles.cardBody, { paddingTop: 36 }]}>
+        <View style={[styles.tierBadge, { backgroundColor: palette.teal }]}>
+          <HouseHeart size={12} color={ARENA} strokeWidth={2.4} />
+          <Text style={styles.tierText}>Refugio</Text>
+        </View>
+        <Text style={[styles.cardTitle, { color: c.title }]} numberOfLines={2}>{slide.title || shelter.name}</Text>
         {slide.text ? <Text style={[styles.cardText, { color: c.text }]}>{slide.text}</Text> : null}
         {slide.button_text ? <SlideButton title={slide.button_text} onPress={open} /> : null}
       </View>
@@ -433,5 +466,5 @@ const styles = StyleSheet.create({
   colorText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: ARENA },
   list: { marginTop: 4, gap: 8 },
   listRow: { flexDirection: 'row', gap: 6 },
-  listNum: { width: 18 },
+  listNum: { width: 14 },
 });

@@ -317,7 +317,7 @@ export default function Find() {
     else setStep('form');
   };
 
-  if (busy) return <ReportLoading mode={busy} />;
+  if (busy) return <ReportLoading mode={busy} audience={isLost ? 'lost' : 'found'} />;
 
   const header = {
     form: { title: 'Perdí / Encontré', sub: 'Subí una foto y la buscamos entre los reportes cercanos.' },

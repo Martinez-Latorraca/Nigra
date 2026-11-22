@@ -13,10 +13,11 @@ const buildApp = () => {
 
 describe('Ads', () => {
     describe('GET /api/ads/loading', () => {
-        it('devuelve la lista (vacía mientras no haya anunciantes)', async () => {
+        it('por ahora solo sirve donación y consejos (sin publicidad)', async () => {
             const res = await request(buildApp()).get('/api/ads/loading');
             expect(res.status).toBe(200);
-            expect(res.body).toEqual({ slides: [] });
+            const types = new Set(res.body.slides.map((s) => s.type));
+            expect([...types].sort()).toEqual(['consejo', 'donacion']);
         });
     });
 

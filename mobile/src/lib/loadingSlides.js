@@ -3,13 +3,13 @@ import api from './api';
 
 // Slides del carrusel de la pantalla de espera del reporte. Vienen del
 // servidor (GET /api/ads/loading, server/lib/loadingSlides.js) para poder
-// cambiarlos sin publicar la app. Mientras no haya veterinarias socias ni
-// anunciantes reales el servidor devuelve [] y el carrusel no se muestra.
+// cambiarlos sin publicar la app. Si no hay slides, el carrusel no se muestra.
 //
-// En desarrollo, si el servidor no trae nada, se usa MOCK_SLIDES para poder
-// ver el carrusel. Para probar cómo queda sin carrusel en desarrollo:
-// EXPO_PUBLIC_LOADING_SLIDES_MOCK=0 en mobile/.env (y reiniciar Metro).
-const USE_MOCK = __DEV__ && process.env.EXPO_PUBLIC_LOADING_SLIDES_MOCK !== '0';
+// Hoy el servidor sirve solo donación y consejos. Los slides de publicidad
+// (vet socia, producto, refugio) están implementados pero no se cargan hasta
+// tener usuarios reales. Para verlos en desarrollo:
+// EXPO_PUBLIC_LOADING_SLIDES_MOCK=1 en mobile/.env (y reiniciar Metro).
+const USE_MOCK = __DEV__ && process.env.EXPO_PUBLIC_LOADING_SLIDES_MOCK === '1';
 
 // Contenido de ejemplo, sin marcas reales.
 const MOCK_SLIDES = [
@@ -23,11 +23,13 @@ const MOCK_SLIDES = [
     vet: { name: 'Veterinaria de ejemplo', plan: 'sponsor_pro' },
   },
   {
-    id: 'mock-donacion',
-    type: 'donacion',
-    title: 'Mimo es gratis gracias a la comunidad',
-    text: 'Cada búsqueda como esta tiene un costo. Si podés, un cafecito nos ayuda a seguir conectando familias.',
-    button_text: 'Donar por Mercado Pago',
+    id: 'mock-refugio',
+    type: 'refugio',
+    title: 'Refugio de ejemplo',
+    text: 'Tenemos 12 perros y gatos buscando familia. Conocelos y, si podés, dales un hogar.',
+    button_text: 'Ver refugio',
+    route: '/shelters',
+    shelter: { name: 'Refugio de ejemplo' },
   },
   {
     id: 'mock-producto',
@@ -38,16 +40,6 @@ const MOCK_SLIDES = [
     code: 'MIMO20',
     button_text: 'Ver oferta',
     link: 'https://mimo.uy',
-  },
-  {
-    id: 'mock-consejo',
-    type: 'consejo',
-    title: 'Las primeras horas son las más importantes',
-    items: [
-      'Recorré la zona y llamala por su nombre.',
-      'Avisá a las veterinarias y refugios cercanos.',
-      'Compartí el reporte en los grupos del barrio.',
-    ],
   },
 ];
 
@@ -62,19 +54,22 @@ export function loadLoadingSlides() {
         cache = null; // reintentar la próxima vez
         return [];
       })
-      .then((slides) => (slides.length === 0 && USE_MOCK ? MOCK_SLIDES : slides));
+      .then((slides) => (USE_MOCK ? [...MOCK_SLIDES, ...slides] : slides));
   }
   return cache;
 }
 
-export function useLoadingSlides() {
+// audience: 'lost' | 'found'. Los slides con otra audience se descartan.
+export function useLoadingSlides(audience) {
   const [slides, setSlides] = useState([]);
   useEffect(() => {
     let alive = true;
-    loadLoadingSlides().then((s) => alive && setSlides(s));
+    loadLoadingSlides().then(
+      (s) => alive && setSlides(s.filter((x) => !x.audience || !audience || x.audience === audience))
+    );
     return () => {
       alive = false;
     };
-  }, []);
+  }, [audience]);
   return slides;
 }

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Linking, useWindowDimensions,
+  ScrollView, View, Text, Image, Pressable, StyleSheet, Linking, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, fonts, sectionColors } from '../../src/lib/theme';
+import { SkeletonDetail } from '../../src/components/Skeleton';
 import { PawPrint } from '../../src/lib/icons';
 import StatusChip from '../../src/components/StatusChip';
 import Button from '../../src/components/Button';
@@ -66,8 +67,8 @@ export default function ShelterProfile() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.title} />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <SkeletonDetail />
       </View>
     );
   }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, fonts, sectionColors } from '../../src/lib/theme';
+import { SkeletonDetail } from '../../src/components/Skeleton';
 import SponsorBadge from '../../src/components/SponsorBadge';
 import Button from '../../src/components/Button';
 import {
@@ -33,8 +34,8 @@ export default function VetProfile() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.title} />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <SkeletonDetail />
       </View>
     );
   }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator, Modal, useWindowDimensions,
+  View, Text, FlatList, Pressable, Image, StyleSheet, Modal, useWindowDimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../../src/lib/theme';
+import { SkeletonList } from '../../src/components/Skeleton';
 import { ChevronDown, Check, HouseHeart, PawPrint, SearchX } from '../../src/lib/icons';
 import EmptyState from '../../src/components/EmptyState';
 import SectionHeader from '../../src/components/SectionHeader';
@@ -263,7 +264,7 @@ export default function Adoptions() {
       {loading ? (
         <View>
           {header}
-          <ActivityIndicator color={c.title} style={{ marginTop: 40 }} />
+          <SkeletonList />
         </View>
       ) : (
         <FlatList

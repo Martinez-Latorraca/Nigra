@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, FlatList, Pressable, Image, StyleSheet, ActivityIndicator,
+  View, Text, FlatList, Pressable, Image, StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
+import { SkeletonList } from '../../src/components/Skeleton';
 import { MapPin, ChevronRight, HouseHeart, SearchX } from '../../src/lib/icons';
 import EmptyState from '../../src/components/EmptyState';
 import SectionHeader from '../../src/components/SectionHeader';
@@ -121,7 +122,7 @@ export default function SheltersList() {
       {loading ? (
         <View>
           {header}
-          <ActivityIndicator color={c.title} style={{ marginTop: 40 }} />
+          <SkeletonList />
         </View>
       ) : (
         <FlatList

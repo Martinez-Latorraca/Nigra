@@ -7,13 +7,13 @@ import {
   Pressable,
   Image,
   StyleSheet,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
+import { SkeletonList } from '../../src/components/Skeleton';
 import { Stethoscope, ChevronRight, Star, MapPin, Locate, SearchX } from '../../src/lib/icons';
 import EmptyState from '../../src/components/EmptyState';
 import { tierOf } from '../../src/lib/sponsorTiers';
@@ -362,7 +362,7 @@ export default function VetsList() {
       {loading ? (
         <View>
           {header}
-          <ActivityIndicator color={c.title} style={{ marginTop: 40 }} />
+          <SkeletonList />
         </View>
       ) : (
         <FlatList

@@ -6,7 +6,6 @@ import {
   ScrollView,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Linking,
   Share,
   Alert,
@@ -16,6 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts } from '../../src/lib/theme';
+import { SkeletonDetail } from '../../src/components/Skeleton';
 import {
   ChevronLeft, User, Calendar, Stethoscope, Star, MapPin, HeartHandshake,
   MessageCircle, Share2, Trash2, Shield,
@@ -66,8 +66,8 @@ export default function PetDetail() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.title} />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <SkeletonDetail />
       </View>
     );
   }

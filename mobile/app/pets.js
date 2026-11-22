@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
@@ -14,6 +13,7 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
+import { SkeletonList } from '../src/components/Skeleton';
 import { MapPin, PawPrint } from '../src/lib/icons';
 import EmptyState from '../src/components/EmptyState';
 import PetCard from '../src/components/PetCard';
@@ -160,9 +160,7 @@ export default function Pets() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={c.title} />
-        </View>
+        <SkeletonList />
       ) : (
         <FlatList
           data={(() => {
@@ -203,7 +201,7 @@ export default function Pets() {
           viewabilityConfig={AD_VIEWABILITY}
           contentContainerStyle={[styles.list, { paddingBottom: bottomSpace }]}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.title} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.coral} colors={[palette.coral]} />
           }
           ListEmptyComponent={
             error ? (

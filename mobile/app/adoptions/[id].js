@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
-  ScrollView, View, Text, Image, Pressable, StyleSheet, ActivityIndicator, Linking, Share,
+  ScrollView, View, Text, Image, Pressable, StyleSheet, Linking, Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
+import { SkeletonDetail } from '../../src/components/Skeleton';
 import { API_URL } from '../../src/lib/config';
 import {
   ChevronLeft, ChevronRight, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
@@ -48,8 +49,8 @@ export default function AdoptionDetail() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.title} />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <SkeletonDetail />
       </View>
     );
   }

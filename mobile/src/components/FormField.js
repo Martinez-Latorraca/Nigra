@@ -6,8 +6,10 @@ import { useTheme, palette, fonts } from '../lib/theme';
 // del refugio, registro de vet): etiqueta en mayúsculas, fondo Crema, ícono
 // Lucide opcional. `required` agrega el asterisco Coral; `readOnly` lo pinta
 // en Arena; `hint` va debajo; `error` pone borde Coral y el mensaje.
+// `right` va a la derecha del input (p. ej. mostrar contraseña) y `boxStyle`
+// pisa la caja (las pantallas de login usan caja blanca con borde).
 const FormField = forwardRef(function FormField(
-  { label, icon: Icon, required, readOnly, hint, error, multiline, prefix, style, ...inputProps },
+  { label, icon: Icon, required, readOnly, hint, error, multiline, prefix, right, style, boxStyle, ...inputProps },
   ref,
 ) {
   const c = useTheme();
@@ -24,6 +26,7 @@ const FormField = forwardRef(function FormField(
           styles.box,
           { backgroundColor: readOnly ? c.arena : c.bg },
           multiline && styles.boxMultiline,
+          boxStyle,
           error ? styles.boxError : null,
         ]}
       >
@@ -33,10 +36,11 @@ const FormField = forwardRef(function FormField(
           ref={ref}
           editable={!readOnly}
           multiline={multiline}
-          placeholderTextColor="rgba(26,26,46,0.45)"
+          placeholderTextColor={c.isDark ? '#B4B4C6' : 'rgba(26,26,46,0.45)'}
           style={[styles.input, { color: c.inputText }, multiline && styles.inputMultiline]}
           {...inputProps}
         />
+        {right}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {hint ? <Text style={[styles.hint, { color: c.text }]}>{hint}</Text> : null}

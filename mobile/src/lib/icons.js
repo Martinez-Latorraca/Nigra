@@ -17,6 +17,8 @@ export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right
 export { default as ChevronUp } from 'lucide-react-native/icons/chevron-up';
 export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as Ellipsis } from 'lucide-react-native/icons/ellipsis';
+export { default as Eye } from 'lucide-react-native/icons/eye';
+export { default as EyeOff } from 'lucide-react-native/icons/eye-off';
 export { default as Globe } from 'lucide-react-native/icons/globe';
 export { default as HeartHandshake } from 'lucide-react-native/icons/heart-handshake';
 export { default as Info } from 'lucide-react-native/icons/info';
@@ -25,9 +27,11 @@ export { default as HouseHeart } from 'lucide-react-native/icons/house-heart';
 export { default as ImageIcon } from 'lucide-react-native/icons/image';
 export { default as Link } from 'lucide-react-native/icons/link';
 export { default as Locate } from 'lucide-react-native/icons/locate';
+export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Flashlight } from 'lucide-react-native/icons/flashlight';
 export { default as Mail } from 'lucide-react-native/icons/mail';
+export { default as MailWarning } from 'lucide-react-native/icons/mail-warning';
 export { default as Map } from 'lucide-react-native/icons/map';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as Menu } from 'lucide-react-native/icons/menu';
@@ -53,6 +57,7 @@ export { default as SwitchCamera } from 'lucide-react-native/icons/switch-camera
 export { default as Stethoscope } from 'lucide-react-native/icons/stethoscope';
 export { default as Trash2 } from 'lucide-react-native/icons/trash-2';
 export { default as User } from 'lucide-react-native/icons/user';
+export { default as UserX } from 'lucide-react-native/icons/user-x';
 export { default as X } from 'lucide-react-native/icons/x';
 export { default as Zap } from 'lucide-react-native/icons/zap';
 export { default as ZapOff } from 'lucide-react-native/icons/zap-off';

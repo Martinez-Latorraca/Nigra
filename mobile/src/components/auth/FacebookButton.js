@@ -1,6 +1,7 @@
-import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 import { exchangeFacebookToken } from '../../lib/oauth';
+import FacebookLogo from '../../../assets/social/facebook.svg';
+import SocialButton from './SocialButton';
 
 export default function FacebookButton({ onStart, onSuccess, onError, onCancel, loading, disabled }) {
   const handlePress = async () => {
@@ -28,29 +29,12 @@ export default function FacebookButton({ onStart, onSuccess, onError, onCancel, 
   };
 
   return (
-    <Pressable
-      style={[styles.button, disabled && styles.disabled]}
+    <SocialButton
+      Logo={FacebookLogo}
+      label="Continuar con Facebook"
       onPress={handlePress}
+      loading={loading}
       disabled={disabled}
-    >
-      {loading ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <Text style={styles.text}>Continuar con Facebook</Text>
-      )}
-    </Pressable>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: '#1877F2',
-    borderRadius: 999,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  text: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  disabled: { opacity: 0.5 },
-});

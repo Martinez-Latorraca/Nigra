@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { exchangeAppleToken, formatAppleFullName } from '../../lib/oauth';
+import AppleLogo from '../../../assets/social/apple.svg';
+import SocialButton from './SocialButton';
 
-export default function AppleButton({ onStart, onSuccess, onError, onCancel, disabled }) {
+export default function AppleButton({ onStart, onSuccess, onError, onCancel, loading, disabled }) {
   const [available, setAvailable] = useState(false);
 
   useEffect(() => {
@@ -40,18 +42,16 @@ export default function AppleButton({ onStart, onSuccess, onError, onCancel, dis
     }
   };
 
+  // Botón propio con el logo de Apple (permitido por sus guías) para que
+  // quede igual a los de Google y Facebook.
   return (
-    <AppleAuthentication.AppleAuthenticationButton
-      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-      cornerRadius={999}
-      style={[styles.button, disabled && styles.disabled]}
+    <SocialButton
+      Logo={AppleLogo}
+      label="Continuar con Apple"
+      dark
       onPress={handlePress}
+      loading={loading}
+      disabled={disabled}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  button: { height: 56, marginTop: 8 },
-  disabled: { opacity: 0.5 },
-});

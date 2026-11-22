@@ -1,10 +1,11 @@
-import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import {
   GoogleSignin,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { GOOGLE_CLIENT_ID_WEB, GOOGLE_CLIENT_ID_IOS } from '../../lib/config';
 import { exchangeGoogleToken } from '../../lib/oauth';
+import GoogleLogo from '../../../assets/social/google.svg';
+import SocialButton from './SocialButton';
 
 GoogleSignin.configure({
   webClientId: GOOGLE_CLIENT_ID_WEB,
@@ -41,31 +42,12 @@ export default function GoogleButton({ onStart, onSuccess, onError, onCancel, lo
   };
 
   return (
-    <Pressable
-      style={[styles.button, disabled && styles.disabled]}
+    <SocialButton
+      Logo={GoogleLogo}
+      label="Continuar con Google"
       onPress={handlePress}
+      loading={loading}
       disabled={disabled}
-    >
-      {loading ? (
-        <ActivityIndicator color="#000" />
-      ) : (
-        <Text style={styles.text}>Continuar con Google</Text>
-      )}
-    </Pressable>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 999,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  text: { color: '#111827', fontWeight: '600', fontSize: 16 },
-  disabled: { opacity: 0.5 },
-});

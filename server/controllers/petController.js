@@ -1016,6 +1016,41 @@ export const getAllPets = async (req, res) => {
     }
 };
 
+// GET /api/pets/map — reportes abiertos dentro del recuadro visible del mapa
+// (pantalla Mapa de la app). Devuelve solo lo que necesita el pin y la
+// tarjeta, sin descripción. Tope de MAP_LIMIT: si hay más, el cliente pide
+// acercar el mapa (truncated: true).
+const MAP_LIMIT = 300;
+export const getMapPets = async (req, res) => {
+    try {
+        const { status } = req.query;
+        const params = ['minLat', 'maxLat', 'minLng', 'maxLng'].map((k) => Number(req.query[k]));
+        let statusClause = '';
+        if (status && status !== 'all') {
+            params.push(status);
+            statusClause = `AND status = $${params.length}`;
+        }
+        params.push(MAP_LIMIT + 1);
+        const { rows } = await pool.query(
+            `SELECT id, status, type, color, name, photo_url, address, created_at, lat, lng
+             FROM pets
+             WHERE resolved_at IS NULL
+               AND lat IS NOT NULL AND lng IS NOT NULL
+               AND lat BETWEEN $1 AND $2
+               AND lng BETWEEN $3 AND $4
+               ${statusClause}
+             ORDER BY created_at DESC
+             LIMIT $${params.length}`,
+            params
+        );
+        const truncated = rows.length > MAP_LIMIT;
+        res.json({ pets: truncated ? rows.slice(0, MAP_LIMIT) : rows, truncated });
+    } catch (error) {
+        console.error('Error al obtener pets del mapa:', error);
+        res.status(500).json({ error: 'Error al cargar el mapa.' });
+    }
+};
+
 export const getAvailableColors = async (req, res) => {
     try {
         const result = await pool.query(

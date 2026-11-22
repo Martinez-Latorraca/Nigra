@@ -45,3 +45,12 @@ export const searchPetSchema = Joi.object({
     lng: Joi.number().min(-180).max(180).allow(null, ''),
     searchRatio: Joi.number().min(1).max(500).allow(null, ''),
 });
+
+// GET /api/pets/map — reportes abiertos dentro del recuadro visible del mapa.
+export const mapPetsSchema = Joi.object({
+    minLat: Joi.number().min(-90).max(90).required(),
+    maxLat: Joi.number().min(-90).max(90).required(),
+    minLng: Joi.number().min(-180).max(180).required(),
+    maxLng: Joi.number().min(-180).max(180).required(),
+    status: Joi.string().valid('lost', 'found', 'all').default('all'),
+});

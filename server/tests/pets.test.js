@@ -52,6 +52,42 @@ describe('Pets', () => {
         pool.query.mockReset();
     });
 
+    describe('GET /api/pets/map', () => {
+        const bbox = 'minLat=-35&maxLat=-34.8&minLng=-56.3&maxLng=-56.0';
+
+        it('devuelve los reportes abiertos dentro del recuadro', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [{ id: 1, status: 'lost', lat: -34.9, lng: -56.1 }] });
+            const res = await request(buildApp()).get(`/api/pets/map?${bbox}`);
+            expect(res.status).toBe(200);
+            expect(res.body).toEqual({ pets: [{ id: 1, status: 'lost', lat: -34.9, lng: -56.1 }], truncated: false });
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toMatch(/resolved_at IS NULL/);
+            expect(sql).toContain('lat BETWEEN $1 AND $2');
+            expect(params).toEqual([-35, -34.8, -56.3, -56, 301]);
+        });
+
+        it('filtra por estado', async () => {
+            pool.query.mockResolvedValueOnce({ rows: [] });
+            await request(buildApp()).get(`/api/pets/map?${bbox}&status=found`);
+            const [sql, params] = pool.query.mock.calls[0];
+            expect(sql).toContain('status = $5');
+            expect(params).toEqual([-35, -34.8, -56.3, -56, 'found', 301]);
+        });
+
+        it('marca truncated cuando hay más del tope', async () => {
+            pool.query.mockResolvedValueOnce({ rows: Array.from({ length: 301 }, (_, i) => ({ id: i })) });
+            const res = await request(buildApp()).get(`/api/pets/map?${bbox}`);
+            expect(res.body.pets).toHaveLength(300);
+            expect(res.body.truncated).toBe(true);
+        });
+
+        it('400 sin el recuadro', async () => {
+            const res = await request(buildApp()).get('/api/pets/map?minLat=-35');
+            expect(res.status).toBe(400);
+            expect(pool.query).not.toHaveBeenCalled();
+        });
+    });
+
     describe('GET /api/pets/:id', () => {
         it('devuelve la mascota cuando existe', async () => {
             pool.query.mockResolvedValueOnce({

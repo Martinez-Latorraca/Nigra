@@ -50,7 +50,9 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   los tiles de CARTO (`basemaps.cartocdn.com`) ahora devuelven una imagen
   "API KEY REQUIRED": se ve el punto pero no las calles. Hay que cambiar de proveedor
   de tiles (p. ej. OpenStreetMap con su política de uso, o una key gratuita de
-  Stadia/MapTiler). Revisar si la web usa los mismos tiles.
+  Stadia/MapTiler). Confirmado el 2026-11-22: pasa en claro y en oscuro, y también en
+  `src/components/MapPicker.js` (editar clínica) y en la web (`client/src/pages/Pet.jsx`,
+  `PetList.jsx`). `client/src/components/MapSelector.jsx` usa OpenStreetMap y anda.
 
 ## Diseño que contradice decisiones ya tomadas (no se implementó)
 

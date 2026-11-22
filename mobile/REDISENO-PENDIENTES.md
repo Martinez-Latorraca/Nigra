@@ -24,9 +24,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   del tag QR no existe (está en el roadmap como parte del wedge).
 - **Héroes Mimo** · tarjeta de niveles ("Sos Vecino", 2/5, "Compartí 3 reportes más
   para llegar a Rastreador") · no hay sistema de niveles ni conteo de compartidos.
-- **Modo oscuro** · `Home-v2-oscuro.dc.html` · los tokens oscuros ya están en
-  `src/lib/theme.js`, pero `app.json` fuerza `userInterfaceStyle: "light"`. Activarlo
-  requiere revisar todas las pantallas en oscuro.
 
 ## Ya listadas en el handoff ("Funcionalidad nueva")
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, Image, Pressable, ScrollView, TextInput, StyleSheet,
+  View, Text, Image, Pressable, ScrollView, StyleSheet,
   ActivityIndicator, Alert, Switch, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,12 +11,13 @@ import api from '../lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../lib/theme';
 import {
   ChevronRight, ChevronDown, ChevronUp, RefreshCw, X, Plus, Pencil, LogOut, ClipboardIcon, ImageIcon,
-  HouseHeart, PawPrint, MapPin, Palette,
+  HouseHeart, PawPrint, MapPin, Palette, Phone, MessageCircle, Mail, Globe, AtSign, Camera,
 } from '../lib/icons';
 import { clearCredentials } from '../store/userSlice';
 import LinkedAccounts from './LinkedAccounts';
 import SectionHeader from './SectionHeader';
 import FormField from './FormField';
+import { EditModal } from './ProfileEditForms';
 import StatusChip from './StatusChip';
 import Button from './Button';
 import TabBar, { useTabBarSpace } from './TabBar';
@@ -75,20 +76,6 @@ function ChipSelect({ options, value, onChange, c }) {
           </Pressable>
         );
       })}
-    </View>
-  );
-}
-
-function Field({ label, c, multiline, style, ...props }) {
-  return (
-    <View style={[styles.field, style]}>
-      <Text style={[styles.label, { color: c.text }]}>{label}</Text>
-      <TextInput
-        placeholderTextColor="rgba(26,26,46,0.45)"
-        multiline={multiline}
-        style={[styles.input, multiline && styles.textarea, { color: c.inputText, backgroundColor: c.bg }]}
-        {...props}
-      />
     </View>
   );
 }
@@ -336,7 +323,7 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
   );
 }
 
-function ShelterEditForm({ shelter, c, onSaved, onUploadImage }) {
+function ShelterEditForm({ shelter, c, onSaved, onUploadImage, inModal }) {
   const [form, setForm] = useState({
     name: shelter.name || '',
     city: shelter.city || '',
@@ -367,36 +354,27 @@ function ShelterEditForm({ shelter, c, onSaved, onUploadImage }) {
     } finally { setSaving(false); }
   };
 
-  return (
-    <View style={{ gap: 16 }}>
-      <View style={[styles.card, { backgroundColor: c.card }]}>
-        <Text style={[styles.cardTitle, { color: c.title }]}>Imágenes</Text>
-        <View style={styles.imageBtns}>
-          <Button variant="outline" icon={ImageIcon} title="Cambiar logo" onPress={() => onUploadImage('logo')} style={styles.halfBtn} textStyle={styles.btnText13} />
-          <Button variant="outline" icon={ImageIcon} title="Cambiar portada" onPress={() => onUploadImage('cover')} style={styles.halfBtn} textStyle={styles.btnText13} />
-        </View>
-      </View>
-
+  const fields = (
+    <>
       <View style={[styles.card, { backgroundColor: c.card }]}>
         <Text style={[styles.cardTitle, { color: c.title }]}>Datos del refugio</Text>
-        <Field label="Nombre *" c={c} value={form.name} onChangeText={upd('name')} maxLength={120} />
-        <Field label="Ciudad" c={c} value={form.city} onChangeText={upd('city')} placeholder="Montevideo" maxLength={80} />
+        <FormField label="Nombre" required icon={HouseHeart} value={form.name} onChangeText={upd('name')} maxLength={120} />
+        <FormField label="Ciudad" icon={MapPin} value={form.city} onChangeText={upd('city')} placeholder="Montevideo" maxLength={80} />
       </View>
 
       <View style={[styles.card, { backgroundColor: c.card }]}>
         <Text style={[styles.cardTitle, { color: c.title }]}>Contacto</Text>
-        <Field label="Teléfono" c={c} value={form.phone} onChangeText={upd('phone')} keyboardType="phone-pad" maxLength={30} />
-        <Field label="WhatsApp" c={c} value={form.whatsapp} onChangeText={upd('whatsapp')} keyboardType="phone-pad" maxLength={30} />
-        <Field label="Email" c={c} value={form.email} onChangeText={upd('email')} keyboardType="email-address" autoCapitalize="none" maxLength={150} />
-        <Field label="Sitio web" c={c} value={form.website} onChangeText={upd('website')} autoCapitalize="none" maxLength={200} />
-        <Field label="Instagram (sin @)" c={c} value={form.instagram} onChangeText={upd('instagram')} autoCapitalize="none" maxLength={80} />
+        <FormField label="Teléfono" icon={Phone} value={form.phone} onChangeText={upd('phone')} placeholder="+598 …" keyboardType="phone-pad" maxLength={30} />
+        <FormField label="WhatsApp" icon={MessageCircle} value={form.whatsapp} onChangeText={upd('whatsapp')} placeholder="+598 …" keyboardType="phone-pad" maxLength={30} />
+        <FormField label="Email" icon={Mail} value={form.email} onChangeText={upd('email')} keyboardType="email-address" autoCapitalize="none" maxLength={150} />
+        <FormField label="Sitio web" icon={Globe} value={form.website} onChangeText={upd('website')} placeholder="https://…" autoCapitalize="none" maxLength={200} />
+        <FormField label="Instagram" icon={AtSign} value={form.instagram} onChangeText={upd('instagram')} placeholder="sin @" autoCapitalize="none" maxLength={80} />
       </View>
 
       <View style={[styles.card, { backgroundColor: c.card }]}>
         <Text style={[styles.cardTitle, { color: c.title }]}>Sobre el refugio</Text>
-        <Field
+        <FormField
           label="Bio"
-          c={c}
           value={form.bio}
           onChangeText={upd('bio')}
           placeholder="Contá quiénes son, cuántos animales cuidan y cómo ayudar."
@@ -405,13 +383,61 @@ function ShelterEditForm({ shelter, c, onSaved, onUploadImage }) {
         />
       </View>
 
+      {msg ? <Text style={[styles.msg, { color: c.text }]}>{msg}</Text> : null}
       <Button
         color={COLOR}
         title={saving ? 'Guardando…' : 'Guardar cambios'}
         onPress={save}
         disabled={saving}
       />
-      {msg ? <Text style={[styles.msg, { color: c.text }]}>{msg}</Text> : null}
+    </>
+  );
+
+  // Pendiente de aprobación: el form va dentro del panel (es el paso 1).
+  if (!inModal) {
+    return (
+      <View style={{ gap: 16 }}>
+        <View style={[styles.card, { backgroundColor: c.card }]}>
+          <Text style={[styles.cardTitle, { color: c.title }]}>Imágenes</Text>
+          <View style={styles.imageBtns}>
+            <Button variant="outline" icon={ImageIcon} title="Cambiar logo" onPress={() => onUploadImage('logo')} style={styles.halfBtn} textStyle={styles.btnText13} />
+            <Button variant="outline" icon={ImageIcon} title="Cambiar portada" onPress={() => onUploadImage('cover')} style={styles.halfBtn} textStyle={styles.btnText13} />
+          </View>
+        </View>
+        {fields}
+      </View>
+    );
+  }
+
+  // Aprobado: modal a pantalla completa con portada + logo, como Perfil-vet-editar.
+  return (
+    <View>
+      <View style={[styles.editCover, { backgroundColor: c.arena }]}>
+        {shelter.cover_url ? <Image source={{ uri: shelter.cover_url }} style={StyleSheet.absoluteFill} /> : null}
+        <Pressable onPress={() => onUploadImage('cover')} style={styles.editCoverBtn}>
+          <Camera size={16} color={palette.crema} strokeWidth={2} />
+          <Text style={styles.editCoverBtnText}>Cambiar portada</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onUploadImage('logo')}
+          accessibilityLabel="Cambiar logo"
+          style={[styles.editLogoBtn, { borderColor: c.bg, backgroundColor: c.bg }]}
+        >
+          {shelter.logo_url ? (
+            <Image source={{ uri: shelter.logo_url }} style={styles.editLogoImg} />
+          ) : (
+            <View style={[styles.editLogoImg, styles.center, { backgroundColor: COLOR }]}>
+              <Text style={styles.editLogoLetter}>{shelter.name.charAt(0)}</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+      <View style={styles.editBody}>
+        <Text style={[styles.editLogoHint, { color: c.text }]}>
+          Logo cuadrado y portada horizontal. Se ven en tu ficha y en el listado de refugios.
+        </Text>
+        {fields}
+      </View>
     </View>
   );
 }
@@ -556,8 +582,6 @@ export default function ShelterPanel() {
   const historical = pets.filter((p) => p.adopted_at || p.deleted_at);
   const adoptedCount = pets.filter((p) => p.adopted_at).length;
   const approved = shelter.approved;
-  // Pendiente: el form queda siempre abierto (es lo primero que tiene que hacer).
-  const showForm = !approved || editingShelter;
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -636,31 +660,23 @@ export default function ShelterPanel() {
 
           {approved ? (
             <Pressable
-              onPress={() => setEditingShelter(!editingShelter)}
+              onPress={() => setEditingShelter(true)}
               style={({ pressed }) => [styles.toggleBtn, { backgroundColor: c.card, borderColor: c.cardBorder, opacity: pressed ? 0.8 : 1 }]}
             >
               <View style={styles.row}>
                 <Pencil size={14} color={c.text} strokeWidth={2} />
-                <Text style={[styles.toggleBtnText, { color: c.text }]}>
-                  {editingShelter ? 'Ocultar edición del refugio' : 'Editar datos del refugio'}
-                </Text>
+                <Text style={[styles.toggleBtnText, { color: c.text }]}>Editar datos del refugio</Text>
               </View>
-              {editingShelter ? (
-                <ChevronDown size={20} color={c.text} strokeWidth={2} />
-              ) : (
-                <ChevronRight size={20} color={c.text} strokeWidth={2} />
-              )}
+              <ChevronRight size={20} color={c.text} strokeWidth={2} />
             </Pressable>
-          ) : null}
-
-          {showForm ? (
+          ) : (
             <ShelterEditForm
               shelter={shelter}
               c={c}
               onUploadImage={uploadImage}
-              onSaved={(s) => { setShelter(s); setEditingShelter(false); }}
+              onSaved={setShelter}
             />
-          ) : null}
+          )}
 
           {/* Adopciones — solo visible si el refugio está aprobado. El server
               también bloquea con requireShelter.approved. */}
@@ -738,11 +754,32 @@ export default function ShelterPanel() {
         </View>
       </ScrollView>
       <TabBar />
+
+      <EditModal visible={editingShelter} title="Editar refugio" color={COLOR} onClose={() => setEditingShelter(false)}>
+        <ShelterEditForm
+          shelter={shelter}
+          c={c}
+          inModal
+          onUploadImage={uploadImage}
+          onSaved={(s) => { setShelter(s); setEditingShelter(false); }}
+        />
+      </EditModal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  editCover: { height: 170, alignItems: 'center', justifyContent: 'center' },
+  editCoverBtn: {
+    position: 'absolute', right: 16, top: 14, height: 36, paddingHorizontal: 12, borderRadius: 999,
+    backgroundColor: 'rgba(26,26,46,0.7)', flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  editCoverBtnText: { fontFamily: fonts.bold, fontSize: 13, color: palette.crema },
+  editLogoBtn: { position: 'absolute', left: 20, bottom: -40, width: 88, height: 88, borderRadius: 24, borderWidth: 4, overflow: 'hidden' },
+  editLogoImg: { width: '100%', height: '100%', borderRadius: 20 },
+  editLogoLetter: { fontFamily: fonts.display, fontSize: 34, color: palette.noche },
+  editBody: { paddingHorizontal: 20, paddingTop: 12, gap: 16 },
+  editLogoHint: { marginLeft: 108, minHeight: 40, fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   container: { flex: 1 },
   flex1: { flex: 1 },
   formHeader: { marginBottom: 20 },
@@ -804,11 +841,6 @@ const styles = StyleSheet.create({
   label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
   hint: { fontFamily: fonts.regular, fontSize: 13 },
   small: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
-  input: {
-    minHeight: 50, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
-    fontFamily: fonts.regular, fontSize: 15,
-  },
-  textarea: { minHeight: 104, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 38, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
   chipText: { fontSize: 14 },
@@ -817,7 +849,7 @@ const styles = StyleSheet.create({
 
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 14 },
   photoRowImg: { width: 56, height: 56, borderRadius: 10 },
-  photoRowLabel: { flex: 1, fontFamily: fonts.bold, fontSize: 13 },
+  photoRowLabel: { fontFamily: fonts.bold, fontSize: 13 },
   photoIconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   photoAdd: {
     height: 64, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: palette.violeta,

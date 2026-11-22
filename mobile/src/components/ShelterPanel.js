@@ -23,6 +23,7 @@ import FormField from './FormField';
 import { EditModal } from './ProfileEditForms';
 import StatusChip from './StatusChip';
 import Button from './Button';
+import AppearanceRow from './AppearanceRow';
 import TabBar, { useTabBarSpace } from './TabBar';
 import { CONTACT_EMAIL } from '../lib/config';
 
@@ -757,6 +758,8 @@ export default function ShelterPanel() {
               ))}
             </View>
           ) : null}
+
+          <AppearanceRow />
 
           <LinkedAccounts c={c} />
 

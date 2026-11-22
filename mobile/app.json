@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-blank.png",
@@ -49,6 +49,19 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-blank.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF6F0",
+          "dark": {
+            "image": "./assets/splash-blank.png",
+            "backgroundColor": "#1A1A2E"
+          }
+        }
+      ],
       "expo-web-browser",
       "expo-apple-authentication",
       "expo-notifications",

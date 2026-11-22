@@ -3,7 +3,7 @@ import { AccessibilityInfo, Animated, Easing, StyleSheet, View, useWindowDimensi
 import Svg, { Line, Path } from 'react-native-svg';
 import MimoPin from '../../assets/mimo-pin.svg';
 import RED from '../../assets/splash/splash-red.json';
-import { palette, fonts } from '../lib/theme';
+import { palette, fonts, useTheme } from '../lib/theme';
 import Wordmark from './Wordmark';
 
 // Splash "opción B" (Splash-B.dc.html + Splash-storyboard.dc.html): una red
@@ -26,6 +26,7 @@ const popScale = (t) => (t <= 0 ? 0 : t < 0.6 ? (t / 0.6) * 1.35 : 1.35 - ((t - 
 
 export default function Splash({ onFinish }) {
   const { width, height } = useWindowDimensions();
+  const c = useTheme(); // oscuro: fondo Noche, "mimo" y lema en Crema, sombra negra
   const [reduceMotion, setReduceMotion] = useState(null);
 
   // Un valor por tanda para líneas y otro para nodos: alcanza con 8 animaciones
@@ -120,7 +121,7 @@ export default function Splash({ onFinish }) {
   };
 
   return (
-    <Animated.View pointerEvents="none" style={[styles.root, exitStyle]}>
+    <Animated.View pointerEvents="none" style={[styles.root, { backgroundColor: c.bg }, exitStyle]}>
       <Svg
         width={width}
         height={height}
@@ -162,11 +163,11 @@ export default function Splash({ onFinish }) {
         <Animated.View style={pinStyle}>
           <MimoPin width={96} height={118} />
         </Animated.View>
-        <Animated.View style={[styles.shadow, shadowStyle]} />
+        <Animated.View style={[styles.shadow, { backgroundColor: c.isDark ? '#000' : palette.noche }, shadowStyle]} />
         <Animated.View style={[styles.word, wordStyle]}>
-          <Wordmark size={46} showPin={false} />
+          <Wordmark size={46} showPin={false} color={c.title} />
         </Animated.View>
-        <Animated.Text style={[styles.lema, { opacity: lema }]}>Cada mascota merece un mimo</Animated.Text>
+        <Animated.Text style={[styles.lema, { opacity: lema, color: c.title }]}>Cada mascota merece un mimo</Animated.Text>
       </View>
     </Animated.View>
   );

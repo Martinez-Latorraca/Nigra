@@ -17,14 +17,15 @@ import { PushProvider } from '../src/lib/push';
 import BannerHost from '../src/components/BannerHost';
 import FeedbackHost from '../src/components/FeedbackHost';
 import Splash from '../src/components/Splash';
+import { useTheme } from '../src/lib/theme';
+import { loadAppearance } from '../src/lib/appearance';
 
 // Mantenemos el splash nativo (solo bg crema) hasta que el árbol React esté
 // listo. En cuanto se monte el layout, lo ocultamos y el componente <Splash />
 // toma la posta con su animación (mismo bg, sin flash).
 SplashScreen.preventAutoHideAsync().catch(() => {});
-// Bg del ReactRootView = crema. Sin esto, el bootstrap muestra negro entre el
-// splash nativo y el primer render de RN (especialmente en dev con Metro).
-SystemUI.setBackgroundColorAsync('#FFF6F0').catch(() => {});
+// Preferencia de apariencia guardada (Automático / Claro / Oscuro).
+loadAppearance();
 
 // Error tracking del cliente. Gated en EXPO_PUBLIC_SENTRY_DSN: sin la var
 // queda deshabilitado (no rompe dev ni Expo Go). Setear la DSN del proyecto
@@ -39,6 +40,13 @@ Sentry.init({
 
 function RootLayout() {
     const [showCustomSplash, setShowCustomSplash] = useState(true);
+    const c = useTheme();
+    // Bg del ReactRootView = fondo del tema. Sin esto, el bootstrap muestra
+    // negro entre el splash nativo y el primer render de RN, y al cambiar de
+    // pantalla se ve un flash del color equivocado.
+    useEffect(() => {
+        SystemUI.setBackgroundColorAsync(c.bg).catch(() => {});
+    }, [c.bg]);
     // Nombres de familia en src/lib/theme.js (fonts). Si la carga falla
     // seguimos igual con la fuente del sistema: no bloqueamos la app.
     const [fontsLoaded, fontError] = useFonts({
@@ -76,10 +84,10 @@ function RootLayout() {
                 <SocketProvider>
                     <PushProvider>
                         <SafeAreaProvider>
-                            <View style={{ flex: 1, backgroundColor: '#FFF6F0' }} onLayout={onLayoutRootView}>
+                            <View style={{ flex: 1, backgroundColor: c.bg }} onLayout={onLayoutRootView}>
                                 <StatusBar style="auto" />
                                 <>
-                                    <Stack screenOptions={{ headerShown: false }} />
+                                    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg } }} />
                                     <BannerHost />
                                     <FeedbackHost />
                                 </>

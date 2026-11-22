@@ -4,7 +4,7 @@
 // poder llamarlos desde cualquier pantalla sin pasar props.
 //
 //   if (await confirm({ tone: 'danger', icon: Trash2, title, text, confirmText })) …
-//   const v = await choose({ title, text, options: [{ value, icon, title, text }] });
+//   const v = await choose({ title, text, options: [{ value, icon, color, title, text, selected }] });
 //   toast('Listo, guardado.');            toast('No se pudo guardar.', 'error');
 
 let listener = null;

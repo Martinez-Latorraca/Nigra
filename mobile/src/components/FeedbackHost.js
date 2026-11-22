@@ -3,7 +3,7 @@ import { Animated, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { setFeedbackListener } from '../lib/feedback';
 import { palette, fonts, onColor, useTheme } from '../lib/theme';
-import { ChevronRight, CircleAlert, CircleCheck } from '../lib/icons';
+import { Check, ChevronRight, CircleAlert, CircleCheck } from '../lib/icons';
 import Button from './Button';
 
 const TONES = { good: palette.violeta, neutral: palette.noche, danger: palette.coral };
@@ -111,7 +111,11 @@ export default function FeedbackHost() {
                           <Text style={[styles.optionTitle, { color: c.title }]}>{opt.title}</Text>
                           {opt.text ? <Text style={[styles.optionText, { color: c.text }]}>{opt.text}</Text> : null}
                         </View>
-                        <ChevronRight size={20} color={c.text} strokeWidth={2} />
+                        {opt.selected ? (
+                          <Check size={22} color={palette.teal} strokeWidth={2.4} />
+                        ) : (
+                          <ChevronRight size={20} color={c.text} strokeWidth={2} />
+                        )}
                       </Pressable>
                     );
                   })

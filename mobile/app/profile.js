@@ -32,6 +32,7 @@ function EmptyReports() {
 }
 import { clearCredentials, updateUserData } from '../src/store/userSlice';
 import LinkedAccounts from '../src/components/LinkedAccounts';
+import AppearanceRow from '../src/components/AppearanceRow';
 import ShelterPanel from '../src/components/ShelterPanel';
 import { adRadiusOf, SPONSOR_TIERS } from '../src/lib/sponsorTiers';
 import SectionHeader from '../src/components/SectionHeader';
@@ -612,6 +613,8 @@ export default function Profile() {
         />
         {alertsMsg ? <Text style={[styles.savedMsg, { color: c.text }]}>{alertsMsg}</Text> : null}
       </View>
+
+      <AppearanceRow />
 
       <LinkedAccounts c={c} />
 

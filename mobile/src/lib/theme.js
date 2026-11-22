@@ -45,28 +45,47 @@ export const fonts = {
   bold: 'DMSans_700Bold',
 };
 
+// Tokens del modo oscuro (Oscuro-sistema.dc.html).
+export const dark = {
+  noche2: '#262642', // tarjetas, campos, barra de navegación, superficie Noche
+  linea: '#33334F', // bordes, placeholder de foto
+  lineaFuerte: '#3A3A58', // divisores, switch apagado, fondos Noche chicos
+  lavanda: '#B4B4C6', // texto secundario, placeholders, nav inactiva
+};
+
+// La preferencia (Automático / Claro / Oscuro) la aplica src/lib/appearance.js
+// con Appearance.setColorScheme, así que acá alcanza con useColorScheme().
 export function useTheme() {
   const isDark = useColorScheme() === 'dark';
-  // Las claves son las mismas de antes para no romper las pantallas que
-  // todavía no se rediseñaron. Los tokens oscuros salen de Home-v2-oscuro;
-  // hoy no se ven porque app.json fuerza userInterfaceStyle "light".
   return {
     isDark,
     ...palette,
+    // Texto secundario (metadatos, placeholders). En claro sigue siendo Noche.
+    muted: isDark ? dark.lavanda : palette.noche,
+    navInactive: isDark ? dark.lavanda : palette.grisNav,
+    // Placeholder de foto.
+    photo: isDark ? dark.linea : palette.arena,
+    // Botón oscuro / chip activo: se invierte en oscuro.
+    inverseBg: isDark ? palette.crema : palette.noche,
+    inverseText: isDark ? palette.noche : palette.crema,
+    // Superficie Noche grande (encabezado de Vets, perfil de vet).
+    nocheSurface: isDark ? dark.noche2 : palette.noche,
+    // Fondos Noche chicos (íconos, chip "Adoptado", logo sin color).
+    nocheSmall: isDark ? dark.lineaFuerte : palette.noche,
     bg: isDark ? palette.noche : palette.crema,
-    card: isDark ? '#262642' : palette.blanco,
-    cardBorder: isDark ? '#33334F' : palette.arena,
+    card: isDark ? dark.noche2 : palette.blanco,
+    cardBorder: isDark ? dark.linea : palette.arena,
     title: isDark ? palette.crema : palette.noche,
     text: isDark ? palette.crema : palette.noche,
-    subtitle: isDark ? '#B4B4C6' : palette.noche,
-    label: isDark ? '#B4B4C6' : palette.noche,
-    inputBg: isDark ? '#262642' : palette.blanco,
+    subtitle: isDark ? dark.lavanda : palette.noche,
+    label: isDark ? dark.lavanda : palette.noche,
+    inputBg: isDark ? dark.noche2 : palette.blanco,
     inputText: isDark ? palette.crema : palette.noche,
     primary: palette.coral,
     primaryText: palette.arena,
-    divider: isDark ? '#3A3A58' : palette.arena,
-    socialBg: isDark ? '#262642' : palette.blanco,
-    socialBorder: isDark ? '#3A3A58' : palette.arena,
+    divider: isDark ? dark.lineaFuerte : palette.arena,
+    socialBg: isDark ? dark.noche2 : palette.blanco,
+    socialBorder: isDark ? dark.lineaFuerte : palette.arena,
     socialText: isDark ? palette.crema : palette.noche,
   };
 }

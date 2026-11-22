@@ -2,49 +2,32 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  Pressable,
   ScrollView,
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useSelector } from 'react-redux';
 import api from '../../src/lib/api';
-import { useTheme } from '../../src/lib/theme';
-
-const SERVICE_SUGGESTIONS = [
-  'Consulta general', 'Vacunación', 'Cirugía', 'Emergencias 24h',
-  'Peluquería', 'Adopciones',
-];
-
-function Field({ label, hint, children, c, required }) {
-  return (
-    <View style={{ marginBottom: 20 }}>
-      <Text style={[styles.label, { color: c.subtitle }]}>
-        {label}
-        {required ? <Text style={{ color: '#FF5C6C' }}> *</Text> : null}
-      </Text>
-      {children}
-      {hint ? <Text style={[styles.hint, { color: c.subtitle }]}>{hint}</Text> : null}
-    </View>
-  );
-}
+import { useTheme, palette, fonts } from '../../src/lib/theme';
+import SectionHeader from '../../src/components/SectionHeader';
+import FormField from '../../src/components/FormField';
+import Button from '../../src/components/Button';
+import ServiceChips, { useServices } from '../../src/components/ServiceChips';
+import { Globe, Info, MapPin, MessageCircle, Phone, Stethoscope } from '../../src/lib/icons';
 
 export default function VetRegister() {
   const c = useTheme();
-  const user = useSelector((s) => s.user?.data);
+  const insets = useSafeAreaInsets();
   const [checking, setChecking] = useState(true);
   const [form, setForm] = useState({
     name: '', city: '', address: '',
     phone: '', whatsapp: '', website: '', instagram: '',
     bio: '',
-    services: [],
   });
-  const [serviceInput, setServiceInput] = useState('');
+  const services = useServices();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,20 +39,11 @@ export default function VetRegister() {
 
   const update = useCallback((k) => (v) => setForm((f) => ({ ...f, [k]: v })), []);
 
-  const addService = (name) => {
-    const clean = String(name).trim();
-    if (!clean) return;
-    setForm((f) => (f.services.includes(clean) ? f : { ...f, services: [...f.services, clean] }));
-    setServiceInput('');
-  };
-  const removeService = (name) =>
-    setForm((f) => ({ ...f, services: f.services.filter((s) => s !== name) }));
-
   const submit = async () => {
     setSaving(true);
     setError('');
     try {
-      const body = { ...form };
+      const body = { ...form, services: services.toList() };
       for (const k of Object.keys(body)) {
         if (body[k] === '' || body[k] === null) delete body[k];
       }
@@ -84,227 +58,142 @@ export default function VetRegister() {
 
   if (checking) {
     return (
-      <SafeAreaView style={[styles.container, styles.centered, { backgroundColor: c.bg }]}>
+      <View style={[styles.flex, styles.centered, { backgroundColor: c.bg }]}>
         <ActivityIndicator color={c.title} />
-      </SafeAreaView>
+      </View>
     );
   }
 
-  const inputStyle = [styles.input, { backgroundColor: c.card, color: c.title, borderColor: c.cardBorder }];
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: c.bg }]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={[styles.flex, { backgroundColor: c.bg }]}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} hitSlop={12}>
-            <Text style={[styles.back, { color: c.subtitle }]}>‹ Directorio</Text>
-          </Pressable>
+        <SectionHeader
+          color={palette.noche}
+          centerLabel="Registro vet"
+          title="Registrá tu veterinaria"
+          subtitle="Completá los datos que se mostrarán en el directorio público."
+        />
 
-          <Text style={[styles.kicker, { color: c.subtitle }]}>REGISTRO VET</Text>
-          <Text style={[styles.title, { color: c.title }]}>Registrá tu veterinaria.</Text>
-          <Text style={[styles.subtitle, { color: c.subtitle }]}>
-            Completá los datos que se mostrarán en el directorio público.
-            {user?.email ? ` Tu cuenta ${user.email} queda como contacto por default; podés cambiarlo desde el dashboard.` : ''}
-            {' '}Después de crearla, un admin la aprueba.
-          </Text>
+        <View style={styles.body}>
+          <View style={[styles.card, { backgroundColor: c.card }]}>
+            <Text style={[styles.cardTitle, { color: c.title }]}>La clínica</Text>
+            <FormField
+              label="Nombre de la veterinaria"
+              required
+              icon={Stethoscope}
+              value={form.name}
+              onChangeText={update('name')}
+              placeholder="Veterinaria Amigo"
+              maxLength={120}
+            />
+            <FormField
+              label="Ciudad"
+              icon={MapPin}
+              value={form.city}
+              onChangeText={update('city')}
+              placeholder="Montevideo"
+              maxLength={80}
+            />
+            <FormField
+              label="Dirección"
+              icon={MapPin}
+              value={form.address}
+              onChangeText={update('address')}
+              placeholder="Bv. Artigas 1234"
+              maxLength={200}
+            />
+          </View>
 
-          <View style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
-            <Field label="Nombre de la veterinaria" required c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.name}
-                onChangeText={update('name')}
-                placeholder="Veterinaria Amigo"
-                placeholderTextColor={c.subtitle}
-                maxLength={120}
-              />
-            </Field>
+          <View style={[styles.card, { backgroundColor: c.card }]}>
+            <Text style={[styles.cardTitle, { color: c.title }]}>Contacto</Text>
+            <FormField
+              label="Teléfono"
+              icon={Phone}
+              value={form.phone}
+              onChangeText={update('phone')}
+              placeholder="24000000"
+              keyboardType="phone-pad"
+              maxLength={30}
+            />
+            <FormField
+              label="WhatsApp"
+              icon={MessageCircle}
+              value={form.whatsapp}
+              onChangeText={update('whatsapp')}
+              placeholder="59899000000"
+              keyboardType="phone-pad"
+              maxLength={30}
+              hint="Con código de país, sin +."
+            />
+            <FormField
+              label="Sitio web"
+              icon={Globe}
+              value={form.website}
+              onChangeText={update('website')}
+              placeholder="https://vetamigo.com"
+              autoCapitalize="none"
+              keyboardType="url"
+              maxLength={200}
+            />
+            <FormField
+              label="Instagram"
+              prefix="@"
+              value={form.instagram}
+              onChangeText={update('instagram')}
+              placeholder="vetamigo"
+              autoCapitalize="none"
+              maxLength={80}
+            />
+          </View>
 
-            <Field label="Ciudad" c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.city}
-                onChangeText={update('city')}
-                placeholder="Montevideo"
-                placeholderTextColor={c.subtitle}
-                maxLength={80}
-              />
-            </Field>
+          <View style={[styles.card, { backgroundColor: c.card }]}>
+            <Text style={[styles.cardTitle, { color: c.title }]}>Sobre ustedes</Text>
+            <FormField
+              label="Bio"
+              value={form.bio}
+              onChangeText={update('bio')}
+              placeholder="Veterinaria familiar en Pocitos, especialistas en emergencias."
+              multiline
+              maxLength={2000}
+            />
+            <ServiceChips services={services} otherPlaceholder="Homeopatía, Nutrición, Odontología…" />
+          </View>
 
-            <Field label="Dirección" c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.address}
-                onChangeText={update('address')}
-                placeholder="Bv. Artigas 1234"
-                placeholderTextColor={c.subtitle}
-                maxLength={200}
-              />
-            </Field>
+          {error ? <Text style={[styles.error, { color: c.coral }]}>{error}</Text> : null}
 
-            <Field label="Teléfono" c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.phone}
-                onChangeText={update('phone')}
-                placeholder="24000000"
-                placeholderTextColor={c.subtitle}
-                keyboardType="phone-pad"
-                maxLength={30}
-              />
-            </Field>
-
-            <Field label="WhatsApp" hint="Con código de país, sin +." c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.whatsapp}
-                onChangeText={update('whatsapp')}
-                placeholder="59899000000"
-                placeholderTextColor={c.subtitle}
-                keyboardType="phone-pad"
-                maxLength={30}
-              />
-            </Field>
-
-            <Field label="Sitio web" c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.website}
-                onChangeText={update('website')}
-                placeholder="https://vetamigo.com"
-                placeholderTextColor={c.subtitle}
-                autoCapitalize="none"
-                keyboardType="url"
-                maxLength={200}
-              />
-            </Field>
-
-            <Field label="Instagram" hint="Sin @" c={c}>
-              <TextInput
-                style={inputStyle}
-                value={form.instagram}
-                onChangeText={update('instagram')}
-                placeholder="vetamigo"
-                placeholderTextColor={c.subtitle}
-                autoCapitalize="none"
-                maxLength={80}
-              />
-            </Field>
-
-            <Field label="Bio" hint="Contá quiénes son y qué hacen." c={c}>
-              <TextInput
-                style={[inputStyle, styles.multiline]}
-                value={form.bio}
-                onChangeText={update('bio')}
-                placeholder="Veterinaria familiar en Pocitos, especialistas en emergencias."
-                placeholderTextColor={c.subtitle}
-                multiline
-                maxLength={2000}
-              />
-            </Field>
-
-            <Field label="Servicios" hint="Tocá el + o Enter para agregar." c={c}>
-              <View style={styles.chipsRow}>
-                {form.services.map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => removeService(s)}
-                    style={[styles.chipActive, { backgroundColor: c.bg }]}
-                  >
-                    <Text style={[styles.chipActiveText, { color: c.title }]}>{s} ×</Text>
-                  </Pressable>
-                ))}
-              </View>
-              <View style={styles.serviceAddRow}>
-                <TextInput
-                  style={[inputStyle, { flex: 1 }]}
-                  value={serviceInput}
-                  onChangeText={setServiceInput}
-                  placeholder="Agregar servicio"
-                  placeholderTextColor={c.subtitle}
-                  onSubmitEditing={() => addService(serviceInput)}
-                  returnKeyType="done"
-                  maxLength={80}
-                />
-                <Pressable
-                  onPress={() => addService(serviceInput)}
-                  style={[styles.addBtn, { backgroundColor: c.bg }]}
-                >
-                  <Text style={[styles.addBtnText, { color: c.title }]}>+</Text>
-                </Pressable>
-              </View>
-              <View style={styles.chipsRow}>
-                {SERVICE_SUGGESTIONS.filter((s) => !form.services.includes(s)).slice(0, 5).map((s) => (
-                  <Pressable
-                    key={s}
-                    onPress={() => addService(s)}
-                    style={[styles.chipSuggestion, { borderColor: c.cardBorder }]}
-                  >
-                    <Text style={[styles.chipSuggestionText, { color: c.subtitle }]}>+ {s}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </Field>
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            <Pressable
-              onPress={submit}
-              disabled={saving || !form.name.trim()}
-              style={[styles.submit, (saving || !form.name.trim()) && { opacity: 0.4 }]}
-            >
-              <Text style={styles.submitText}>
-                {saving ? 'Registrando…' : 'Registrar veterinaria'}
-              </Text>
-            </Pressable>
-            <Text style={[styles.finePrint, { color: c.subtitle }]}>
+          <Button
+            variant="dark"
+            title="Registrar veterinaria"
+            onPress={submit}
+            loading={saving}
+            disabled={!form.name.trim()}
+          />
+          <View style={styles.noteRow}>
+            <Info size={16} color={c.text} strokeWidth={2} />
+            <Text style={[styles.note, { color: c.text }]}>
               Después de crear queda pendiente de aprobación por un admin antes de aparecer en el directorio.
             </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  flex: { flex: 1 },
   centered: { alignItems: 'center', justifyContent: 'center' },
-  scroll: { padding: 20, paddingBottom: 40 },
-  back: { fontSize: 15, fontWeight: '600' },
-  kicker: { fontSize: 10, fontWeight: '700', letterSpacing: 2.5, marginTop: 12 },
-  title: { fontSize: 30, fontWeight: '700', letterSpacing: -0.8, marginTop: 6 },
-  subtitle: { fontSize: 13, lineHeight: 19, marginTop: 10, marginBottom: 24 },
-  card: { borderRadius: 24, borderWidth: 1, padding: 20 },
-  label: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
-  hint: { fontSize: 11, marginTop: 6 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  multiline: { minHeight: 90, textAlignVertical: 'top' },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  chipActive: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
-  chipActiveText: { fontSize: 12, fontWeight: '700' },
-  chipSuggestion: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderStyle: 'dashed', borderWidth: 1 },
-  chipSuggestionText: { fontSize: 11, fontWeight: '600' },
-  serviceAddRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  addBtn: { borderRadius: 14, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { fontSize: 20, fontWeight: '700' },
-  errorBox: { backgroundColor: '#FEE2E2', borderRadius: 12, padding: 10, marginTop: 12 },
-  errorText: { color: '#DC2626', fontSize: 12, fontWeight: '600', textAlign: 'center' },
-  submit: { backgroundColor: '#1A1A2E', borderRadius: 999, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
-  submitText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  finePrint: { fontSize: 11, textAlign: 'center', marginTop: 12 },
+  body: { paddingHorizontal: 20, paddingTop: 20, gap: 16 },
+  card: { borderRadius: 24, padding: 18, gap: 14 },
+  cardTitle: { fontFamily: fonts.display, fontSize: 18 },
+  error: { fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
+  noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  note: { flex: 1, fontFamily: fonts.regular, fontSize: 13, lineHeight: 19 },
 });

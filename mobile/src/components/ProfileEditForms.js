@@ -8,12 +8,12 @@ import api from '../lib/api';
 import { useTheme, palette, fonts, onColor } from '../lib/theme';
 import { updateUserData } from '../store/userSlice';
 import { CONTACT_EMAIL } from '../lib/config';
-import { SERVICE_CATALOG } from '../lib/services';
 import {
-  User, Mail, MapPin, Phone, MessageCircle, Globe, AtSign, Stethoscope, Check, Camera, Plus,
+  User, Mail, MapPin, Phone, MessageCircle, Globe, AtSign, Stethoscope, Camera,
 } from '../lib/icons';
 import MapPicker from './MapPicker';
 import FormField from './FormField';
+import ServiceChips, { useServices } from './ServiceChips';
 import Button from './Button';
 
 // Edición del perfil (pantallas/Perfil-editar y Perfil-vet-editar): modal a
@@ -163,22 +163,7 @@ export function VetEditForm({ vet, onClose, onSaved }) {
     city: vet.city || '',
     bio: vet.bio || '',
   });
-  const initialServices = vet.services || [];
-  const catalogSet = new Set(SERVICE_CATALOG);
-  const [servicesSelected, setServicesSelected] = useState(
-    () => new Set(initialServices.filter((s) => catalogSet.has(s)))
-  );
-  const [servicesOther, setServicesOther] = useState(
-    initialServices.filter((s) => !catalogSet.has(s)).join(', ')
-  );
-  const toggleService = (s) => {
-    setServicesSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  };
+  const services = useServices(vet.services || []);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -236,9 +221,7 @@ export function VetEditForm({ vet, onClose, onSaved }) {
     setMsg('');
     setErr('');
     try {
-      const otros = servicesOther.split(',').map((s) => s.trim()).filter(Boolean);
-      const services = [...SERVICE_CATALOG.filter((s) => servicesSelected.has(s)), ...otros];
-      const body = { ...form, services };
+      const body = { ...form, services: services.toList() };
       if (mapPosition) {
         body.lat = mapPosition.lat;
         body.lng = mapPosition.lng;
@@ -335,49 +318,7 @@ export function VetEditForm({ vet, onClose, onSaved }) {
             multiline
             placeholder="Contá qué hacen, especialidades, horarios…"
           />
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: c.text }]}>Servicios</Text>
-            <View style={styles.chips}>
-              {SERVICE_CATALOG.map((s) => {
-                const active = servicesSelected.has(s);
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => toggleService(s)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: active }}
-                    style={[
-                      styles.chip,
-                      active
-                        ? { backgroundColor: palette.noche, borderColor: palette.noche }
-                        : { backgroundColor: c.card, borderColor: c.cardBorder },
-                    ]}
-                  >
-                    {active ? (
-                      <Check size={14} color={palette.crema} strokeWidth={2.5} />
-                    ) : (
-                      <Plus size={14} color={c.text} strokeWidth={2} />
-                    )}
-                    <Text
-                      style={[
-                        styles.chipText,
-                        { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium },
-                      ]}
-                    >
-                      {s}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <FormField
-            label="Otros servicios"
-            icon={Plus}
-            value={servicesOther}
-            onChangeText={setServicesOther}
-            placeholder="Separá por coma: Homeopatía, Nutrición…"
-          />
+          <ServiceChips services={services} />
         </View>
 
         {err ? <Text style={[styles.msg, styles.msgError, { color: c.text }]}>{err}</Text> : null}
@@ -438,11 +379,4 @@ const styles = StyleSheet.create({
   mapWrap: { height: 160, borderRadius: 16, overflow: 'hidden' },
   mapPill: { position: 'absolute', left: 10, bottom: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   mapPillText: { fontFamily: fonts.bold, fontSize: 12 },
-
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    height: 36, paddingLeft: 10, paddingRight: 12, borderRadius: 999, borderWidth: 1,
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-  },
-  chipText: { fontSize: 13 },
 });

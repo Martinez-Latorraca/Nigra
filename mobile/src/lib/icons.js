@@ -34,6 +34,8 @@ export { default as Images } from 'lucide-react-native/icons/images';
 export { default as KeyRound } from 'lucide-react-native/icons/key-round';
 export { default as Link } from 'lucide-react-native/icons/link';
 export { default as Locate } from 'lucide-react-native/icons/locate';
+export { default as LocateFixed } from 'lucide-react-native/icons/locate-fixed';
+export { default as List } from 'lucide-react-native/icons/list';
 export { default as Lock } from 'lucide-react-native/icons/lock';
 export { default as LogOut } from 'lucide-react-native/icons/log-out';
 export { default as Flashlight } from 'lucide-react-native/icons/flashlight';

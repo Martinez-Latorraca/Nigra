@@ -212,6 +212,7 @@ export default function Pets() {
                 color={sectionColors.explorar}
                 title="No hay reportes cerca"
                 text="Por ahora nadie reportó mascotas perdidas ni encontradas en tu zona. Buena señal."
+                action={{ title: 'Ver el mapa', variant: 'outline', onPress: () => router.navigate('/map') }}
               />
             )
           }

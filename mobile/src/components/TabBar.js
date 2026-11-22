@@ -13,10 +13,9 @@ import { useSocket } from '../lib/socket';
 
 const BAR_HEIGHT = 64;
 
-// "Mapa" está deshabilitado hasta que exista la pantalla del mapa.
 const TABS = [
   { key: 'home', label: 'Inicio', icon: House, href: '/home' },
-  { key: 'map', label: 'Mapa', icon: Map, href: null },
+  { key: 'map', label: 'Mapa', icon: Map, href: '/map' },
   { key: 'report', label: 'Reportar', href: '/report', center: true },
   { key: 'messages', label: 'Chats', icon: MessageCircle, href: '/messages' },
   { key: 'profile', label: 'Perfil', icon: User, href: '/profile' },

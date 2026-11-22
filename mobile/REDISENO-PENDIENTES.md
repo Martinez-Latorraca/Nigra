@@ -8,12 +8,10 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Navegación
 
-- **Pantalla Mapa** · tab "Mapa" de la barra inferior, link "Ver mapa" de la Home ·
-  `Mapa.dc.html`: mapa a pantalla completa, buscador, chips de filtro, pins de reportes
-  (Coral perdido / Teal encontrado), refugios (cuadrado Sol), vets (cuadrado Noche),
-  clusters, ubicación del usuario con radio de alertas, tarjeta del pin seleccionado.
-  Hoy el tab Mapa se ve **deshabilitado** (decisión explícita) y el link "Ver mapa" no está.
-  Tampoco está el botón "Ver el mapa" del vacío de Explorar (`Estados.dc.html`).
+- **Mapa: botón "Filtros" y chip "Refugios"** · `Mapa.dc.html` · la pantalla Mapa está hecha
+  (2026-11-22, reportes abiertos + vets) pero sin estos dos: el botón Filtros no tiene una función
+  definida (¿especie? ¿fecha?) y los refugios no tienen ubicación pública por decisión de privacidad
+  (es la casa de alguien), así que no van al mapa. Pendiente del servidor: deployar `GET /api/pets/map`.
 
 ## Home (`Home-v2.dc.html`)
 

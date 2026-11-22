@@ -9,19 +9,16 @@ import {
   ActivityIndicator,
   Switch,
   Alert,
-  TextInput,
   Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
-import * as ImagePicker from 'expo-image-picker';
 import api from '../src/lib/api';
 import { updateLocationIfPermitted } from '../src/lib/location';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../src/lib/theme';
 import { ChevronRight, Pencil, Plus, Bell, LogOut, Star, Check } from '../src/lib/icons';
 import { clearCredentials, updateUserData } from '../src/store/userSlice';
 import LinkedAccounts from '../src/components/LinkedAccounts';
-import MapPicker from '../src/components/MapPicker';
 import ShelterPanel from '../src/components/ShelterPanel';
 import { adRadiusOf, SPONSOR_TIERS } from '../src/lib/sponsorTiers';
 import SectionHeader from '../src/components/SectionHeader';
@@ -29,376 +26,13 @@ import StatusChip from '../src/components/StatusChip';
 import SponsorBadge from '../src/components/SponsorBadge';
 import Button from '../src/components/Button';
 import TabBar, { useTabBarSpace } from '../src/components/TabBar';
-import { CONTACT_EMAIL, mailtoContact } from '../src/lib/config';
+import { mailtoContact } from '../src/lib/config';
+import { EditModal, UserEditForm, VetEditForm } from '../src/components/ProfileEditForms';
 
 const STATUS_LABEL = { lost: 'Perdida', found: 'Encontrada' };
 // Radio de push notifications, mismos presets para user y vet — sponsor no
 // cambia el rango. Ver [[project_vet_sponsor_model]] en memoria.
 const RADIUS_PRESETS = [5, 15, 25, 50];
-
-// Debe coincidir con el catálogo del web (client SERVICE_CATALOG) y del
-// directorio (mobile/app/vets/index.js).
-const SERVICE_CATALOG = [
-  'Consultas',
-  'Vacunación',
-  'Cirugía',
-  'Urgencias 24h',
-  'Peluquería',
-  'Baño',
-  'Radiología',
-  'Ecografía',
-  'Laboratorio',
-  'Guardería',
-  'Adiestramiento',
-  'Atención a domicilio',
-];
-
-// ------------------------------------------------------------------ //
-// UserEditForm — edita nombre + foto del user (no-vet).
-// ------------------------------------------------------------------ //
-function UserEditForm({ user, c, dispatch, onClose }) {
-  const [name, setName] = useState(user?.name || '');
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  const pickAvatar = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permiso necesario', 'Necesitamos acceso a tus fotos.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    setUploading(true);
-    setErr('');
-    try {
-      const fd = new FormData();
-      fd.append('image', { uri: asset.uri, name: 'avatar.jpg', type: 'image/jpeg' });
-      const { data } = await api.post('/api/users/me/avatar', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setAvatarUrl(data.avatar_url);
-      dispatch(updateUserData({ avatar_url: data.avatar_url }));
-    } catch (e) {
-      setErr(e.response?.data?.error || 'No se pudo subir la imagen.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    setMsg('');
-    setErr('');
-    try {
-      const { data } = await api.patch('/api/users/me', { name: name.trim() });
-      dispatch(updateUserData({ name: data.name, avatar_url: data.avatar_url }));
-      setMsg('Guardado.');
-      setTimeout(() => onClose?.(), 800);
-    } catch (e) {
-      setErr(e.response?.data?.error || 'No se pudo guardar.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const inputStyle = [formStyles.input, { backgroundColor: c.inputBg, color: c.inputText, borderColor: c.cardBorder }];
-
-  return (
-    <View style={[formStyles.wrapper, { backgroundColor: c.card }]}>
-      <View style={formStyles.headerRow}>
-        <Text style={[formStyles.kicker, { color: c.subtitle }]}>EDITAR PERFIL</Text>
-        <Pressable onPress={onClose} hitSlop={10}>
-          <Text style={[formStyles.close, { color: c.subtitle }]}>Cerrar</Text>
-        </Pressable>
-      </View>
-
-      <Text style={[formStyles.label, { color: c.subtitle }]}>FOTO DE PERFIL</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={formStyles.avatar} />
-        ) : (
-          <View style={[formStyles.avatar, formStyles.avatarFallback]}>
-            <Text style={formStyles.avatarLetter}>{(user?.name || '?').charAt(0).toUpperCase()}</Text>
-          </View>
-        )}
-        <Pressable onPress={pickAvatar} disabled={uploading} style={formStyles.pickBtn}>
-          <Text style={[formStyles.pickBtnText, { color: c.title }]}>{uploading ? 'Subiendo…' : 'Cambiar'}</Text>
-        </Pressable>
-      </View>
-
-      <Text style={[formStyles.label, { color: c.subtitle, marginTop: 12 }]}>NOMBRE</Text>
-      <TextInput style={inputStyle} value={name} onChangeText={setName} />
-
-      <Text style={[formStyles.label, { color: c.subtitle, marginTop: 12 }]}>EMAIL</Text>
-      <TextInput style={[inputStyle, { opacity: 0.6 }]} value={user?.email || ''} editable={false} />
-      <Text style={[formStyles.hint, { color: c.subtitle }]}>
-        Para cambiar tu email escribinos a {CONTACT_EMAIL}.
-      </Text>
-
-      <Pressable
-        onPress={save}
-        disabled={saving || !name.trim()}
-        style={[formStyles.saveBtn, (saving || !name.trim()) && { opacity: 0.5 }]}
-      >
-        <Text style={formStyles.saveBtnText}>{saving ? 'Guardando…' : 'Guardar cambios'}</Text>
-      </Pressable>
-      {msg ? <Text style={[formStyles.savedMsg, { color: '#3ECFB2' }]}>{msg}</Text> : null}
-      {err ? <Text style={[formStyles.savedMsg, { color: palette.coral }]}>{err}</Text> : null}
-    </View>
-  );
-}
-
-// ------------------------------------------------------------------ //
-// VetEditForm — edita todos los datos de la vet incluyendo logo, portada,
-// mapa y catálogo de servicios.
-// ------------------------------------------------------------------ //
-function VetEditForm({ vet, c, onClose, onSaved }) {
-  const [form, setForm] = useState({
-    name: vet.name || '',
-    phone: vet.phone || '',
-    whatsapp: vet.whatsapp || '',
-    website: vet.website || '',
-    instagram: vet.instagram || '',
-    address: vet.address || '',
-    city: vet.city || '',
-    bio: vet.bio || '',
-  });
-  const initialServices = vet.services || [];
-  const catalogSet = new Set(SERVICE_CATALOG);
-  const [servicesSelected, setServicesSelected] = useState(
-    () => new Set(initialServices.filter((s) => catalogSet.has(s)))
-  );
-  const [servicesOther, setServicesOther] = useState(
-    initialServices.filter((s) => !catalogSet.has(s)).join(', ')
-  );
-  const toggleService = (s) => {
-    setServicesSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(s)) next.delete(s);
-      else next.add(s);
-      return next;
-    });
-  };
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const [uploadingKind, setUploadingKind] = useState(null);
-  const [logoUrl, setLogoUrl] = useState(vet.logo_url || '');
-  const [coverUrl, setCoverUrl] = useState(vet.cover_url || '');
-  const [mapPosition, setMapPosition] = useState(
-    vet.lat != null && vet.lng != null ? { lat: vet.lat, lng: vet.lng } : null
-  );
-
-  const update = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const pickAndUpload = async (kind) => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Permiso necesario', 'Necesitamos acceso a tus fotos.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: kind === 'logo' ? [1, 1] : [16, 9],
-      quality: 0.7,
-    });
-    if (result.canceled) return;
-    const asset = result.assets[0];
-    setUploadingKind(kind);
-    setErr('');
-    try {
-      const fd = new FormData();
-      fd.append('image', { uri: asset.uri, name: `${kind}.jpg`, type: 'image/jpeg' });
-      fd.append('field', kind);
-      const { data } = await api.post('/api/vets/me/image', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (kind === 'logo') setLogoUrl(data.logo_url);
-      else setCoverUrl(data.cover_url);
-      onSaved?.();
-    } catch (e) {
-      setErr(e.response?.data?.error || 'No se pudo subir la imagen.');
-    } finally {
-      setUploadingKind(null);
-    }
-  };
-
-  const save = async () => {
-    setSaving(true);
-    setMsg('');
-    setErr('');
-    try {
-      const otros = servicesOther.split(',').map((s) => s.trim()).filter(Boolean);
-      const services = [...SERVICE_CATALOG.filter((s) => servicesSelected.has(s)), ...otros];
-      const body = { ...form, services };
-      if (mapPosition) {
-        body.lat = mapPosition.lat;
-        body.lng = mapPosition.lng;
-      }
-      for (const k of Object.keys(body)) {
-        if (body[k] === '' || body[k] === null) delete body[k];
-      }
-      await api.patch('/api/vets/me', body);
-      setMsg('Guardado.');
-      onSaved?.();
-      setTimeout(() => onClose?.(), 800);
-    } catch (e) {
-      setErr(e.response?.data?.error || 'No se pudo guardar.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const inputStyle = [formStyles.input, { backgroundColor: c.inputBg, color: c.inputText, borderColor: c.cardBorder }];
-
-  return (
-    <View style={[formStyles.wrapper, { backgroundColor: c.card }]}>
-      <View style={formStyles.headerRow}>
-        <Text style={[formStyles.kicker, { color: c.subtitle }]}>EDITAR PERFIL VET</Text>
-        <Pressable onPress={onClose} hitSlop={10}>
-          <Text style={[formStyles.close, { color: c.subtitle }]}>Cerrar</Text>
-        </Pressable>
-      </View>
-
-      <View style={formStyles.imageRow}>
-        <View style={{ flex: 1, alignItems: 'flex-start' }}>
-          <Text style={[formStyles.label, { color: c.subtitle }]}>LOGO</Text>
-          {logoUrl ? (
-            <Image source={{ uri: logoUrl }} style={formStyles.logoImg} />
-          ) : (
-            <View style={[formStyles.logoImg, formStyles.avatarFallback, { backgroundColor: palette.noche }]}>
-              <Text style={[formStyles.avatarLetter, { color: palette.crema }]}>{vet.name.charAt(0)}</Text>
-            </View>
-          )}
-          <Pressable
-            onPress={() => pickAndUpload('logo')}
-            disabled={uploadingKind !== null}
-            style={formStyles.pickBtn}
-          >
-            <Text style={[formStyles.pickBtnText, { color: c.title }]}>
-              {uploadingKind === 'logo' ? 'Subiendo…' : 'Cambiar'}
-            </Text>
-          </Pressable>
-        </View>
-        <View style={{ flex: 1, alignItems: 'flex-start' }}>
-          <Text style={[formStyles.label, { color: c.subtitle }]}>PORTADA</Text>
-          {coverUrl ? (
-            <Image source={{ uri: coverUrl }} style={formStyles.coverImg} />
-          ) : (
-            <View style={[formStyles.coverImg, { backgroundColor: c.bg }]} />
-          )}
-          <Pressable
-            onPress={() => pickAndUpload('cover')}
-            disabled={uploadingKind !== null}
-            style={formStyles.pickBtn}
-          >
-            <Text style={[formStyles.pickBtnText, { color: c.title }]}>
-              {uploadingKind === 'cover' ? 'Subiendo…' : 'Cambiar'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {[
-        { k: 'name', label: 'NOMBRE' },
-        { k: 'phone', label: 'TELÉFONO', placeholder: '+598 …' },
-        { k: 'whatsapp', label: 'WHATSAPP', placeholder: '+598 …' },
-        { k: 'website', label: 'SITIO WEB', placeholder: 'https://…' },
-        { k: 'instagram', label: 'INSTAGRAM', placeholder: '@handle' },
-        { k: 'city', label: 'CIUDAD' },
-        { k: 'address', label: 'DIRECCIÓN' },
-      ].map((f) => (
-        <View key={f.k} style={{ marginTop: 10 }}>
-          <Text style={[formStyles.label, { color: c.subtitle }]}>{f.label}</Text>
-          <TextInput
-            style={inputStyle}
-            value={form[f.k]}
-            onChangeText={update(f.k)}
-            placeholder={f.placeholder}
-            placeholderTextColor={c.subtitle}
-          />
-        </View>
-      ))}
-
-      <View style={{ marginTop: 10 }}>
-        <Text style={[formStyles.label, { color: c.subtitle }]}>UBICACIÓN EN EL MAPA</Text>
-        <View style={formStyles.mapWrap}>
-          <MapPicker
-            value={mapPosition}
-            onChange={(lat, lng) => setMapPosition({ lat, lng })}
-            style={{ flex: 1 }}
-          />
-        </View>
-        <Text style={[formStyles.hint, { color: c.subtitle }]}>
-          Sin marcar acá, tu vet no aparece en el filtro "Cerca mío" del directorio.
-        </Text>
-      </View>
-
-      <View style={{ marginTop: 10 }}>
-        <Text style={[formStyles.label, { color: c.subtitle }]}>SOBRE LA CLÍNICA</Text>
-        <TextInput
-          style={[inputStyle, { minHeight: 80, textAlignVertical: 'top' }]}
-          value={form.bio}
-          onChangeText={update('bio')}
-          multiline
-          placeholder="Contá qué hacen, especialidades, horarios…"
-          placeholderTextColor={c.subtitle}
-        />
-      </View>
-
-      <View style={{ marginTop: 10 }}>
-        <Text style={[formStyles.label, { color: c.subtitle }]}>SERVICIOS</Text>
-        <View style={formStyles.chipsRow}>
-          {SERVICE_CATALOG.map((s) => {
-            const active = servicesSelected.has(s);
-            return (
-              <Pressable
-                key={s}
-                onPress={() => toggleService(s)}
-                style={[
-                  formStyles.chip,
-                  active
-                    ? { backgroundColor: palette.noche, borderColor: palette.noche }
-                    : { backgroundColor: c.card, borderColor: c.cardBorder },
-                ]}
-              >
-                <Text style={[formStyles.chipText, { color: active ? palette.crema : c.title }]}>
-                  {s}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={{ marginTop: 10 }}>
-        <Text style={[formStyles.label, { color: c.subtitle }]}>OTROS (separá por coma)</Text>
-        <TextInput
-          style={inputStyle}
-          value={servicesOther}
-          onChangeText={setServicesOther}
-          placeholder="Ej: Homeopatía, Nutrición, Odontología…"
-          placeholderTextColor={c.subtitle}
-        />
-      </View>
-
-      <Pressable onPress={save} disabled={saving} style={[formStyles.saveBtn, saving && { opacity: 0.5 }]}>
-        <Text style={formStyles.saveBtnText}>{saving ? 'Guardando…' : 'Guardar cambios'}</Text>
-      </Pressable>
-      {msg ? <Text style={[formStyles.savedMsg, { color: '#3ECFB2' }]}>{msg}</Text> : null}
-      {err ? <Text style={[formStyles.savedMsg, { color: palette.coral }]}>{err}</Text> : null}
-    </View>
-  );
-}
 
 // ------------------------------------------------------------------ //
 // Piezas de presentación del perfil.
@@ -650,7 +284,7 @@ export default function Profile() {
     >
       <Pencil size={14} color={fg} strokeWidth={2} />
       <Text style={[styles.editBtnText, { color: fg }]}>
-        {editing ? 'Cerrar' : isVet ? 'Editar perfil de la clínica' : 'Editar'}
+        {isVet ? 'Editar perfil de la clínica' : 'Editar'}
       </Text>
     </Pressable>
   );
@@ -700,15 +334,21 @@ export default function Profile() {
         {isVet ? editButton : null}
       </SectionHeader>
 
-      <View style={styles.body}>
-        {editing ? (
-          isVet && vet ? (
-            <VetEditForm vet={vet} c={c} onClose={() => setEditing(false)} onSaved={fetchVetDashboard} />
-          ) : (
-            <UserEditForm user={user} c={c} dispatch={dispatch} onClose={() => setEditing(false)} />
-          )
-        ) : null}
+      {/* Edición a pantalla completa (pantallas/Perfil-editar, Perfil-vet-editar). */}
+      <EditModal
+        visible={editing}
+        title={isVet ? 'Editar clínica' : 'Editar perfil'}
+        color={headerColor}
+        onClose={() => setEditing(false)}
+      >
+        {isVet && vet ? (
+          <VetEditForm vet={vet} onClose={() => setEditing(false)} onSaved={fetchVetDashboard} />
+        ) : (
+          <UserEditForm user={user} dispatch={dispatch} onClose={() => setEditing(false)} />
+        )}
+      </EditModal>
 
+      <View style={styles.body}>
         {/* STATS del vet */}
         {isVet && vetDash ? (
           <View style={styles.statsGrid}>
@@ -1123,30 +763,3 @@ const styles = StyleSheet.create({
   deleteBtnText: { fontFamily: fonts.medium, fontSize: 14, textDecorationLine: 'underline' },
 });
 
-const formStyles = StyleSheet.create({
-  wrapper: { marginTop: 12, padding: 18, borderRadius: 24 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  kicker: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-  close: { fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
-  label: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
-  input: {
-    minHeight: 52, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12,
-    fontFamily: fonts.regular, fontSize: 15,
-  },
-  hint: { fontFamily: fonts.regular, fontSize: 13, marginTop: 6, lineHeight: 18 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: palette.arena },
-  avatarFallback: { backgroundColor: palette.violeta, alignItems: 'center', justifyContent: 'center' },
-  avatarLetter: { fontFamily: fonts.display, color: palette.noche, fontSize: 24 },
-  pickBtn: { height: 40, borderRadius: 12, paddingHorizontal: 14, borderWidth: 2, borderColor: palette.noche, justifyContent: 'center', marginTop: 8 },
-  pickBtnText: { fontFamily: fonts.bold, fontSize: 13 },
-  saveBtn: { backgroundColor: palette.noche, borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
-  saveBtnText: { fontFamily: fonts.bold, color: palette.crema, fontSize: 15 },
-  savedMsg: { fontFamily: fonts.bold, textAlign: 'center', fontSize: 13, marginTop: 8 },
-  imageRow: { flexDirection: 'row', gap: 12, marginBottom: 6 },
-  logoImg: { width: 60, height: 60, borderRadius: 18, backgroundColor: palette.arena },
-  coverImg: { width: 96, height: 60, borderRadius: 16 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
-  chip: { height: 40, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
-  chipText: { fontFamily: fonts.medium, fontSize: 14 },
-  mapWrap: { height: 240, borderRadius: 16, overflow: 'hidden', backgroundColor: palette.arena, marginTop: 2 },
-});

@@ -22,24 +22,9 @@ import SponsorBadge from '../../src/components/SponsorBadge';
 import Button from '../../src/components/Button';
 import TabBar, { useTabBarSpace } from '../../src/components/TabBar';
 import { trackAdClick, trackImpressionOnce } from '../../src/lib/vetTracking';
+import { SERVICE_CATALOG } from '../../src/lib/services';
 
 const PAGE_LIMIT = 20;
-
-// Debe coincidir con el catálogo del web y del edit form del vet.
-const SERVICE_CATALOG = [
-  'Consultas',
-  'Vacunación',
-  'Cirugía',
-  'Urgencias 24h',
-  'Peluquería',
-  'Baño',
-  'Radiología',
-  'Ecografía',
-  'Laboratorio',
-  'Guardería',
-  'Adiestramiento',
-  'Atención a domicilio',
-];
 
 // Color del cuadrado con la inicial cuando la vet no tiene logo.
 // Fijo por id para que no cambie entre cargas.

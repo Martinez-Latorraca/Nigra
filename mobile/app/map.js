@@ -115,38 +115,49 @@ export default function MapScreen() {
     })();
   }, [user]);
 
+  // Cada pedido por separado: si falla uno, se muestra lo del otro. El aviso
+  // de error sale una sola vez (no en cada movimiento del mapa) y se rearma
+  // cuando un pedido vuelve a andar.
+  const errorShown = useRef(false);
   const load = useCallback(async (b, f) => {
     if (!b) return;
     setLoading(true);
-    try {
-      const wantPets = f !== 'vets';
-      const wantVets = f === 'all' || f === 'vets';
-      const center = { lat: (b.minLat + b.maxLat) / 2, lng: (b.minLng + b.maxLng) / 2 };
-      const halfDiag = distanceKm(center, { lat: b.maxLat, lng: b.maxLng });
-      const [p, v] = await Promise.all([
-        wantPets
-          ? api
-              .get('/api/pets/map', {
-                params: { minLat: b.minLat, maxLat: b.maxLat, minLng: b.minLng, maxLng: b.maxLng, status: f === 'all' ? 'all' : f },
-              })
-              .then((r) => r.data)
-          : Promise.resolve({ pets: [], truncated: false }),
-        wantVets
-          ? api
-              .get('/api/vets/nearby', {
-                params: { lat: center.lat, lng: center.lng, radius_km: Math.min(500, Math.max(1, halfDiag)), limit: 50 },
-              })
-              .then((r) => r.data?.vets || [])
-          : Promise.resolve([]),
-      ]);
-      setPets((p.pets || []).filter((x) => x.lat != null && x.lng != null));
-      setTruncated(!!p.truncated);
-      setVets(v.filter((x) => x.lat != null && x.lng != null));
-    } catch {
-      toast('No se pudo cargar el mapa. Probá de nuevo.', 'error');
-    } finally {
-      setLoading(false);
+    const wantPets = f !== 'vets';
+    const wantVets = f === 'all' || f === 'vets';
+    const center = { lat: (b.minLat + b.maxLat) / 2, lng: (b.minLng + b.maxLng) / 2 };
+    const halfDiag = distanceKm(center, { lat: b.maxLat, lng: b.maxLng });
+    const [p, v] = await Promise.allSettled([
+      wantPets
+        ? api
+            .get('/api/pets/map', {
+              params: { minLat: b.minLat, maxLat: b.maxLat, minLng: b.minLng, maxLng: b.maxLng, status: f === 'all' ? 'all' : f },
+            })
+            .then((r) => r.data)
+        : Promise.resolve({ pets: [], truncated: false }),
+      wantVets
+        ? api
+            .get('/api/vets/nearby', {
+              params: { lat: center.lat, lng: center.lng, radius_km: Math.min(500, Math.max(1, halfDiag)), limit: 50 },
+            })
+            .then((r) => r.data?.vets || [])
+        : Promise.resolve([]),
+    ]);
+    if (p.status === 'fulfilled') {
+      setPets((p.value.pets || []).filter((x) => x.lat != null && x.lng != null));
+      setTruncated(!!p.value.truncated);
     }
+    if (v.status === 'fulfilled') setVets(v.value.filter((x) => x.lat != null && x.lng != null));
+    const failed = p.status === 'rejected' || v.status === 'rejected';
+    if (failed && !errorShown.current) {
+      errorShown.current = true;
+      toast(
+        p.status === 'rejected' ? 'No se pudieron cargar los reportes del mapa.' : 'No se pudieron cargar las veterinarias.',
+        'error'
+      );
+    } else if (!failed) {
+      errorShown.current = false;
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {

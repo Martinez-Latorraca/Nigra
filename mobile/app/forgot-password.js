@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Text, TextInput, Pressable, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { router, Link } from 'expo-router';
 import api from '../src/lib/api';
-import AuthScreen, { useAuthColors } from '../src/components/AuthScreen';
+import AuthScreen, { useAuthColors, AuthField, AuthHeroIcon } from '../src/components/AuthScreen';
+import Button from '../src/components/Button';
+import { KeyRound, Mail, MailCheck } from '../src/lib/icons';
+import { palette, fonts } from '../src/lib/theme';
 
 export default function ForgotPassword() {
   const c = useAuthColors();
@@ -26,37 +29,44 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <AuthScreen title="Revisá tu casilla" subtitle={`Si ${email} está en Mimo, te mandamos el link.`}>
-        <Text style={[styles.body, { color: c.subtitle }]}>
+      <AuthScreen
+        compact
+        hero={<AuthHeroIcon icon={MailCheck} color={palette.coral} />}
+        title="Revisá tu casilla"
+        subtitle={
+          <>
+            Si <Text style={styles.strong}>{email}</Text> está en Mimo, te mandamos el link.
+          </>
+        }
+      >
+        <Text style={[styles.body, { backgroundColor: c.card, color: c.text }]}>
           El link tarda un par de minutos. Cuando lo recibas, tocalo desde el email para elegir una nueva contraseña.
         </Text>
-        <Pressable
-          style={[styles.button, { backgroundColor: c.primary, marginTop: 16 }]}
-          onPress={() => router.replace('/login')}
-        >
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>Volver al login</Text>
-        </Pressable>
+        <Button variant="dark" title="Volver al login" onPress={() => router.replace('/login')} style={styles.back} />
       </AuthScreen>
     );
   }
 
   return (
     <AuthScreen
+      compact
+      hero={<AuthHeroIcon icon={KeyRound} color={palette.coral} />}
       title="Recuperar cuenta"
       subtitle="Te mandamos un link para reiniciar tu contraseña"
       footer={
-        <Link href="/login" style={[styles.footerLink, { color: c.subtitle }]}>
-          Volver al login
-        </Link>
+        <Text style={styles.footer}>
+          <Link href="/login" style={[styles.footerLink, { color: c.title }]}>
+            Volver al login
+          </Link>
+        </Text>
       }
     >
-      <Text style={[styles.label, { color: c.label }]}>Email</Text>
-      <TextInput
-        style={[styles.input, { backgroundColor: c.inputBg, color: c.inputText }]}
+      <AuthField
+        label="Email"
+        icon={Mail}
         value={email}
         onChangeText={setEmail}
         placeholder="nombre@ejemplo.com"
-        placeholderTextColor={c.label}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="email-address"
@@ -64,43 +74,27 @@ export default function ForgotPassword() {
         editable={!busy}
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: c.coral }]}>{error}</Text> : null}
 
-      <Pressable
-        style={[
-          styles.button,
-          { backgroundColor: c.primary, marginTop: 16 },
-          (busy || !email) && styles.buttonDisabled,
-        ]}
-        onPress={handleSubmit}
-        disabled={busy || !email}
-      >
-        {busy ? (
-          <ActivityIndicator color={c.primaryText} />
-        ) : (
-          <Text style={[styles.buttonText, { color: c.primaryText }]}>Enviar link</Text>
-        )}
-      </Pressable>
+      <Button title="Enviar link" onPress={handleSubmit} loading={busy} disabled={!email} />
     </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', marginTop: 12 },
-  input: { borderRadius: 16, padding: 16, fontSize: 16 },
-  error: {
-    color: '#EF4444',
+  strong: { fontFamily: fonts.bold },
+  error: { fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
+  body: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: 12,
-    borderRadius: 16,
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: '600',
+    padding: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  body: { fontSize: 14, lineHeight: 20 },
-  button: { borderRadius: 999, padding: 16, alignItems: 'center', height: 56, justifyContent: 'center' },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { fontWeight: '600', fontSize: 16 },
-  footerLink: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  // gap 14 del cuerpo + 10 = los 24 del diseño.
+  back: { marginTop: 10 },
+  footer: { textAlign: 'center' },
+  footerLink: { fontFamily: fonts.bold, fontSize: 15, textDecorationLine: 'underline' },
 });

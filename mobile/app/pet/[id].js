@@ -163,7 +163,7 @@ export default function PetDetail() {
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
         {/* Foto principal con volver e ID encima */}
-        <View style={[styles.hero, { backgroundColor: c.arena }]}>
+        <View style={[styles.hero, { backgroundColor: c.photo }]}>
           <Image source={{ uri: mainPhoto }} style={StyleSheet.absoluteFill} />
           <View style={[styles.heroBar, { top: insets.top + 16 }]}>
             <IconButton
@@ -187,7 +187,7 @@ export default function PetDetail() {
                   key={`${url}-${i}`}
                   onPress={() => setPhotoIdx(i)}
                   accessibilityLabel={`Foto ${i + 1}`}
-                  style={[styles.thumb, { backgroundColor: c.arena }, i === photoIdx && styles.thumbActive]}
+                  style={[styles.thumb, { backgroundColor: c.photo }, i === photoIdx && styles.thumbActive]}
                 >
                   <Image source={{ uri: url }} style={StyleSheet.absoluteFill} />
                 </Pressable>
@@ -265,7 +265,7 @@ export default function PetDetail() {
                 <Pressable
                   onPress={handleMap}
                   accessibilityLabel="Abrir en el mapa"
-                  style={[styles.mapWrap, { backgroundColor: c.arena }]}
+                  style={[styles.mapWrap, { backgroundColor: c.photo }]}
                 >
                   <PetMap lat={pet.lat} lng={pet.lng} isDark={c.isDark} style={styles.map} />
                   <View style={[styles.mapPill, { backgroundColor: c.card }]}>

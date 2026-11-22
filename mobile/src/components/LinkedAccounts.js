@@ -129,7 +129,7 @@ export default function LinkedAccounts({ c }) {
                   <View
                     style={[
                       styles.dot,
-                      isLinked ? { backgroundColor: palette.teal } : { backgroundColor: palette.arena, borderWidth: 1, borderColor: palette.noche },
+                      isLinked ? { backgroundColor: palette.teal } : { borderWidth: 1, borderColor: c.text },
                     ]}
                   />
                   <Text style={[styles.state, { color: c.text }]}>{isLinked ? 'Conectada' : 'No conectada'}</Text>
@@ -140,11 +140,11 @@ export default function LinkedAccounts({ c }) {
                 disabled={disabled}
                 style={({ pressed }) => [
                   styles.action,
-                  isLinked ? styles.actionOutline : styles.actionDark,
+                  isLinked ? [styles.actionOutline, { borderColor: c.title }] : [styles.actionDark, { backgroundColor: c.inverseBg }],
                   { opacity: disabled ? 0.35 : pressed ? 0.7 : 1 },
                 ]}
               >
-                <Text style={[styles.actionText, { color: isLinked ? palette.noche : palette.crema }]}>
+                <Text style={[styles.actionText, { color: isLinked ? c.title : c.inverseText }]}>
                   {isBusy ? '···' : isLinked ? 'Desvincular' : 'Conectar'}
                 </Text>
               </Pressable>
@@ -173,8 +173,8 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   state: { fontFamily: fonts.regular, fontSize: 13 },
   action: { height: 40, borderRadius: 12, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  actionOutline: { borderWidth: 2, borderColor: palette.noche },
-  actionDark: { backgroundColor: palette.noche, paddingHorizontal: 16 },
+  actionOutline: { borderWidth: 2 },
+  actionDark: { paddingHorizontal: 16 },
   actionText: { fontFamily: fonts.bold, fontSize: 13 },
   msg: { marginTop: 8, padding: 12, borderRadius: 14, fontFamily: fonts.bold, fontSize: 13, borderWidth: 2 },
   error: { borderColor: palette.coral },

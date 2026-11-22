@@ -99,12 +99,12 @@ function Pill({ label, active, onPress, children, c }) {
         styles.pill,
         children ? styles.pillWithSwatch : null,
         active
-          ? { backgroundColor: palette.noche, borderColor: palette.noche }
+          ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
           : { backgroundColor: c.card, borderColor: c.cardBorder },
       ]}
     >
       {children}
-      <Text style={[styles.pillText, { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium }]}>
+      <Text style={[styles.pillText, { color: active ? c.inverseText : c.text, fontFamily: active ? fonts.bold : fonts.medium }]}>
         {label}
       </Text>
     </Pressable>
@@ -117,7 +117,7 @@ function MatchCard({ pet, onPress, c }) {
   const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.match, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}>
-      <Image source={{ uri: pet.photo_url }} style={[styles.matchImg, { backgroundColor: c.arena }]} />
+      <Image source={{ uri: pet.photo_url }} style={[styles.matchImg, { backgroundColor: c.photo }]} />
       <View style={styles.matchBody}>
         <View style={styles.matchTop}>
           <StatusChip status={pet.status} />
@@ -128,7 +128,7 @@ function MatchCard({ pet, onPress, c }) {
             <Text style={[styles.matchPct, { color: c.title }]}>
               {pct}% <Text style={styles.matchPctLabel}>de parecido</Text>
             </Text>
-            <View style={[styles.bar, { backgroundColor: c.arena }]}>
+            <View style={[styles.bar, { backgroundColor: c.photo }]}>
               <View style={[styles.barFill, { width: `${pct}%` }]} />
             </View>
           </>
@@ -342,7 +342,7 @@ export default function Find() {
   ) : null;
 
   const photoPreview = (height) => (
-    <View style={[styles.photo, { height, backgroundColor: c.arena }]}>
+    <View style={[styles.photo, { height, backgroundColor: c.photo }]}>
       {mainImage ? <Image source={{ uri: mainImage.uri }} style={StyleSheet.absoluteFill} /> : null}
       <Pressable onPress={pickMainImage} style={[styles.changePhoto, { backgroundColor: c.card }]}>
         <Camera size={16} color={c.text} strokeWidth={2} />
@@ -390,7 +390,7 @@ export default function Find() {
             <>
               <View style={styles.section}>
                 <Text style={[styles.label, { color: c.text }]}>Tu situación</Text>
-                <View style={[styles.segmented, { backgroundColor: c.arena }]}>
+                <View style={[styles.segmented, { backgroundColor: c.photo }]}>
                   {SITUATIONS.map((s) => {
                     const active = situation === s.value;
                     return (
@@ -399,12 +399,12 @@ export default function Find() {
                         onPress={() => setSituation(s.value)}
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
-                        style={[styles.segment, active && { backgroundColor: palette.noche }]}
+                        style={[styles.segment, active && { backgroundColor: c.inverseBg }]}
                       >
                         <Text
                           style={[
                             styles.segmentText,
-                            { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium },
+                            { color: active ? c.inverseText : c.text, fontFamily: active ? fonts.bold : fonts.medium },
                           ]}
                         >
                           {s.label}
@@ -474,7 +474,7 @@ export default function Find() {
                 />
                 {position ? (
                   <>
-                    <View style={[styles.mapWrap, { backgroundColor: c.arena }]} pointerEvents="none">
+                    <View style={[styles.mapWrap, { backgroundColor: c.photo }]} pointerEvents="none">
                       <PetMap lat={position.lat} lng={position.lng} isDark={c.isDark} style={styles.map} />
                     </View>
                     <View style={styles.row}>
@@ -508,7 +508,7 @@ export default function Find() {
           {step === 'results' && (
             <>
               <View style={[styles.summary, { backgroundColor: c.card }]}>
-                <Image source={{ uri: mainImage?.uri }} style={[styles.summaryImg, { backgroundColor: c.arena }]} />
+                <Image source={{ uri: mainImage?.uri }} style={[styles.summaryImg, { backgroundColor: c.photo }]} />
                 <View style={styles.flex}>
                   <Text style={[styles.label, { color: c.text }]}>Tu búsqueda</Text>
                   <Text style={[styles.summaryText, { color: c.text }]} numberOfLines={1}>{searchSummary}</Text>
@@ -541,7 +541,7 @@ export default function Find() {
                 </Text>
                 <Pressable
                   onPress={() => setStep('report')}
-                  style={({ pressed }) => [styles.outlineLink, { opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [styles.outlineLink, { borderColor: c.title, opacity: pressed ? 0.7 : 1 }]}
                 >
                   <Text style={[styles.outlineLinkText, { color: c.text }]}>Publicar reporte</Text>
                   <ChevronRight size={18} color={c.text} strokeWidth={2} />
@@ -581,15 +581,15 @@ export default function Find() {
                 </Text>
                 <View style={styles.extraRow}>
                   {extraImages.map((img, i) => (
-                    <View key={i} style={[styles.extraThumb, { backgroundColor: c.arena }]}>
+                    <View key={i} style={[styles.extraThumb, { backgroundColor: c.photo }]}>
                       <Image source={{ uri: img.uri }} style={styles.extraImg} />
                       <Pressable
                         onPress={() => removeExtra(i)}
                         accessibilityLabel="Quitar foto"
                         hitSlop={6}
-                        style={[styles.extraRemove, { borderColor: c.bg }]}
+                        style={[styles.extraRemove, { borderColor: c.bg, backgroundColor: c.inverseBg }]}
                       >
-                        <X size={12} color={palette.crema} strokeWidth={3} />
+                        <X size={12} color={c.inverseText} strokeWidth={3} />
                       </Pressable>
                     </View>
                   ))}
@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
   matchContact: { fontFamily: fonts.bold, fontSize: 13 },
   noneBlock: { alignItems: 'center', gap: 10, marginTop: 8 },
   outlineLink: {
-    alignSelf: 'stretch', height: 52, borderWidth: 2, borderColor: palette.noche, borderRadius: 16,
+    alignSelf: 'stretch', height: 52, borderWidth: 2, borderRadius: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   outlineLinkText: { fontFamily: fonts.bold, fontSize: 15 },
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
   extraImg: { width: '100%', height: '100%', borderRadius: 16 },
   extraRemove: {
     position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, borderWidth: 2,
-    backgroundColor: palette.noche, alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   extraAdd: {
     width: 76, height: 76, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: palette.coral,

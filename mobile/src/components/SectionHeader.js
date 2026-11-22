@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from '../lib/icons';
-import { palette, fonts, onColor } from '../lib/theme';
+import { palette, fonts, onColor, useTheme } from '../lib/theme';
 import IconButton from './IconButton';
 
 // Encabezado de sección: fondo del color de la sección, radio inferior 32,
@@ -24,6 +24,7 @@ export default function SectionHeader({
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const c = useTheme();
   const fg = onColor(color);
   // Sobre Noche el diseño usa botones más tenues y kicker/bajada en gris claro.
   const dark = color === palette.noche;
@@ -32,7 +33,7 @@ export default function SectionHeader({
   const subtitleColor = dark ? '#D9D9E3' : fg;
 
   return (
-    <View style={[styles.header, { backgroundColor: color, paddingTop: 16 + insets.top }, style]}>
+    <View style={[styles.header, { backgroundColor: dark ? c.nocheSurface : color, paddingTop: 16 + insets.top }, style]}>
       <View style={styles.topRow}>
         {showBack ? (
           <IconButton

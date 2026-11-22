@@ -152,7 +152,7 @@ export default function FeedbackHost() {
           accessibilityLiveRegion="polite"
           style={[
             styles.toast,
-            { bottom: insets.bottom + 100, opacity: toastAnim },
+            { bottom: insets.bottom + 100, opacity: toastAnim, backgroundColor: c.inverseBg },
             { transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
           ]}
         >
@@ -161,7 +161,7 @@ export default function FeedbackHost() {
           ) : (
             <CircleCheck size={20} color={palette.teal} strokeWidth={2} />
           )}
-          <Text style={styles.toastText}>{toastState.text}</Text>
+          <Text style={[styles.toastText, { color: c.inverseText }]}>{toastState.text}</Text>
         </Animated.View>
       ) : null}
     </>
@@ -206,8 +206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 16,
-    backgroundColor: palette.noche,
     elevation: 8,
   },
-  toastText: { flex: 1, fontFamily: fonts.bold, fontSize: 14, lineHeight: 19, color: palette.crema },
+  toastText: { flex: 1, fontFamily: fonts.bold, fontSize: 14, lineHeight: 19 },
 });

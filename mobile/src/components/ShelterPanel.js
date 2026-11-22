@@ -70,11 +70,11 @@ function ChipSelect({ options, value, onChange, c }) {
             style={[
               styles.chip,
               active
-                ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
                 : { backgroundColor: c.bg, borderColor: c.bg },
             ]}
           >
-            <Text style={[styles.chipText, { color: active ? palette.crema : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>
+            <Text style={[styles.chipText, { color: active ? c.inverseText : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>
               {o.label}
             </Text>
           </Pressable>
@@ -203,7 +203,7 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
               </Text>
               {photos.map((url, i) => (
                 <View key={`${url}-${i}`} style={[styles.photoRow, { backgroundColor: c.bg }]}>
-                  <Image source={{ uri: url }} style={[styles.photoRowImg, { backgroundColor: c.arena }]} />
+                  <Image source={{ uri: url }} style={[styles.photoRowImg, { backgroundColor: c.photo }]} />
                   <View style={styles.flex}>
                     {i === 0 ? (
                       <View style={styles.mainChip}>
@@ -297,7 +297,7 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
                 <Switch
                   value={form.vaccinated}
                   onValueChange={upd('vaccinated')}
-                  trackColor={{ false: palette.arena, true: palette.teal }}
+                  trackColor={{ false: c.divider, true: palette.teal }}
                   thumbColor={palette.blanco}
                 />
               </View>
@@ -306,13 +306,13 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
                 <Switch
                   value={form.neutered}
                   onValueChange={upd('neutered')}
-                  trackColor={{ false: palette.arena, true: palette.teal }}
+                  trackColor={{ false: c.divider, true: palette.teal }}
                   thumbColor={palette.blanco}
                 />
               </View>
             </View>
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {error ? <Text style={[styles.error, { color: c.text }]}>{error}</Text> : null}
 
             <Button
               color={palette.violeta}
@@ -419,7 +419,7 @@ function ShelterEditForm({ shelter, c, onSaved, onUploadImage, inModal }) {
   // Aprobado: modal a pantalla completa con portada + logo, como Perfil-vet-editar.
   return (
     <View>
-      <View style={[styles.editCover, { backgroundColor: c.arena }]}>
+      <View style={[styles.editCover, { backgroundColor: c.photo }]}>
         {shelter.cover_url ? <Image source={{ uri: shelter.cover_url }} style={StyleSheet.absoluteFill} /> : null}
         <Pressable onPress={() => onUploadImage('cover')} style={styles.editCoverBtn}>
           <Camera size={16} color={palette.crema} strokeWidth={2} />
@@ -460,9 +460,9 @@ function PetRow({ pet, c, onEdit, onMarkAdopted, onDelete }) {
     <View style={[styles.petCard, { backgroundColor: c.card }, adopted && { opacity: 0.55 }]}>
       <View style={styles.petTop}>
         {pet.photos?.[0] ? (
-          <Image source={{ uri: pet.photos[0] }} style={[styles.petThumb, { backgroundColor: c.arena }]} />
+          <Image source={{ uri: pet.photos[0] }} style={[styles.petThumb, { backgroundColor: c.photo }]} />
         ) : (
-          <View style={[styles.petThumb, styles.center, { backgroundColor: c.arena }]}>
+          <View style={[styles.petThumb, styles.center, { backgroundColor: c.photo }]}>
             <PawPrint size={24} color={c.text} strokeWidth={2} />
           </View>
         )}
@@ -478,7 +478,7 @@ function PetRow({ pet, c, onEdit, onMarkAdopted, onDelete }) {
             <Pressable onPress={() => onMarkAdopted(pet.id)} style={[styles.petBtn, { backgroundColor: palette.teal }]}>
               <Text style={[styles.petBtnText, { color: palette.arena }]}>✓ Adoptado</Text>
             </Pressable>
-            <Pressable onPress={() => onEdit(pet)} style={[styles.petBtn, styles.petBtnOutline]}>
+            <Pressable onPress={() => onEdit(pet)} style={[styles.petBtn, styles.petBtnOutline, { borderColor: c.title }]}>
               <Text style={[styles.petBtnText, { color: c.text }]}>Editar</Text>
             </Pressable>
           </>
@@ -649,8 +649,8 @@ export default function ShelterPanel() {
                 'Un admin te aprueba y ya podés publicar mascotas en adopción.',
               ].map((t, i) => (
                 <View key={i} style={styles.step}>
-                  <View style={styles.stepNum}>
-                    <Text style={styles.stepNumText}>{i + 1}</Text>
+                  <View style={[styles.stepNum, { backgroundColor: c.inverseBg }]}>
+                    <Text style={[styles.stepNumText, { color: c.inverseText }]}>{i + 1}</Text>
                   </View>
                   <Text style={[styles.stepText, { color: c.text }]}>{t}</Text>
                 </View>
@@ -738,7 +738,7 @@ export default function ShelterPanel() {
             </View>
           ) : (
             <View style={[styles.lockedCard, { borderColor: c.cardBorder }]}>
-              <View style={[styles.lockedIcon, { backgroundColor: c.arena }]}>
+              <View style={[styles.lockedIcon, { backgroundColor: c.photo }]}>
                 <HouseHeart size={20} color={c.text} strokeWidth={2} />
               </View>
               <View style={styles.flex}>
@@ -834,9 +834,9 @@ const styles = StyleSheet.create({
   verifyTitle: { fontFamily: fonts.display, fontSize: 19, lineHeight: 24 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   stepNum: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: palette.noche, alignItems: 'center', justifyContent: 'center',
+    width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
-  stepNumText: { fontFamily: fonts.bold, fontSize: 12, color: palette.crema },
+  stepNumText: { fontFamily: fonts.bold, fontSize: 12 },
   stepText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, paddingTop: 2 },
 
   statsGrid: { flexDirection: 'row', gap: 10 },
@@ -879,7 +879,6 @@ const styles = StyleSheet.create({
   switchLabel: { fontFamily: fonts.bold, fontSize: 15 },
   error: {
     fontFamily: fonts.bold, fontSize: 14, padding: 12, borderRadius: 14, borderWidth: 2, borderColor: palette.coral,
-    color: palette.noche,
   },
   msg: { fontFamily: fonts.bold, textAlign: 'center', fontSize: 13 },
 
@@ -894,7 +893,7 @@ const styles = StyleSheet.create({
   petMeta: { fontFamily: fonts.regular, fontSize: 12 },
   petActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   petBtn: { height: 36, paddingHorizontal: 12, borderRadius: 10, justifyContent: 'center' },
-  petBtnOutline: { borderWidth: 1, borderColor: palette.noche },
+  petBtnOutline: { borderWidth: 1 },
   petBtnLink: { height: 36, paddingHorizontal: 10, justifyContent: 'center' },
   petBtnText: { fontFamily: fonts.bold, fontSize: 12 },
 

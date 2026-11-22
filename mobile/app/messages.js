@@ -132,7 +132,7 @@ export default function Messages() {
             onPress={() => openChat(item)}
             style={({ pressed }) => [styles.row, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Image source={{ uri: item.photo_url }} style={[styles.thumb, { backgroundColor: c.arena }]} />
+            <Image source={{ uri: item.photo_url }} style={[styles.thumb, { backgroundColor: c.photo }]} />
             <View style={styles.flex}>
               <View style={styles.rowTop}>
                 <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
@@ -204,9 +204,9 @@ export default function Messages() {
           ]}
         >
           {photo ? (
-            <Image source={{ uri: photo }} style={[styles.thumb, { backgroundColor: c.arena }]} />
+            <Image source={{ uri: photo }} style={[styles.thumb, { backgroundColor: c.photo }]} />
           ) : (
-            <View style={[styles.thumb, { backgroundColor: c.arena }]} />
+            <View style={[styles.thumb, { backgroundColor: c.photo }]} />
           )}
           <View style={styles.flex}>
             <Text style={[styles.label, styles.matchLabel, { color: c.text }]}>Posible coincidencia</Text>

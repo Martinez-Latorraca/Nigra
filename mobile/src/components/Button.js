@@ -1,10 +1,10 @@
 import { Pressable, Text, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { palette, fonts, onColor } from '../lib/theme';
+import { palette, fonts, onColor, useTheme } from '../lib/theme';
 
 // Botón de la app.
 // - primary: Coral (o `color`) con texto Arena.
-// - outline: borde 2 Noche, fondo transparente.
-// - dark:    Noche con texto Crema.
+// - outline: borde 2 del color del texto (Noche; Crema en oscuro), fondo transparente.
+// - dark:    Noche con texto Crema; en oscuro se invierte (Crema con texto Noche).
 // icon: componente Lucide opcional a la izquierda del texto.
 export default function Button({
   title,
@@ -17,16 +17,17 @@ export default function Button({
   style,
   textStyle,
 }) {
+  const c = useTheme();
   let bg;
   let fg;
   let border;
   if (variant === 'outline') {
     bg = 'transparent';
-    fg = color || palette.noche;
-    border = { borderWidth: 2, borderColor: color || palette.noche };
+    fg = color || c.title;
+    border = { borderWidth: 2, borderColor: color || c.title };
   } else if (variant === 'dark') {
-    bg = palette.noche;
-    fg = palette.crema;
+    bg = c.inverseBg;
+    fg = c.inverseText;
   } else {
     bg = color || palette.coral;
     fg = onColor(bg);

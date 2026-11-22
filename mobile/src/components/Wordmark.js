@@ -1,11 +1,13 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { palette, fonts } from '../lib/theme';
+import { palette, fonts, useTheme } from '../lib/theme';
 import MimoPin from '../../assets/mimo-pin.svg';
 
 // Logo horizontal: pin Coral + "mimo" en Nunito 800, con la mitad de
 // arriba de la "i" en Coral (el punto). `size` = tamaño de la letra.
 // showPin={false} deja solo el texto.
-export default function Wordmark({ size = 26, color = palette.noche, showPin = true, style }) {
+export default function Wordmark({ size = 26, color, showPin = true, style }) {
+  const c = useTheme();
+  color = color || c.title;
   const text = [styles.text, { fontSize: size, lineHeight: size, color }];
   return (
     <View style={[styles.row, { gap: size * 0.3 }, style]} accessible accessibilityLabel="mimo">

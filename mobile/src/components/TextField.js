@@ -25,7 +25,7 @@ const TextField = forwardRef(function TextField(
         {Icon ? <Icon size={18} color={c.text} strokeWidth={2} style={multiline ? styles.iconTop : null} /> : null}
         <TextInput
           ref={ref}
-          placeholderTextColor={c.isDark ? '#B4B4C6' : 'rgba(26,26,46,0.45)'}
+          placeholderTextColor={c.placeholder}
           multiline={multiline}
           style={[styles.input, { color: c.inputText }, multiline && styles.inputMultiline, inputStyle]}
           {...inputProps}

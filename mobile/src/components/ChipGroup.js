@@ -14,14 +14,14 @@ export default function ChipGroup({ options, value, onChange, c }) {
             style={[
               styles.chip,
               active
-                ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
                 : { backgroundColor: c.card, borderColor: c.cardBorder },
             ]}
           >
             <Text
               style={[
                 styles.text,
-                { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium },
+                { color: active ? c.inverseText : c.text, fontFamily: active ? fonts.bold : fonts.medium },
               ]}
             >
               {o.label}

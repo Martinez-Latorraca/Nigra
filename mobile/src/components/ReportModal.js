@@ -73,11 +73,11 @@ export default function ReportModal({
                   style={[
                     styles.chip,
                     active
-                      ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                      ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
                       : { backgroundColor: c.card, borderColor: c.cardBorder },
                   ]}
                 >
-                  <Text style={[styles.chipText, { color: active ? palette.crema : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>{r.label}</Text>
+                  <Text style={[styles.chipText, { color: active ? c.inverseText : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>{r.label}</Text>
                 </Pressable>
               );
             })}
@@ -88,7 +88,7 @@ export default function ReportModal({
             value={note}
             onChangeText={setNote}
             placeholder="Contá qué pasó (opcional)"
-            placeholderTextColor="rgba(26,26,46,0.45)"
+            placeholderTextColor={c.placeholder}
             multiline
             maxLength={1000}
             style={[styles.input, { color: c.inputText, borderColor: c.cardBorder, backgroundColor: c.card }]}
@@ -101,7 +101,7 @@ export default function ReportModal({
                 Dejás de ver y recibir sus mensajes.
               </Text>
             </View>
-            <Switch value={block} onValueChange={setBlock} trackColor={{ false: palette.arena, true: palette.teal }} thumbColor={palette.blanco} />
+            <Switch value={block} onValueChange={setBlock} trackColor={{ false: c.divider, true: palette.teal }} thumbColor={palette.blanco} />
           </View>
 
           <Pressable

@@ -94,7 +94,7 @@ export default function AdoptionDetail() {
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
         {/* Foto principal */}
-        <View style={[styles.hero, { backgroundColor: c.arena }]}>
+        <View style={[styles.hero, { backgroundColor: c.photo }]}>
           {photos[activePhoto] ? (
             <Image source={{ uri: photos[activePhoto] }} style={StyleSheet.absoluteFill} />
           ) : (
@@ -128,7 +128,7 @@ export default function AdoptionDetail() {
                   key={`${url}-${index}`}
                   onPress={() => setActivePhoto(index)}
                   accessibilityLabel={`Foto ${index + 1}`}
-                  style={[styles.thumb, { backgroundColor: c.arena }, index === activePhoto && styles.thumbActive]}
+                  style={[styles.thumb, { backgroundColor: c.photo }, index === activePhoto && styles.thumbActive]}
                 >
                   <Image source={{ uri: url }} style={StyleSheet.absoluteFill} />
                 </Pressable>
@@ -165,7 +165,7 @@ export default function AdoptionDetail() {
               style={styles.shelterRow}
             >
               {pet.shelter_logo ? (
-                <Image source={{ uri: pet.shelter_logo }} style={[styles.shelterLogo, { backgroundColor: c.arena }]} />
+                <Image source={{ uri: pet.shelter_logo }} style={[styles.shelterLogo, { backgroundColor: c.photo }]} />
               ) : (
                 <View style={[styles.shelterLogo, styles.shelterLogoFallback, { backgroundColor: shelterColor }]}>
                   <Text style={[styles.shelterLogoLetter, { color: onColor(shelterColor) }]}>

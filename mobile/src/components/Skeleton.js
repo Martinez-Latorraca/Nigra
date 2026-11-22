@@ -28,7 +28,7 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }) {
   const opacity = useContext(PulseContext) || 1;
   return (
     <Animated.View
-      style={[{ width, height, borderRadius: radius, backgroundColor: c.isDark ? '#33334F' : c.arena, opacity }, style]}
+      style={[{ width, height, borderRadius: radius, backgroundColor: c.photo, opacity }, style]}
     />
   );
 }

@@ -73,7 +73,7 @@ export default function BannerHost() {
 
   const isMatch = banner.kind === 'match';
   const Icon = isMatch ? ScanSearch : MessageCircle;
-  const tileBg = isMatch ? palette.coral : palette.noche;
+  const tileBg = isMatch ? palette.coral : c.nocheSmall;
   const tileFg = isMatch ? palette.arena : palette.crema;
 
   return (

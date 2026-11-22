@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { House, Map, Plus, MessageCircle, User } from '../lib/icons';
-import { palette, fonts } from '../lib/theme';
+import { palette, fonts, useTheme } from '../lib/theme';
 import { useSocket } from '../lib/socket';
 
 // Barra inferior fija: Inicio · Mapa · (+) · Chats · Perfil.
@@ -33,9 +33,16 @@ export default function TabBar() {
   const router = useRouter();
   const pathname = usePathname();
   const { unreadCount } = useSocket();
+  const c = useTheme();
 
   return (
-    <View style={[styles.bar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
+    <View
+      style={[
+        styles.bar,
+        { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom },
+        { backgroundColor: c.card, borderTopColor: c.cardBorder },
+      ]}
+    >
       {TABS.map((tab) => {
         if (tab.center) {
           return (
@@ -44,7 +51,12 @@ export default function TabBar() {
                 onPress={() => router.navigate(tab.href)}
                 accessibilityRole="button"
                 accessibilityLabel={tab.label}
-                style={({ pressed }) => [styles.plus, { opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [
+                  styles.plus,
+                  // En oscuro la sombra del "+" es negra al 35 %.
+                  c.isDark && { shadowColor: '#000', shadowOpacity: 0.35 },
+                  { opacity: pressed ? 0.85 : 1 },
+                ]}
               >
                 {/* Óvalo de marca que sobresale 24 hacia arriba. */}
                 <Svg width={56} height={56} viewBox="0 3.56 56 48.87" style={StyleSheet.absoluteFill}>
@@ -62,7 +74,7 @@ export default function TabBar() {
         const Icon = tab.icon;
         const disabled = !tab.href;
         const active = !disabled && pathname === tab.href;
-        const color = active ? palette.noche : palette.grisNav;
+        const color = active ? c.title : c.navInactive;
 
         return (
           <Pressable
@@ -76,7 +88,7 @@ export default function TabBar() {
           >
             <View>
               <Icon size={24} color={color} strokeWidth={2} />
-              {tab.key === 'messages' && unreadCount > 0 ? <View style={styles.dot} /> : null}
+              {tab.key === 'messages' && unreadCount > 0 ? <View style={[styles.dot, { borderColor: c.card }]} /> : null}
             </View>
             <Text style={[styles.label, { color, fontFamily: active ? fonts.bold : fonts.medium }]}>{tab.label}</Text>
           </Pressable>
@@ -95,9 +107,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingTop: 8,
     paddingHorizontal: 12,
-    backgroundColor: palette.blanco,
     borderTopWidth: 1,
-    borderTopColor: palette.arena,
   },
   slot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
   disabled: { opacity: 0.45 },
@@ -122,6 +132,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: palette.coral,
     borderWidth: 2,
-    borderColor: palette.blanco,
   },
 });

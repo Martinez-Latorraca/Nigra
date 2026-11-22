@@ -14,7 +14,7 @@ export default function SearchBar({ value, onChangeText, onSubmit, placeholder, 
         onChangeText={onChangeText}
         onSubmitEditing={onSubmit}
         placeholder={placeholder}
-        placeholderTextColor="rgba(26,26,46,0.45)"
+        placeholderTextColor={c.placeholder}
         returnKeyType="search"
         accessibilityLabel={placeholder}
         style={[styles.input, { color: c.inputText }]}
@@ -22,9 +22,9 @@ export default function SearchBar({ value, onChangeText, onSubmit, placeholder, 
       <Pressable
         onPress={onSubmit}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.btn, { opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [styles.btn, { backgroundColor: c.inverseBg, opacity: pressed ? 0.85 : 1 }]}
       >
-        <Text style={styles.btnText}>{buttonLabel}</Text>
+        <Text style={[styles.btnText, { color: c.inverseText }]}>{buttonLabel}</Text>
       </Pressable>
     </View>
   );
@@ -46,8 +46,7 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: 16,
     borderRadius: 12,
-    backgroundColor: palette.noche,
     justifyContent: 'center',
   },
-  btnText: { fontFamily: fonts.bold, fontSize: 14, color: palette.crema },
+  btnText: { fontFamily: fonts.bold, fontSize: 14 },
 });

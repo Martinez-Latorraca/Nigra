@@ -24,7 +24,7 @@ function PetMini({ pet, onPress, width, c }) {
   const meta = [SPECIES_LABEL[pet.species], pet.size ? SIZE_LABEL[pet.size] : null].filter(Boolean).join(' · ');
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.mini, { width, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={[styles.miniImg, { backgroundColor: c.arena }]}>
+      <View style={[styles.miniImg, { backgroundColor: c.photo }]}>
         {photo ? (
           <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} />
         ) : (

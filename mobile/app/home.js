@@ -101,7 +101,7 @@ export default function Home() {
               <Pressable
                 key={s.key}
                 onPress={() => router.push(s.href)}
-                style={({ pressed }) => [styles.sectionCard, { backgroundColor: s.color, opacity: pressed ? 0.85 : 1 }]}
+                style={({ pressed }) => [styles.sectionCard, { backgroundColor: s.color === palette.noche ? c.nocheSurface : s.color, opacity: pressed ? 0.85 : 1 }]}
               >
                 <Icon size={28} color={fg} strokeWidth={2} />
                 <View style={styles.sectionTexts}>

@@ -63,6 +63,7 @@ export function useTheme() {
     // Texto secundario (metadatos, placeholders). En claro sigue siendo Noche.
     muted: isDark ? dark.lavanda : palette.noche,
     navInactive: isDark ? dark.lavanda : palette.grisNav,
+    placeholder: isDark ? dark.lavanda : 'rgba(26,26,46,0.45)',
     // Placeholder de foto.
     photo: isDark ? dark.linea : palette.arena,
     // Botón oscuro / chip activo: se invierte en oscuro.

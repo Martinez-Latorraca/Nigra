@@ -16,7 +16,7 @@ export function CoverHeader({ coverUrl, color, backLabel }) {
   const insets = useSafeAreaInsets();
   const fg = onColor(color);
   return (
-    <View style={[styles.cover, { backgroundColor: c.arena }]}>
+    <View style={[styles.cover, { backgroundColor: c.photo }]}>
       {coverUrl ? <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} /> : null}
       <View style={[styles.coverBar, { top: insets.top + 16 }]}>
         <Pressable
@@ -38,7 +38,7 @@ export function IdentityCard({ logoUrl, name, kicker, location, color, badge }) 
   return (
     <View style={[styles.identity, { backgroundColor: c.card }]}>
       {logoUrl ? (
-        <Image source={{ uri: logoUrl }} style={[styles.logo, { backgroundColor: c.arena }]} />
+        <Image source={{ uri: logoUrl }} style={[styles.logo, { backgroundColor: c.photo }]} />
       ) : (
         <View style={[styles.logo, styles.logoFallback, { backgroundColor: color }]}>
           <Text style={[styles.logoLetter, { color: palette.arena }]}>{name.charAt(0)}</Text>

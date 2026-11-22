@@ -45,7 +45,7 @@ export default function AddressSearch({ onSelect, c, placeholder = 'Dirección o
           value={query}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor="rgba(26,26,46,0.45)"
+          placeholderTextColor={c.placeholder}
           accessibilityLabel={placeholder}
         />
         {loading ? <ActivityIndicator color={c.text} /> : null}

@@ -28,9 +28,9 @@ function ShelterCard({ shelter, c, onPress }) {
     >
       <View style={styles.cardRow}>
         {shelter.logo_url ? (
-          <Image source={{ uri: shelter.logo_url }} style={[styles.logo, { backgroundColor: c.arena }]} />
+          <Image source={{ uri: shelter.logo_url }} style={[styles.logo, { backgroundColor: c.photo }]} />
         ) : (
-          <View style={[styles.logo, styles.logoFallback, { backgroundColor: fallback }]}>
+          <View style={[styles.logo, styles.logoFallback, { backgroundColor: fallback === palette.noche ? c.nocheSmall : fallback }]}>
             <Text style={[styles.logoLetter, { color: onColor(fallback) }]}>{shelter.name.charAt(0)}</Text>
           </View>
         )}

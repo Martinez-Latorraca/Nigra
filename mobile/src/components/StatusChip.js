@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { palette, fonts, onColor } from '../lib/theme';
+import { palette, fonts, onColor, useTheme } from '../lib/theme';
 
 // Estados de mascota → color del chip.
 export const STATUS_STYLES = {
@@ -11,11 +11,14 @@ export const STATUS_STYLES = {
 };
 
 export default function StatusChip({ status, label, size = 'sm', style }) {
+  const c = useTheme();
   const s = STATUS_STYLES[status];
   if (!s) return null;
   const big = size === 'md';
+  // "Adoptado" es un fondo Noche chico: en oscuro pasa a Línea fuerte.
+  const bg = s.color === palette.noche ? c.nocheSmall : s.color;
   return (
-    <View style={[styles.chip, big && styles.chipMd, { backgroundColor: s.color }, style]}>
+    <View style={[styles.chip, big && styles.chipMd, { backgroundColor: bg }, style]}>
       <Text style={[styles.text, big && styles.textMd, { color: onColor(s.color) }]}>{label || s.label}</Text>
     </View>
   );

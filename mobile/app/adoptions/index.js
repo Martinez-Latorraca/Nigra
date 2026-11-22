@@ -112,7 +112,7 @@ function AdoptionCard({ pet, c, onPress, width }) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, { width, backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
     >
-      <View style={[styles.imgWrap, { backgroundColor: c.arena }]}>
+      <View style={[styles.imgWrap, { backgroundColor: c.photo }]}>
         {photo ? (
           <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} />
         ) : (

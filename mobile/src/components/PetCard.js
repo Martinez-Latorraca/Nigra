@@ -25,7 +25,7 @@ export default function PetCard({ pet, onPress, style }) {
       onPress={onPress}
       style={({ pressed }) => [styles.card, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }, style]}
     >
-      <Image source={{ uri: pet.photo_url }} style={[styles.image, { backgroundColor: c.arena }]} />
+      <Image source={{ uri: pet.photo_url }} style={[styles.image, { backgroundColor: c.photo }]} />
 
       <View style={styles.body}>
         <View style={styles.topRow}>
@@ -55,7 +55,7 @@ export default function PetCard({ pet, onPress, style }) {
         ) : null}
 
         {pet.vet_name ? (
-          <View style={styles.vetBadge}>
+          <View style={[styles.vetBadge, { backgroundColor: c.nocheSmall }]}>
             <Stethoscope size={11} color={palette.crema} strokeWidth={2} />
             <Text style={styles.vetBadgeText} numberOfLines={1}>
               {pet.vet_name}
@@ -104,7 +104,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: palette.noche,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,

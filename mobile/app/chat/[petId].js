@@ -252,9 +252,9 @@ export default function Chat() {
             style={({ pressed }) => [styles.petCard, { backgroundColor: c.bg, opacity: pressed ? 0.85 : 1 }]}
           >
             {photo || pet.photo_url ? (
-              <Image source={{ uri: String(photo || pet.photo_url) }} style={[styles.petThumb, { backgroundColor: c.arena }]} />
+              <Image source={{ uri: String(photo || pet.photo_url) }} style={[styles.petThumb, { backgroundColor: c.photo }]} />
             ) : (
-              <View style={[styles.petThumb, { backgroundColor: c.arena }]} />
+              <View style={[styles.petThumb, { backgroundColor: c.photo }]} />
             )}
             <View style={styles.flex}>
               <StatusChip
@@ -284,7 +284,7 @@ export default function Chat() {
         contentContainerStyle={styles.messages}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.safety, { backgroundColor: c.arena }]}>
+        <View style={[styles.safety, { backgroundColor: c.photo }]}>
           <Shield size={14} color={c.text} strokeWidth={2} />
           <Text style={[styles.safetyText, { color: c.text }]}>Si se encuentran, que sea en un lugar público.</Text>
         </View>
@@ -309,9 +309,9 @@ export default function Chat() {
                     // Long-press en un mensaje del otro → denunciar ese mensaje.
                     onLongPress={!mine ? () => setReportTarget({ messageId: m.id }) : undefined}
                     delayLongPress={350}
-                    style={[styles.bubble, mine ? styles.bubbleMine : [styles.bubbleOther, { backgroundColor: c.card }]]}
+                    style={[styles.bubble, mine ? [styles.bubbleMine, { backgroundColor: c.inverseBg }] : [styles.bubbleOther, { backgroundColor: c.card }]]}
                   >
-                    <Text style={[styles.bubbleText, { color: mine ? palette.crema : c.text }]}>{m.content}</Text>
+                    <Text style={[styles.bubbleText, { color: mine ? c.inverseText : c.text }]}>{m.content}</Text>
                   </Pressable>
                   <View style={styles.meta}>
                     <Text style={[styles.time, { color: c.text }]}>{timeOf(m.created_at)}</Text>
@@ -363,7 +363,7 @@ export default function Chat() {
                 : isResolved ? 'El caso está cerrado'
                 : 'Escribí un mensaje…'
             }
-            placeholderTextColor="rgba(26,26,46,0.45)"
+            placeholderTextColor={c.placeholder}
             editable={!inputDisabled}
             multiline
           />
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   msg: { gap: 4 },
   bubble: { maxWidth: 260, paddingHorizontal: 14, paddingVertical: 10 },
   bubbleMine: {
-    backgroundColor: palette.noche, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
     borderBottomLeftRadius: 20, borderBottomRightRadius: 6,
   },
   bubbleOther: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 6 },

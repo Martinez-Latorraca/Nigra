@@ -54,7 +54,7 @@ export default function AccountTypePicker({ value, onChange, disabled, label }) 
                 : { borderWidth: 1, borderColor: c.cardBorder },
             ]}
           >
-            <View style={[styles.tile, { backgroundColor: t.color }]}>
+            <View style={[styles.tile, { backgroundColor: t.color === palette.noche ? c.nocheSmall : t.color }]}>
               <Icon size={22} color={fg} strokeWidth={2} />
             </View>
             <View style={styles.texts}>

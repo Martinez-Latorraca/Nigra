@@ -24,7 +24,7 @@ const FormField = forwardRef(function FormField(
       <View
         style={[
           styles.box,
-          { backgroundColor: readOnly ? c.arena : c.bg },
+          { backgroundColor: readOnly ? c.photo : c.bg },
           multiline && styles.boxMultiline,
           boxStyle,
           error ? styles.boxError : null,
@@ -36,7 +36,7 @@ const FormField = forwardRef(function FormField(
           ref={ref}
           editable={!readOnly}
           multiline={multiline}
-          placeholderTextColor={c.isDark ? '#B4B4C6' : 'rgba(26,26,46,0.45)'}
+          placeholderTextColor={c.placeholder}
           style={[styles.input, { color: c.inputText }, multiline && styles.inputMultiline]}
           {...inputProps}
         />

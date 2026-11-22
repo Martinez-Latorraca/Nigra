@@ -6,8 +6,8 @@ import { useTheme, fonts } from '../../lib/theme';
 // dark = fondo Noche (Apple); si no, blanco con borde Arena.
 export default function SocialButton({ Logo, label, dark = false, onPress, loading, disabled }) {
   const c = useTheme();
-  const bg = dark ? c.noche : c.socialBg;
-  const fg = dark ? c.crema : c.socialText;
+  const bg = dark ? c.inverseBg : c.socialBg;
+  const fg = dark ? c.inverseText : c.socialText;
   return (
     <Pressable
       onPress={onPress}

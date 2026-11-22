@@ -53,7 +53,7 @@ function VetAdCard({ vet, c, onPress, style }) {
         style,
       ]}
     >
-      <View style={[styles.adCover, { backgroundColor: c.arena }]}>
+      <View style={[styles.adCover, { backgroundColor: c.photo }]}>
         {vet.cover_url ? (
           <Image source={{ uri: vet.cover_url }} style={StyleSheet.absoluteFill} />
         ) : vet.logo_url ? (

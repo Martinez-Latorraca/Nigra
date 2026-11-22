@@ -46,19 +46,19 @@ export default function ServiceChips({ services, otherPlaceholder = 'Separá por
                 style={[
                   styles.chip,
                   active
-                    ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                    ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
                     : { backgroundColor: c.card, borderColor: c.cardBorder },
                 ]}
               >
                 {active ? (
-                  <Check size={14} color={palette.crema} strokeWidth={2.5} />
+                  <Check size={14} color={c.inverseText} strokeWidth={2.5} />
                 ) : (
                   <Plus size={14} color={c.text} strokeWidth={2} />
                 )}
                 <Text
                   style={[
                     styles.chipText,
-                    { color: active ? palette.crema : c.text, fontFamily: active ? fonts.bold : fonts.medium },
+                    { color: active ? c.inverseText : c.text, fontFamily: active ? fonts.bold : fonts.medium },
                   ]}
                 >
                   {s}

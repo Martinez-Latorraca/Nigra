@@ -115,7 +115,7 @@ export function UserEditForm({ user, dispatch, onClose }) {
               <Text style={styles.avatarLetter}>{(user?.name || '?').charAt(0).toUpperCase()}</Text>
             </View>
           )}
-          <View style={styles.avatarBadge}>
+          <View style={[styles.avatarBadge, { borderColor: c.bg }]}>
             <Camera size={16} color={palette.arena} strokeWidth={2} />
           </View>
         </Pressable>
@@ -243,7 +243,7 @@ export function VetEditForm({ vet, onClose, onSaved }) {
   return (
     <View>
       {/* Portada + logo superpuesto */}
-      <View style={[styles.cover, { backgroundColor: c.arena }]}>
+      <View style={[styles.cover, { backgroundColor: c.photo }]}>
         {coverUrl ? <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} /> : null}
         <Pressable
           onPress={() => pickAndUpload('cover')}
@@ -262,7 +262,7 @@ export function VetEditForm({ vet, onClose, onSaved }) {
           {logoUrl ? (
             <Image source={{ uri: logoUrl }} style={styles.logoImg} />
           ) : (
-            <View style={[styles.logoImg, styles.center, { backgroundColor: palette.noche }]}>
+            <View style={[styles.logoImg, styles.center, { backgroundColor: c.nocheSmall }]}>
               <Text style={styles.logoLetter}>{vet.name.charAt(0)}</Text>
             </View>
           )}
@@ -283,11 +283,12 @@ export function VetEditForm({ vet, onClose, onSaved }) {
           <FormField label="Dirección" icon={MapPin} value={form.address} onChangeText={update('address')} />
           <View style={styles.field}>
             <Text style={[styles.label, { color: c.text }]}>Ubicación en el mapa</Text>
-            <View style={[styles.mapWrap, { backgroundColor: c.arena }]}>
+            <View style={[styles.mapWrap, { backgroundColor: c.photo }]}>
               {showMap ? (
                 <MapPicker
                   value={mapPosition}
                   onChange={(lat, lng) => setMapPosition({ lat, lng })}
+                  isDark={c.isDark}
                   style={styles.flex}
                 />
               ) : null}
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
   avatarLetter: { fontFamily: fonts.display, fontSize: 44, color: palette.noche },
   avatarBadge: {
     position: 'absolute', right: 0, bottom: 0, width: 36, height: 36, borderRadius: 18,
-    backgroundColor: palette.coral, borderWidth: 3, borderColor: palette.crema, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: palette.coral, borderWidth: 3, alignItems: 'center', justifyContent: 'center',
   },
 
   cover: { height: 170, alignItems: 'center', justifyContent: 'center' },

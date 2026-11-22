@@ -33,11 +33,14 @@ const FALLBACK_COLORS = [palette.violeta, palette.teal, palette.noche, palette.c
 const fallbackColor = (id) => FALLBACK_COLORS[Number(id) % FALLBACK_COLORS.length] || palette.coral;
 
 function Logo({ vet, size, radius, color }) {
+  const c = useTheme();
+  // Logo sin color: Noche chico, que en oscuro pasa a Línea fuerte.
+  if (color === palette.noche) color = c.nocheSmall;
   if (vet.logo_url) {
     return (
       <Image
         source={{ uri: vet.logo_url }}
-        style={{ width: size, height: size, borderRadius: radius, backgroundColor: palette.arena }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: c.photo }}
       />
     );
   }
@@ -92,7 +95,7 @@ function VetCard({ vet, onPress, c }) {
 
 // Chip de filtro: activo = Noche con texto Crema.
 function FilterChip({ label, active, onPress, disabled, icon: Icon, c }) {
-  const fg = active ? palette.crema : c.text;
+  const fg = active ? c.inverseText : c.text;
   return (
     <Pressable
       onPress={onPress}
@@ -102,7 +105,7 @@ function FilterChip({ label, active, onPress, disabled, icon: Icon, c }) {
       style={[
         styles.filterChip,
         active
-          ? { backgroundColor: palette.noche, borderColor: palette.noche }
+          ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
           : { backgroundColor: c.card, borderColor: c.cardBorder },
         disabled && { opacity: 0.5 },
       ]}

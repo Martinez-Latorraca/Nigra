@@ -80,9 +80,9 @@ function RecordRow({ photo, status, chipLabel, title, subtitle, unread, onPress,
       style={({ pressed }) => [styles.row, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
     >
       {photo ? (
-        <Image source={{ uri: photo }} style={[styles.rowImg, { backgroundColor: c.arena }]} />
+        <Image source={{ uri: photo }} style={[styles.rowImg, { backgroundColor: c.photo }]} />
       ) : (
-        <View style={[styles.rowImg, { backgroundColor: c.arena }]} />
+        <View style={[styles.rowImg, { backgroundColor: c.photo }]} />
       )}
       <View style={styles.rowBody}>
         <StatusChip status={status} label={chipLabel} />
@@ -443,7 +443,7 @@ export default function Profile() {
 
         {/* Reportes activos (user) */}
         {!isVet ? (
-          <View style={styles.activeCard}>
+          <View style={[styles.activeCard, { backgroundColor: c.nocheSurface }]}>
             <View>
               <Text style={styles.activeLabel}>Reportes activos</Text>
               <Text style={styles.activeNumber}>{total}</Text>
@@ -559,7 +559,7 @@ export default function Profile() {
           <Switch
             value={receivesLost}
             onValueChange={setReceivesLost}
-            trackColor={{ false: palette.arena, true: palette.teal }}
+            trackColor={{ false: c.divider, true: palette.teal }}
             thumbColor={palette.blanco}
           />
         </View>
@@ -572,7 +572,7 @@ export default function Profile() {
           <Switch
             value={receivesFound}
             onValueChange={setReceivesFound}
-            trackColor={{ false: palette.arena, true: palette.teal }}
+            trackColor={{ false: c.divider, true: palette.teal }}
             thumbColor={palette.blanco}
           />
         </View>
@@ -592,11 +592,11 @@ export default function Profile() {
                   style={[
                     styles.radiusPreset,
                     active
-                      ? { backgroundColor: palette.noche, borderColor: palette.noche }
+                      ? { backgroundColor: c.inverseBg, borderColor: c.inverseBg }
                       : { backgroundColor: c.card, borderColor: c.cardBorder },
                   ]}
                 >
-                  <Text style={[styles.radiusPresetText, { color: active ? palette.crema : c.title }]}>{r} km</Text>
+                  <Text style={[styles.radiusPresetText, { color: active ? c.inverseText : c.title }]}>{r} km</Text>
                 </Pressable>
               );
             })}
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   benefitText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
 
   activeCard: {
-    backgroundColor: palette.noche, borderRadius: 24, padding: 20, flexDirection: 'row',
+    borderRadius: 24, padding: 20, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'space-between', gap: 16,
   },
   activeLabel: { fontFamily: fonts.bold, fontSize: 13, color: palette.arena },

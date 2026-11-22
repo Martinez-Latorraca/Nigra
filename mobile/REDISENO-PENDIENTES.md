@@ -13,6 +13,7 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   (Coral perdido / Teal encontrado), refugios (cuadrado Sol), vets (cuadrado Noche),
   clusters, ubicación del usuario con radio de alertas, tarjeta del pin seleccionado.
   Hoy el tab Mapa se ve **deshabilitado** (decisión explícita) y el link "Ver mapa" no está.
+  Tampoco está el botón "Ver el mapa" del vacío de Explorar (`Estados.dc.html`).
 
 ## Home (`Home-v2.dc.html`)
 

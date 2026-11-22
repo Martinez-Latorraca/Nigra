@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSocket } from '../lib/socket';
-import { useTheme } from '../lib/theme';
+import { useTheme, palette, fonts } from '../lib/theme';
+import { MessageCircle, ScanSearch, X } from '../lib/icons';
 
 // Toast in-app: aparece si llega un mensaje o match y NO estás ya en la
 // pantalla correspondiente. Tap → navega. Se auto-cierra a los 4s.
+// Diseño: Notif-banner.dc.html (tarjeta blanca, tile Noche para chat y Coral
+// para coincidencias).
 export default function BannerHost() {
   const c = useTheme();
   const { socket } = useSocket();
@@ -32,7 +35,6 @@ export default function BannerHost() {
         kind: 'chat',
         title: n.senderName || 'Mensaje nuevo',
         body: n.content,
-        photo: n.petPhoto,
         onTap: () =>
           router.push({
             pathname: `/chat/${n.pet_id}`,
@@ -54,8 +56,7 @@ export default function BannerHost() {
         title: 'Posible coincidencia',
         body: `Reportaron una mascota similar${
           notif?.data?.match_name ? ` a ${notif.data.match_name}` : ''
-        }. ¿Es la tuya?`,
-        photo: notif?.data?.photo_url,
+        }. Tocá para ver.`,
         onTap: () => petId && router.push(`/pet/${petId}`),
       });
     };
@@ -70,41 +71,39 @@ export default function BannerHost() {
 
   if (!banner) return null;
 
-  const accent = banner.kind === 'match' ? '#3B82F6' : c.primary;
+  const isMatch = banner.kind === 'match';
+  const Icon = isMatch ? ScanSearch : MessageCircle;
+  const tileBg = isMatch ? palette.coral : palette.noche;
+  const tileFg = isMatch ? palette.arena : palette.crema;
 
   return (
     <Pressable
-      style={[styles.wrapper, { top: insets.top + 8 }]}
+      style={[styles.wrapper, { top: insets.top + 12 }]}
+      accessibilityRole="button"
       onPress={() => {
         banner.onTap?.();
         setBanner(null);
       }}
     >
-      <View
-        style={[
-          styles.banner,
-          { backgroundColor: c.card, borderColor: c.cardBorder, borderLeftColor: accent },
-        ]}
-      >
-        {banner.photo ? (
-          <Image source={{ uri: banner.photo }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatar} />
-        )}
-        <View style={{ flex: 1 }}>
+      <View accessibilityRole="alert" style={[styles.banner, { backgroundColor: c.card }]}>
+        <View style={[styles.tile, { backgroundColor: tileBg }]}>
+          <Icon size={20} color={tileFg} strokeWidth={2} />
+        </View>
+        <View style={styles.texts}>
           <Text style={[styles.title, { color: c.title }]} numberOfLines={1}>
             {banner.title}
           </Text>
-          <Text style={[styles.body, { color: c.subtitle }]} numberOfLines={2}>
+          <Text style={[styles.body, { color: c.text }]} numberOfLines={2}>
             {banner.body}
           </Text>
         </View>
         <Pressable
-          hitSlop={12}
+          hitSlop={8}
           onPress={() => setBanner(null)}
-          style={styles.closeBtn}
+          accessibilityLabel="Cerrar"
+          style={[styles.closeBtn, { backgroundColor: c.bg }]}
         >
-          <Text style={[styles.close, { color: c.subtitle }]}>✕</Text>
+          <X size={16} color={c.text} strokeWidth={2.5} />
         </Pressable>
       </View>
     </Pressable>
@@ -118,18 +117,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    borderRadius: 20,
+    shadowColor: palette.noche,
+    shadowOpacity: 0.18,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E5E7EB' },
-  title: { fontSize: 14, fontWeight: '700' },
-  body: { fontSize: 13, marginTop: 2 },
-  closeBtn: { padding: 4 },
-  close: { fontSize: 16, fontWeight: '700' },
+  tile: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  texts: { flex: 1, gap: 2 },
+  title: { fontFamily: fonts.bold, fontSize: 14 },
+  body: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 });

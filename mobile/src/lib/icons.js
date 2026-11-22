@@ -47,6 +47,7 @@ export { default as Pencil } from 'lucide-react-native/icons/pencil';
 export { default as Phone } from 'lucide-react-native/icons/phone';
 export { default as Plus } from 'lucide-react-native/icons/plus';
 export { default as RefreshCw } from 'lucide-react-native/icons/refresh-cw';
+export { default as ScanSearch } from 'lucide-react-native/icons/scan-search';
 export { default as Scissors } from 'lucide-react-native/icons/scissors';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as Send } from 'lucide-react-native/icons/send';

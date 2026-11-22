@@ -67,12 +67,10 @@ export const forgotPasswordSchema = Joi.object({
         }),
 });
 
+// La landing nueva (2026-11-22) pide solo el email: el nombre es opcional
+// (menos datos). En la tabla queda '' porque la columna es NOT NULL.
 export const waitlistSchema = Joi.object({
-    name: Joi.string().trim().min(2).max(80).required()
-        .messages({
-            'string.empty': 'El nombre es requerido',
-            'string.min': 'El nombre debe tener al menos 2 caracteres',
-        }),
+    name: Joi.string().trim().max(80).allow('', null).optional(),
     email: Joi.string().trim().email().max(150).required()
         .messages({
             'string.empty': 'El email es requerido',

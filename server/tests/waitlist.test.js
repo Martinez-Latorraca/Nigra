@@ -55,12 +55,15 @@ describe('Waitlist', () => {
             expect(pool.query).not.toHaveBeenCalled();
         });
 
-        it('rechaza nombre vacío con 400', async () => {
+        it('acepta solo el email (el nombre es opcional) y guarda nombre vacío', async () => {
+            pool.query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 7 }] });
             const res = await request(buildApp())
                 .post('/api/waitlist')
                 .send({ email: 'x@x.com' });
-            expect(res.status).toBe(400);
-            expect(pool.query).not.toHaveBeenCalled();
+            expect(res.status).toBe(201);
+            const [, params] = pool.query.mock.calls[0];
+            expect(params[0]).toBe('');
+            expect(params[1]).toBe('x@x.com');
         });
 
         it('normaliza email a lowercase', async () => {

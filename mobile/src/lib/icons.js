@@ -33,6 +33,7 @@ export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as Menu } from 'lucide-react-native/icons/menu';
 export { default as Minus } from 'lucide-react-native/icons/minus';
 export { default as MessageCircle } from 'lucide-react-native/icons/message-circle';
+export { default as Palette } from 'lucide-react-native/icons/palette';
 export { default as PartyPopper } from 'lucide-react-native/icons/party-popper';
 export { default as PawPrint } from 'lucide-react-native/icons/paw-print';
 export { default as Pencil } from 'lucide-react-native/icons/pencil';

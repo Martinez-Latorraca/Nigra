@@ -84,3 +84,11 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   suma todas las notificaciones sin leer, incluidos tipos que la pantalla Mensajes no muestra
   (solo muestra `match` y `resolve_reminder`). El punto de la TabBar / menú aparece y en la
   lista no hay nada marcado.
+
+## Web
+
+- **Registro de vet en la web con otra lista de servicios** · `client/src/pages/VetRegister.jsx`
+  usa `SERVICE_SUGGESTIONS` ("Consulta general", "Emergencias 24h"…) mientras `Profile.jsx`
+  y `Vets.jsx` usan el catálogo único (Consultas, Urgencias 24h…). Lo que carga una vet al
+  registrarse desde la web no coincide con los filtros del directorio. En mobile ya se
+  unificó (`src/lib/services.js`); falta hacer lo mismo en la web.

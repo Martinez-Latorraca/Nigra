@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Image, Pressable, ScrollView, TextInput, StyleSheet,
-  ActivityIndicator, Alert, Switch,
+  ActivityIndicator, Alert, Switch, Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,11 +11,12 @@ import api from '../lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../lib/theme';
 import {
   ChevronRight, ChevronDown, ChevronUp, RefreshCw, X, Plus, Pencil, LogOut, ClipboardIcon, ImageIcon,
-  HouseHeart, PawPrint, MapPin,
+  HouseHeart, PawPrint, MapPin, Palette,
 } from '../lib/icons';
 import { clearCredentials } from '../store/userSlice';
 import LinkedAccounts from './LinkedAccounts';
 import SectionHeader from './SectionHeader';
+import FormField from './FormField';
 import StatusChip from './StatusChip';
 import Button from './Button';
 import TabBar, { useTabBarSpace } from './TabBar';
@@ -64,7 +66,7 @@ function ChipSelect({ options, value, onChange, c }) {
               styles.chip,
               active
                 ? { backgroundColor: palette.noche, borderColor: palette.noche }
-                : { backgroundColor: c.card, borderColor: c.cardBorder },
+                : { backgroundColor: c.bg, borderColor: c.bg },
             ]}
           >
             <Text style={[styles.chipText, { color: active ? palette.crema : c.title, fontFamily: active ? fonts.bold : fonts.medium }]}>
@@ -94,6 +96,7 @@ function Field({ label, c, multiline, style, ...props }) {
 // Form para crear/editar una publicación de adopción.
 function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
   const editing = !!pet;
+  const insets = useSafeAreaInsets();
   const [form, setForm] = useState({
     name: pet?.name || '',
     species: pet?.species || 'dog',
@@ -177,121 +180,159 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: c.card }]}>
-      <View style={styles.cardHead}>
-        <Text style={[styles.cardTitle, { color: c.title }]}>
-          {editing ? 'Editar publicación' : 'Nueva publicación'}
-        </Text>
-        <Pressable onPress={onCancel} hitSlop={10}>
-          <Text style={[styles.link, { color: c.text }]}>Cancelar</Text>
-        </Pressable>
-      </View>
+    <Modal visible animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
+      <View style={[styles.flex1, { backgroundColor: c.bg }]}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <SectionHeader
+            color={palette.violeta}
+            centerLabel="Mi refugio"
+            title={editing ? 'Editar publicación' : 'Nueva mascota en adopción'}
+            subtitle="Contá cómo es para que encuentre familia más rápido."
+            onBack={onCancel}
+            style={styles.formHeader}
+          />
 
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: c.text }]}>Fotos *</Text>
-        <Text style={[styles.hint, { color: c.text }]}>Hasta {MAX_PHOTOS}. La primera es la principal.</Text>
-        <View style={{ gap: 8, marginTop: 4 }}>
-          {photos.map((url, i) => (
-            <View key={`${url}-${i}`} style={[styles.photoRow, { backgroundColor: c.bg }]}>
-              <Image source={{ uri: url }} style={[styles.photoRowImg, { backgroundColor: c.arena }]} />
-              <Text style={[styles.photoRowLabel, { color: c.title }]}>
-                {i === 0 ? 'Principal' : `Foto ${i + 1}`}
+          <View style={styles.formBody}>
+            <View style={[styles.card, styles.cardTight, { backgroundColor: c.card }]}>
+              <View style={styles.cardHead}>
+                <Text style={[styles.cardTitle, { color: c.title }]}>
+                  Fotos <Text style={{ color: palette.coral }}>*</Text>
+                </Text>
+                <Text style={[styles.counter, { color: c.text }]}>{photos.length} / {MAX_PHOTOS}</Text>
+              </View>
+              <Text style={[styles.hint, styles.hintUp, { color: c.text }]}>
+                La primera es la principal: es la que se ve en el listado.
               </Text>
-              <Pressable
-                onPress={() => movePhoto(i, -1)}
-                disabled={i === 0}
-                style={[styles.photoIconBtn, i === 0 && styles.dim]}
-                hitSlop={6}
-                accessibilityLabel="Subir"
-              >
-                <ChevronUp size={18} color={c.text} strokeWidth={2} />
-              </Pressable>
-              <Pressable
-                onPress={() => movePhoto(i, 1)}
-                disabled={i === photos.length - 1}
-                style={[styles.photoIconBtn, i === photos.length - 1 && styles.dim]}
-                hitSlop={6}
-                accessibilityLabel="Bajar"
-              >
-                <ChevronDown size={18} color={c.text} strokeWidth={2} />
-              </Pressable>
-              <Pressable onPress={() => pickPhoto(i)} disabled={uploading} style={styles.photoIconBtn} hitSlop={6} accessibilityLabel="Reemplazar">
-                <RefreshCw size={16} color={c.text} strokeWidth={2} />
-              </Pressable>
-              <Pressable onPress={() => removePhotoAt(i)} style={styles.photoIconBtn} hitSlop={6} accessibilityLabel="Quitar">
-                <X size={18} color={palette.coral} strokeWidth={2.5} />
-              </Pressable>
+              {photos.map((url, i) => (
+                <View key={`${url}-${i}`} style={[styles.photoRow, { backgroundColor: c.bg }]}>
+                  <Image source={{ uri: url }} style={[styles.photoRowImg, { backgroundColor: c.arena }]} />
+                  <View style={styles.flex}>
+                    {i === 0 ? (
+                      <View style={styles.mainChip}>
+                        <Text style={styles.mainChipText}>Principal</Text>
+                      </View>
+                    ) : (
+                      <Text style={[styles.photoRowLabel, { color: c.title }]}>Foto {i + 1}</Text>
+                    )}
+                  </View>
+                  <Pressable
+                    onPress={() => movePhoto(i, -1)}
+                    disabled={i === 0}
+                    style={[styles.photoIconBtn, { backgroundColor: c.card }, i === 0 && styles.dim]}
+                    hitSlop={4}
+                    accessibilityLabel="Subir"
+                  >
+                    <ChevronUp size={18} color={c.text} strokeWidth={2} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => movePhoto(i, 1)}
+                    disabled={i === photos.length - 1}
+                    style={[styles.photoIconBtn, { backgroundColor: c.card }, i === photos.length - 1 && styles.dim]}
+                    hitSlop={4}
+                    accessibilityLabel="Bajar"
+                  >
+                    <ChevronDown size={18} color={c.text} strokeWidth={2} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => pickPhoto(i)}
+                    disabled={uploading}
+                    style={[styles.photoIconBtn, { backgroundColor: c.card }]}
+                    hitSlop={4}
+                    accessibilityLabel="Reemplazar"
+                  >
+                    <RefreshCw size={16} color={c.text} strokeWidth={2} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => removePhotoAt(i)}
+                    style={[styles.photoIconBtn, { backgroundColor: c.card }]}
+                    hitSlop={4}
+                    accessibilityLabel="Quitar"
+                  >
+                    <X size={18} color={palette.coral} strokeWidth={2.5} />
+                  </Pressable>
+                </View>
+              ))}
+              {photos.length < MAX_PHOTOS ? (
+                <Pressable onPress={() => pickPhoto()} disabled={uploading} style={styles.photoAdd}>
+                  <Plus size={20} color={c.text} strokeWidth={2} />
+                  <Text style={[styles.photoAddText, { color: c.text }]}>{uploading ? 'Subiendo…' : 'Agregar foto'}</Text>
+                </Pressable>
+              ) : null}
             </View>
-          ))}
-          {photos.length < MAX_PHOTOS ? (
-            <Pressable onPress={() => pickPhoto()} disabled={uploading} style={styles.photoAdd}>
-              <Plus size={18} color={c.text} strokeWidth={2} />
-              <Text style={[styles.photoAddText, { color: c.text }]}>{uploading ? 'Subiendo…' : 'Agregar foto'}</Text>
+
+            <View style={[styles.card, { backgroundColor: c.card }]}>
+              <Text style={[styles.cardTitle, { color: c.title }]}>Datos</Text>
+              <FormField label="Nombre" icon={PawPrint} value={form.name} onChangeText={upd('name')} placeholder="Firulais" maxLength={60} />
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: c.text }]}>
+                  Especie <Text style={{ color: palette.coral }}>*</Text>
+                </Text>
+                <ChipSelect options={SELECTS.species} value={form.species} onChange={upd('species')} c={c} />
+              </View>
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: c.text }]}>Sexo</Text>
+                <ChipSelect options={SELECTS.sex} value={form.sex} onChange={upd('sex')} c={c} />
+              </View>
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: c.text }]}>Edad</Text>
+                <ChipSelect options={SELECTS.age_group} value={form.age_group} onChange={upd('age_group')} c={c} />
+              </View>
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: c.text }]}>Tamaño</Text>
+                <ChipSelect options={SELECTS.size} value={form.size} onChange={upd('size')} c={c} />
+              </View>
+              <FormField label="Color" icon={Palette} value={form.color} onChangeText={upd('color')} placeholder="Marrón, blanco…" maxLength={30} />
+            </View>
+
+            <View style={[styles.card, { backgroundColor: c.card }]}>
+              <Text style={[styles.cardTitle, { color: c.title }]}>Sobre la mascota</Text>
+              <FormField
+                label="Descripción"
+                value={form.description}
+                onChangeText={upd('description')}
+                placeholder="Contá su historia y personalidad: cómo se lleva con otros animales y con niños, qué tipo de hogar necesita."
+                multiline
+                maxLength={2000}
+              />
+              <View style={styles.switchRow}>
+                <Text style={[styles.switchLabel, { color: c.title }]}>Vacunado</Text>
+                <Switch
+                  value={form.vaccinated}
+                  onValueChange={upd('vaccinated')}
+                  trackColor={{ false: palette.arena, true: palette.teal }}
+                  thumbColor={palette.blanco}
+                />
+              </View>
+              <View style={styles.switchRow}>
+                <Text style={[styles.switchLabel, { color: c.title }]}>Castrado</Text>
+                <Switch
+                  value={form.neutered}
+                  onValueChange={upd('neutered')}
+                  trackColor={{ false: palette.arena, true: palette.teal }}
+                  thumbColor={palette.blanco}
+                />
+              </View>
+            </View>
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Button
+              color={palette.violeta}
+              title={saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Publicar'}
+              onPress={save}
+              disabled={saving || uploading}
+            />
+            <Pressable onPress={onCancel} style={styles.cancelBtn}>
+              <Text style={[styles.cancelText, { color: c.text }]}>Cancelar</Text>
             </Pressable>
-          ) : null}
-        </View>
+          </View>
+        </ScrollView>
       </View>
-
-      <Field label="Nombre" c={c} value={form.name} onChangeText={upd('name')} placeholder="Firulais" maxLength={60} />
-
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: c.text }]}>Especie *</Text>
-        <ChipSelect options={SELECTS.species} value={form.species} onChange={upd('species')} c={c} />
-      </View>
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: c.text }]}>Sexo</Text>
-        <ChipSelect options={SELECTS.sex} value={form.sex} onChange={upd('sex')} c={c} />
-      </View>
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: c.text }]}>Edad</Text>
-        <ChipSelect options={SELECTS.age_group} value={form.age_group} onChange={upd('age_group')} c={c} />
-      </View>
-      <View style={styles.field}>
-        <Text style={[styles.label, { color: c.text }]}>Tamaño</Text>
-        <ChipSelect options={SELECTS.size} value={form.size} onChange={upd('size')} c={c} />
-      </View>
-
-      <Field label="Color" c={c} value={form.color} onChangeText={upd('color')} placeholder="Marrón, blanco…" maxLength={30} />
-      <Field
-        label="Descripción"
-        c={c}
-        value={form.description}
-        onChangeText={upd('description')}
-        placeholder="Contá su historia y personalidad."
-        multiline
-        maxLength={2000}
-      />
-
-      <View style={styles.switchRow}>
-        <Text style={[styles.switchLabel, { color: c.title }]}>Vacunado</Text>
-        <Switch
-          value={form.vaccinated}
-          onValueChange={upd('vaccinated')}
-          trackColor={{ false: palette.arena, true: palette.teal }}
-          thumbColor={palette.blanco}
-        />
-      </View>
-      <View style={[styles.switchRow, styles.divided, { borderTopColor: c.cardBorder }]}>
-        <Text style={[styles.switchLabel, { color: c.title }]}>Castrado</Text>
-        <Switch
-          value={form.neutered}
-          onValueChange={upd('neutered')}
-          trackColor={{ false: palette.arena, true: palette.teal }}
-          thumbColor={palette.blanco}
-        />
-      </View>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <Button
-        color={palette.violeta}
-        title={saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Publicar'}
-        onPress={save}
-        disabled={saving || uploading}
-        style={styles.btn52}
-        textStyle={styles.btnText15}
-      />
-    </View>
+    </Modal>
   );
 }
 
@@ -703,6 +744,16 @@ export default function ShelterPanel() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex1: { flex: 1 },
+  formHeader: { marginBottom: 20 },
+  formBody: { paddingHorizontal: 20, gap: 16 },
+  cardTight: { gap: 12 },
+  counter: { fontFamily: fonts.bold, fontSize: 13 },
+  hintUp: { marginTop: -6 },
+  mainChip: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: palette.violeta },
+  mainChipText: { fontFamily: fonts.bold, fontSize: 11, color: palette.arena },
+  cancelBtn: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { fontFamily: fonts.medium, fontSize: 15, textDecorationLine: 'underline' },
   center: { alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1, minWidth: 0, gap: 3 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -759,7 +810,7 @@ const styles = StyleSheet.create({
   },
   textarea: { minHeight: 104, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { height: 40, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
+  chip: { height: 38, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: 'center' },
   chipText: { fontSize: 14 },
   imageBtns: { flexDirection: 'row', gap: 10 },
   halfBtn: { flex: 1, height: 48, borderRadius: 14, paddingHorizontal: 10 },
@@ -767,9 +818,9 @@ const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 14 },
   photoRowImg: { width: 56, height: 56, borderRadius: 10 },
   photoRowLabel: { flex: 1, fontFamily: fonts.bold, fontSize: 13 },
-  photoIconBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  photoIconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   photoAdd: {
-    height: 52, borderRadius: 14, borderWidth: 2, borderStyle: 'dashed', borderColor: palette.violeta,
+    height: 64, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: palette.violeta,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
   },
   photoAddText: { fontFamily: fonts.bold, fontSize: 14 },

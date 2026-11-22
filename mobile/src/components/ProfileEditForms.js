@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View, Text, Image, Pressable, ScrollView, StyleSheet, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -32,7 +32,7 @@ export function EditModal({ visible, title, color, onClose, children }) {
           <Text style={[styles.barTitle, { color: fg }]}>{title}</Text>
           <View style={styles.barSide} />
         </View>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
           <ScrollView
             contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
             keyboardShouldPersistTaps="handled"
@@ -189,6 +189,14 @@ export function VetEditForm({ vet, onClose, onSaved }) {
     vet.lat != null && vet.lng != null ? { lat: vet.lat, lng: vet.lng } : null
   );
 
+  // El WebView del mapa, si se monta durante la animación de apertura del
+  // Modal, deja el ScrollView sin scroll en Android. Se monta un rato después.
+  const [showMap, setShowMap] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShowMap(true), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   const update = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
   const pickAndUpload = async (kind) => {
@@ -293,11 +301,13 @@ export function VetEditForm({ vet, onClose, onSaved }) {
           <View style={styles.field}>
             <Text style={[styles.label, { color: c.text }]}>Ubicación en el mapa</Text>
             <View style={[styles.mapWrap, { backgroundColor: c.arena }]}>
-              <MapPicker
-                value={mapPosition}
-                onChange={(lat, lng) => setMapPosition({ lat, lng })}
-                style={styles.flex}
-              />
+              {showMap ? (
+                <MapPicker
+                  value={mapPosition}
+                  onChange={(lat, lng) => setMapPosition({ lat, lng })}
+                  style={styles.flex}
+                />
+              ) : null}
               <View style={[styles.mapPill, { backgroundColor: c.card }]} pointerEvents="none">
                 <Text style={[styles.mapPillText, { color: c.text }]}>Tocá el mapa para mover el pin</Text>
               </View>

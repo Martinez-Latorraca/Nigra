@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Image, Pressable, ScrollView, StyleSheet,
-  ActivityIndicator, Alert, Switch, Modal,
+  ActivityIndicator, Alert, Switch, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -168,7 +168,10 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
 
   return (
     <Modal visible animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
-      <View style={[styles.flex1, { backgroundColor: c.bg }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.flex1, { backgroundColor: c.bg }]}
+      >
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
           keyboardShouldPersistTaps="handled"
@@ -318,7 +321,7 @@ function AdoptionPetForm({ pet, c, onCancel, onSaved }) {
             </Pressable>
           </View>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

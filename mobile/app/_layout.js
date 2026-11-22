@@ -13,7 +13,6 @@ import { Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito'
 import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
 import { store, persistor } from '../src/store/store';
 import { SocketProvider } from '../src/lib/socket';
-import { SidebarProvider } from '../src/lib/sidebar';
 import { PushProvider } from '../src/lib/push';
 import BannerHost from '../src/components/BannerHost';
 import Splash from '../src/components/Splash';
@@ -78,10 +77,10 @@ function RootLayout() {
                         <SafeAreaProvider>
                             <View style={{ flex: 1, backgroundColor: '#FFF6F0' }} onLayout={onLayoutRootView}>
                                 <StatusBar style="auto" />
-                                <SidebarProvider>
+                                <>
                                     <Stack screenOptions={{ headerShown: false }} />
                                     <BannerHost />
-                                </SidebarProvider>
+                                </>
                                 {showCustomSplash && (
                                     <Splash onFinish={() => setShowCustomSplash(false)} />
                                 )}

@@ -1,16 +1,15 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Menu } from '../lib/icons';
+import { ChevronLeft } from '../lib/icons';
 import { palette, fonts, onColor } from '../lib/theme';
-import { useSidebar } from '../lib/sidebar';
-import { useSocket } from '../lib/socket';
 import IconButton from './IconButton';
 
 // Encabezado de sección: fondo del color de la sección, radio inferior 32,
-// volver a la izquierda y menú (abre el sidebar) a la derecha.
+// volver a la izquierda. A la derecha va `right` o un espacio de 44 que mantiene
+// centrado el texto del medio (ya no hay menú lateral: lo reemplaza la TabBar).
 // color: usar sectionColors de theme.js. onBack: por defecto router.back().
-// showBack/showMenu en false ocultan cada botón; right reemplaza al menú.
+// showBack en false deja un espacio en lugar del botón de volver.
 export default function SectionHeader({
   color = palette.coral,
   kicker,
@@ -18,7 +17,6 @@ export default function SectionHeader({
   subtitle,
   onBack,
   showBack = true,
-  showMenu = true,
   right,
   centerLabel,
   children,
@@ -26,8 +24,6 @@ export default function SectionHeader({
 }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { open } = useSidebar();
-  const { unreadCount } = useSocket();
   const fg = onColor(color);
   // Sobre Noche el diseño usa botones más tenues y kicker/bajada en gris claro.
   const dark = color === palette.noche;
@@ -50,12 +46,7 @@ export default function SectionHeader({
           <View style={styles.spacer} />
         )}
         {centerLabel ? <Text style={[styles.centerLabel, { color: kickerColor }]}>{centerLabel}</Text> : null}
-        {right ??
-          (showMenu ? (
-            <IconButton icon={Menu} iconSize={22} color={fg} backgroundColor={btnBg} accessibilityLabel="Menú" onPress={open}>
-              {unreadCount > 0 ? <View style={[styles.dot, { borderColor: color }]} /> : null}
-            </IconButton>
-          ) : null)}
+        {right ?? <View style={styles.spacer} />}
       </View>
 
       {kicker || title || subtitle ? (
@@ -86,14 +77,4 @@ const styles = StyleSheet.create({
   centerLabel: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase' },
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38 },
   subtitle: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  dot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: palette.coral,
-    borderWidth: 2,
-  },
 });

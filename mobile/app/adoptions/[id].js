@@ -6,13 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
-import { useSidebar } from '../../src/lib/sidebar';
 import { API_URL } from '../../src/lib/config';
 import {
-  ChevronLeft, ChevronRight, Menu, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
+  ChevronLeft, ChevronRight, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
   PawPrint, Check,
 } from '../../src/lib/icons';
-import IconButton from '../../src/components/IconButton';
 import StatusChip from '../../src/components/StatusChip';
 import Button from '../../src/components/Button';
 
@@ -33,7 +31,6 @@ function Trait({ children, icon: Icon, c }) {
 export default function AdoptionDetail() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const { open: openSidebar } = useSidebar();
   const { id } = useLocalSearchParams();
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -119,14 +116,6 @@ export default function AdoptionDetail() {
               <ChevronLeft size={22} color={palette.arena} strokeWidth={2} />
               <Text style={styles.backPillText}>Adopciones</Text>
             </Pressable>
-            <IconButton
-              icon={Menu}
-              iconSize={22}
-              color={palette.crema}
-              backgroundColor={palette.violeta}
-              accessibilityLabel="Menú"
-              onPress={openSidebar}
-            />
           </View>
         </View>
 

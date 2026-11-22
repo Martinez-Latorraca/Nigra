@@ -16,9 +16,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts } from '../../src/lib/theme';
-import { useSidebar } from '../../src/lib/sidebar';
 import {
-  ChevronLeft, Menu, User, Calendar, Stethoscope, Star, MapPin, HeartHandshake,
+  ChevronLeft, User, Calendar, Stethoscope, Star, MapPin, HeartHandshake,
   MessageCircle, Share2, Trash2, Shield,
 } from '../../src/lib/icons';
 import { translateType, translateColor } from '../../src/lib/translations';
@@ -46,7 +45,6 @@ export default function PetDetail() {
   const { id, origen } = useLocalSearchParams();
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const { open: openSidebar } = useSidebar();
   const me = useSelector((s) => s.user.data);
   const [pet, setPet] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -162,7 +160,7 @@ export default function PetDetail() {
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 32 }} showsVerticalScrollIndicator={false}>
-        {/* Foto principal con volver / ID / menú encima */}
+        {/* Foto principal con volver e ID encima */}
         <View style={[styles.hero, { backgroundColor: c.arena }]}>
           <Image source={{ uri: mainPhoto }} style={StyleSheet.absoluteFill} />
           <View style={[styles.heroBar, { top: insets.top + 16 }]}>
@@ -173,18 +171,8 @@ export default function PetDetail() {
               accessibilityLabel="Volver"
               onPress={() => router.back()}
             />
-            <View style={styles.heroRight}>
-              <View style={styles.idPill}>
-                <Text style={styles.idText}>Mimo ID #{pet.id}</Text>
-              </View>
-              <IconButton
-                icon={Menu}
-                iconSize={22}
-                color={palette.crema}
-                backgroundColor={btnBg}
-                accessibilityLabel="Menú"
-                onPress={openSidebar}
-              />
+            <View style={styles.idPill}>
+              <Text style={styles.idText}>Mimo ID #{pet.id}</Text>
             </View>
           </View>
         </View>

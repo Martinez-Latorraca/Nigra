@@ -2,21 +2,18 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme, palette, fonts, onColor } from '../lib/theme';
-import { useSidebar } from '../lib/sidebar';
 import {
-  ChevronLeft, ChevronRight, Menu, MapPin, Clock, Phone, MessageCircle, Mail, Globe, AtSign,
+  ChevronLeft, ChevronRight, MapPin, Clock, Phone, MessageCircle, Mail, Globe, AtSign,
 } from '../lib/icons';
-import IconButton from './IconButton';
 
 // Piezas compartidas de las fichas de refugio y de veterinaria
-// (pantallas/Refugio-ficha y Vet-ficha): portada con volver/menú, tarjeta de
+// (pantallas/Refugio-ficha y Vet-ficha): portada con volver, tarjeta de
 // identidad, tarjetas de texto, horarios y contactos. `color` = color de la
 // sección (Teal refugios, Noche vets).
 
 export function CoverHeader({ coverUrl, color, backLabel }) {
   const c = useTheme();
   const insets = useSafeAreaInsets();
-  const { open } = useSidebar();
   const fg = onColor(color);
   return (
     <View style={[styles.cover, { backgroundColor: c.arena }]}>
@@ -30,7 +27,7 @@ export function CoverHeader({ coverUrl, color, backLabel }) {
           <ChevronLeft size={22} color={fg} strokeWidth={2} />
           <Text style={[styles.backPillText, { color: fg }]}>{backLabel}</Text>
         </Pressable>
-        <IconButton icon={Menu} iconSize={22} color={palette.arena} backgroundColor={color} accessibilityLabel="Menú" onPress={open} />
+        <View style={styles.spacer} />
       </View>
     </View>
   );
@@ -150,6 +147,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
   cover: { height: 220 },
+  spacer: { width: 44, height: 44 },
   coverBar: {
     position: 'absolute',
     left: 20,

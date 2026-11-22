@@ -8,6 +8,7 @@ export { default as Ban } from 'lucide-react-native/icons/ban';
 export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
 export { default as Camera } from 'lucide-react-native/icons/camera';
+export { default as CameraOff } from 'lucide-react-native/icons/camera-off';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as ClipboardList } from 'lucide-react-native/icons/clipboard-list';
 export { default as ClipboardIcon } from 'lucide-react-native/icons/clipboard';

@@ -352,6 +352,10 @@ export default function Find() {
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}
         onCapture={setMainImage}
+        onPickGallery={() => {
+          setCameraVisible(false);
+          openPicker('library');
+        }}
       />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}

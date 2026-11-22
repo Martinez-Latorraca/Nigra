@@ -5,7 +5,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import Svg, { Path, Ellipse } from 'react-native-svg';
 import { palette, fonts } from '../lib/theme';
-import { X, Zap, ZapOff, Flashlight, SwitchCamera, Minus, Plus } from '../lib/icons';
+import { X, Zap, ZapOff, Flashlight, SwitchCamera, Minus, Plus, CameraOff } from '../lib/icons';
 import Button from './Button';
 
 // Lado del overlay de la silueta en DP. Se usa para dibujar el SVG y para
@@ -15,7 +15,8 @@ const SILHOUETTE_DP = 400;
 const FLASH_CYCLE = { off: 'auto', auto: 'on', on: 'off' };
 const FLASH_LABEL = { off: 'Off', auto: 'Auto', on: 'On' };
 
-export default function CameraCapture({ visible, onClose, onCapture }) {
+// onPickGallery (opcional): alternativa "Elegir de la galería" en la pantalla de permiso.
+export default function CameraCapture({ visible, onClose, onCapture, onPickGallery }) {
   const insets = useSafeAreaInsets();
   const cameraRef = useRef(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -54,13 +55,31 @@ export default function CameraCapture({ visible, onClose, onCapture }) {
       <View style={styles.container}>
         {!permission?.granted ? (
           <View style={styles.permission}>
-            <Text style={styles.permissionText}>
-              Necesitamos acceso a la cámara para tomar la foto de la mascota.
-            </Text>
-            <Button title="Dar permiso" onPress={requestPermission} style={styles.permissionBtn} />
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={styles.cancelText}>Cancelar</Text>
+            {/* Estados.dc.html · Permiso de cámara */}
+            <Pressable
+              style={[styles.roundBtn, styles.permissionClose, { top: insets.top + 16 }]}
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityLabel="Cerrar"
+            >
+              <X size={22} color={palette.crema} strokeWidth={2} />
             </Pressable>
+            <View style={styles.permissionTile}>
+              <CameraOff size={38} color={palette.crema} strokeWidth={2} />
+            </View>
+            <Text style={styles.permissionTitle}>Necesitamos tu cámara</Text>
+            <Text style={styles.permissionText}>
+              Para sacarle una foto a la mascota y buscar coincidencias. Solo la usamos mientras estás en esta
+              pantalla.
+            </Text>
+            <View style={styles.permissionActions}>
+              <Button title="Dar permiso" onPress={requestPermission} style={styles.permissionBtn} textStyle={styles.permissionBtnText} />
+              {onPickGallery ? (
+                <Text onPress={onPickGallery} style={styles.permissionLink}>
+                  Elegir de la galería
+                </Text>
+              ) : null}
+            </View>
           </View>
         ) : (
           <>
@@ -233,8 +252,20 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   shutterInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: palette.coral },
-  permission: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20 },
-  permissionText: { fontFamily: fonts.regular, color: palette.crema, fontSize: 16, textAlign: 'center', lineHeight: 22 },
-  permissionBtn: { alignSelf: 'stretch' },
-  cancelText: { fontFamily: fonts.bold, color: palette.crema, fontSize: 14 },
+  permission: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
+  permissionClose: { position: 'absolute', left: 20 },
+  permissionTile: {
+    width: 80,
+    height: 80,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,246,240,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionTitle: { fontFamily: fonts.display, fontSize: 20, color: palette.crema, textAlign: 'center', marginTop: 4 },
+  permissionText: { fontFamily: fonts.regular, color: palette.crema, fontSize: 14, textAlign: 'center', lineHeight: 20, maxWidth: 300 },
+  permissionActions: { marginTop: 6, gap: 8, alignItems: 'center' },
+  permissionBtn: { height: 48, borderRadius: 16, paddingHorizontal: 18 },
+  permissionBtnText: { fontSize: 15 },
+  permissionLink: { fontFamily: fonts.medium, fontSize: 14, color: palette.crema, textDecorationLine: 'underline', padding: 4 },
 });

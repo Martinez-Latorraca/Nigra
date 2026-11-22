@@ -1,4 +1,5 @@
 import { useColorScheme } from 'react-native';
+import { useIsDark } from './appearance';
 
 // Paleta de marca Mimo (ver handoff de diseño). Reglas:
 // - Todo el texto de cuerpo va en Noche. No hay grises para texto, salvo
@@ -53,10 +54,10 @@ export const dark = {
   lavanda: '#B4B4C6', // texto secundario, placeholders, nav inactiva
 };
 
-// La preferencia (Automático / Claro / Oscuro) la aplica src/lib/appearance.js
-// con Appearance.setColorScheme, así que acá alcanza con useColorScheme().
+// La preferencia (Automático / Claro / Oscuro) vive en src/lib/appearance.js.
+// useColorScheme() sigue los cambios del sistema; useIsDark aplica la preferencia.
 export function useTheme() {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useIsDark(useColorScheme());
   return {
     isDark,
     ...palette,

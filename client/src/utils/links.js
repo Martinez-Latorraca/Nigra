@@ -12,11 +12,12 @@ export const INSTAGRAM_URL = 'https://www.instagram.com/somos.mimo.uy/';
 
 // Mapas: tiles de CARTO (Positron / Dark Matter). Desde el 25/9/2026 CARTO
 // pide una key; sin ella los tiles muestran "API KEY REQUIRED". La key es
-// gratuita (uso comercial hasta 1M de tiles/mes) y es pública por diseño:
+// gratuita (uso comercial hasta 1M de tiles/mes; CARTO avisa por mail al 80 %
+// y arriba del límite el plan comercial arranca en US$500/mes) y es pública por diseño:
 // viaja en cada pedido de tile, así que va en el código y no en un secreto.
 // Se puede pisar con VITE_CARTO_KEY.
 export const CARTO_KEY = import.meta.env.VITE_CARTO_KEY || 'cb1_5e1i_1_6721bb1683f152b9c1d9733e';
-export const CARTO_LIGHT_TILES = `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`;
+export const CARTO_LIGHT_TILES = `https://basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`;
 
 // Mail de contacto/soporte. Estaba escrito a mano en 9 lugares entre web y
 // mobile — el mismo patrón que hizo que el link de donación quedara viejo en

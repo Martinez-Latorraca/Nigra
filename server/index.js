@@ -28,6 +28,7 @@ import messageRoutes from './routes/messagesRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import notificationsRoutes from './routes/notificationsRoutes.js';
+import adsRoutes from './routes/adsRoutes.js';
 import { sendExpoPush, startReceiptScheduler } from './utils/push.js';
 import { globalLimiter, geocodeLimiter } from './middlewares/rateLimiter.js';
 import { authenticateToken } from './middlewares/auth.js';
@@ -125,6 +126,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/ads', adsRoutes);
 
 // 4. SITEMAP DINÁMICO
 app.get('/sitemap.xml', async (req, res) => {

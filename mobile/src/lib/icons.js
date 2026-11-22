@@ -2,6 +2,7 @@
 // 'lucide-react-native' directo: el import del paquete entero mete los ~2000
 // íconos en el bundle (Metro no los descarta). Para sumar un ícono, agregar
 // su línea con el nombre en kebab-case (ver lucide.dev/icons).
+export { default as ArrowRight } from 'lucide-react-native/icons/arrow-right';
 export { default as ArrowUpRight } from 'lucide-react-native/icons/arrow-up-right';
 export { default as AtSign } from 'lucide-react-native/icons/at-sign';
 export { default as Ban } from 'lucide-react-native/icons/ban';
@@ -65,6 +66,7 @@ export { default as Star } from 'lucide-react-native/icons/star';
 export { default as Syringe } from 'lucide-react-native/icons/syringe';
 export { default as SwitchCamera } from 'lucide-react-native/icons/switch-camera';
 export { default as Stethoscope } from 'lucide-react-native/icons/stethoscope';
+export { default as Tag } from 'lucide-react-native/icons/tag';
 export { default as Trash2 } from 'lucide-react-native/icons/trash-2';
 export { default as User } from 'lucide-react-native/icons/user';
 export { default as UserX } from 'lucide-react-native/icons/user-x';

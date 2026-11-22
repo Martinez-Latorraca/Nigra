@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import {
 import { translateType, translateColor } from '../src/lib/translations';
 import CameraCapture from '../src/components/CameraCapture';
 import ReportLoading from '../src/components/ReportLoading';
+import { loadLoadingSlides } from '../src/lib/loadingSlides';
 import PetMap from '../src/components/PetMap';
 import AddressSearch from '../src/components/AddressSearch';
 import SectionHeader from '../src/components/SectionHeader';
@@ -153,7 +154,11 @@ export default function Find() {
   const c = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState('form'); // 'form' | 'results' | 'report'
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); // false | 'search' | 'publish'
+  // Pedimos los slides de la pantalla de espera antes de que haga falta.
+  useEffect(() => {
+    loadLoadingSlides();
+  }, []);
   const [error, setError] = useState('');
 
   // Datos para buscar
@@ -244,7 +249,7 @@ export default function Find() {
     if (!position) return setError('Falta la ubicación.');
 
     setError('');
-    setBusy(true);
+    setBusy('search');
     // Buscamos en el pool opuesto: si la perdí, busco entre las encontradas.
     const searchStatus = isLost ? 'found' : 'lost';
     try {
@@ -279,7 +284,7 @@ export default function Find() {
     if (description.trim().length < 3) return setError('La descripción debe tener al menos 3 caracteres.');
 
     setError('');
-    setBusy(true);
+    setBusy('publish');
     try {
       const formData = new FormData();
       formData.append('image', { uri: mainImage.uri, name: 'photo.jpg', type: 'image/jpeg' });
@@ -312,7 +317,7 @@ export default function Find() {
     else setStep('form');
   };
 
-  if (busy) return <ReportLoading />;
+  if (busy) return <ReportLoading mode={busy} />;
 
   const header = {
     form: { title: 'Perdí / Encontré', sub: 'Subí una foto y la buscamos entre los reportes cercanos.' },

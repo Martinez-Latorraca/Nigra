@@ -61,11 +61,13 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Contenido a revisar (no es diseño)
 
-- **Anuncio de ejemplo en la pantalla de carga del reporte** · `src/components/ReportLoading.js` ·
-  mientras se busca la coincidencia se muestra "Contenido patrocinado: Protección inteligente…
-  usando el código **NIGRA20**" con un link genérico a mercadolibre.com.uy. Es un placeholder
-  con la marca vieja y lo ve cualquiera que reporte. Decidir: sacarlo, reemplazarlo por un
-  sponsor real, o mostrar algo propio (p. ej. consejos mientras busca).
+- **Carrusel de la pantalla de espera del reporte: oculto hasta que haya sponsors** ·
+  el anuncio viejo (NIGRA20) se sacó. Los slides salen de `GET /api/ads/loading`
+  (`server/lib/loadingSlides.js`), que hoy devuelve `[]` a propósito: sin slides el carrusel
+  no se muestra. En desarrollo la app usa un mock (`src/lib/loadingSlides.js`, se apaga con
+  `EXPO_PUBLIC_LOADING_SLIDES_MOCK=0`). Para activarlo cuando haya vets socias o anunciantes,
+  cargar los slides en `LOADING_SLIDES` del servidor (tipos vet / producto / donacion / consejo)
+  y deployar; no hace falta publicar la app.
 
 ## Detalles visuales que quedaron afuera
 

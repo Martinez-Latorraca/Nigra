@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Logo from '../../assets/menu-icon-paw.svg';
+import Logo from '../../assets/mimo-pin.svg';
 import { useTheme } from '../lib/theme';
 
 // Re-exported so existing auth screens can keep importing from here.
@@ -24,7 +24,7 @@ export default function AuthScreen({ title, subtitle, footer, children }) {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.logoWrap}>
-            <Logo width={76} height={76} />
+            <Logo width={62} height={76} />
           </View>
 
           <View style={[styles.card, { backgroundColor: c.card, borderColor: c.cardBorder }]}>

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, Easing, Dimensions } from 'react-native';
 import { useFonts, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
-import MimoLogo from '../../assets/mimo-logo-paw-text.svg';
+import MimoLogo from '../../assets/mimo-logo.svg';
 import Patron from '../../assets/patron-grafico.svg';
 
 // Splash overlay full-screen. Se monta encima del navigator mientras la app
@@ -73,7 +73,7 @@ export default function Splash({ onFinish }) {
                         alignItems: 'center',
                     }}
                 >
-                    <MimoLogo width={140} height={154} />
+                    <MimoLogo width={92} height={155} />
                 </Animated.View>
                 <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
                     Cada mascota merece un mimo

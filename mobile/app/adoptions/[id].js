@@ -10,7 +10,7 @@ import { SkeletonDetail } from '../../src/components/Skeleton';
 import { API_URL } from '../../src/lib/config';
 import {
   ChevronLeft, ChevronRight, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
-  PawPrint, Check,
+  PawPrint, Check, Heart,
 } from '../../src/lib/icons';
 import StatusChip from '../../src/components/StatusChip';
 import Button from '../../src/components/Button';
@@ -157,6 +157,27 @@ export default function AdoptionDetail() {
             </View>
           ) : null}
 
+          {/* Final feliz (Adopcion-adoptado.dc.html) */}
+          {adopted ? (
+            <View style={[styles.card, styles.happyCard]}>
+              <View style={styles.happyLabelRow}>
+                <Heart size={15} color={palette.arena} strokeWidth={2} />
+                <Text style={[styles.label, { color: palette.arena }]}>Final feliz</Text>
+              </View>
+              <Text style={styles.happyTitle}>{name} ya encontró familia.</Text>
+              <Text style={styles.happyText}>
+                Compartilo para que más gente conozca al refugio. Hay otras mascotas esperando.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/adoptions')}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.happyBtn, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={styles.happyBtnText}>Ver otras en adopción</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           {/* Refugio */}
           <View style={[styles.card, styles.shelterCard, { backgroundColor: c.card }]}>
             <Text style={[styles.label, { color: c.text }]}>Refugio</Text>
@@ -233,6 +254,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   backPillText: { fontFamily: fonts.bold, fontSize: 14, color: palette.arena },
+  happyCard: { backgroundColor: palette.violeta, gap: 10 },
+  happyLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  happyTitle: { fontFamily: fonts.display, fontSize: 20, lineHeight: 25, color: palette.arena },
+  happyText: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: palette.arena },
+  happyBtn: { height: 48, borderRadius: 14, backgroundColor: palette.crema, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  happyBtnText: { fontFamily: fonts.bold, fontSize: 15, color: palette.noche },
   adoptedOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(26,26,46,0.5)',

@@ -26,9 +26,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 ## Ya listadas en el handoff ("Funcionalidad nueva")
 
 - **Chat:** botón para enviar fotos (hoy solo texto).
-- **Mensajes:** buscador de conversaciones.
-- **Refugio pendiente:** botón "Enviar comprobantes" (mailto).
-- **Adopción adoptada:** tarjeta "Final feliz" con botón a otras mascotas en adopción.
 
 ## Bugs encontrados al rediseñar (no son visuales, no se tocaron)
 
@@ -71,9 +68,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Mensajes (`Mensajes.dc.html`)
 
-- **"Sobre [Nombre] · Perdido" y punto de color sobre la foto** · el diseño muestra en cada
-  conversación el nombre y el estado de la mascota. `GET /api/messages/inbox` no devuelve
-  `pets.name` ni `pets.status`/`resolved_at`: hay que sumarlos al SELECT.
 
 ## Web
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, Image, Pressable, ScrollView, StyleSheet,
-  ActivityIndicator, Alert, Switch, Modal, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, Switch, Modal, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -25,7 +25,7 @@ import StatusChip from './StatusChip';
 import Button from './Button';
 import AppearanceRow from './AppearanceRow';
 import TabBar, { useTabBarSpace } from './TabBar';
-import { CONTACT_EMAIL } from '../lib/config';
+import { CONTACT_EMAIL, mailtoContact } from '../lib/config';
 
 const MAX_PHOTOS = 6;
 const COLOR = sectionColors.perfilRefugio;
@@ -655,6 +655,20 @@ export default function ShelterPanel() {
                   <Text style={[styles.stepText, { color: c.text }]}>{t}</Text>
                 </View>
               ))}
+              {/* Refugio-pendiente.dc.html: abre un mail a soporte con el asunto
+                  armado; los adjuntos los suma la persona en su app de mail. */}
+              <Button
+                variant="dark"
+                icon={Mail}
+                title="Enviar comprobantes"
+                onPress={() =>
+                  Linking.openURL(mailtoContact(`Verificación de refugio: ${shelter.name || ''}`.trim())).catch(() =>
+                    toast(`No pudimos abrir tu app de mail. Escribinos a ${CONTACT_EMAIL}.`, 'error')
+                  )
+                }
+                style={styles.verifyBtn}
+                textStyle={styles.btnText15}
+              />
             </View>
           ) : (
             <View style={styles.statsGrid}>
@@ -831,6 +845,7 @@ const styles = StyleSheet.create({
   pendingBadgeText: { fontFamily: fonts.bold, fontSize: 12, color: palette.arena },
 
   verifyCard: { borderWidth: 2, borderColor: palette.sol },
+  verifyBtn: { height: 48, borderRadius: 14, marginTop: 4 },
   verifyTitle: { fontFamily: fonts.display, fontSize: 19, lineHeight: 24 },
   step: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   stepNum: {

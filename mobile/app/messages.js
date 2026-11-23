@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, Pressable, Image, FlatList, StyleSheet, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, Image, FlatList, StyleSheet, Modal, ActivityIndicator, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useSelector } from 'react-redux';
 import { useTheme, palette, fonts } from '../src/lib/theme';
 import { useSocket } from '../src/lib/socket';
-import { ChevronRight, Sparkle, PartyPopper, MessageCircle } from '../src/lib/icons';
+import { ChevronRight, Sparkle, PartyPopper, MessageCircle, Search, SearchX, X } from '../src/lib/icons';
 import EmptyState from '../src/components/EmptyState';
 import api from '../src/lib/api';
 import DonationBanner from '../src/components/DonationBanner';
@@ -81,7 +81,18 @@ export default function Messages() {
       ? !i.is_read && Number(i.receiver_id) === Number(me?.id)
       : i.kind === 'match' && !i.read_at
   ).length;
-  const firstChatKey = items.find((i) => i.kind === 'chat')?.key;
+  // Buscador (Mensajes.dc.html): filtra las conversaciones por persona o
+  // mascota, en la app. Mientras se busca se ocultan las coincidencias y el
+  // "¿te reencontraste?", que no son conversaciones.
+  const [query, setQuery] = useState('');
+  const norm = (t) => (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const hasChats = items.some((i) => i.kind === 'chat');
+  const visibleItems = query.trim()
+    ? items.filter(
+        (i) => i.kind === 'chat' && `${norm(i.other_user_name)} ${norm(i.pet_name)}`.includes(norm(query.trim()))
+      )
+    : items;
+  const firstChatKey = visibleItems.find((i) => i.kind === 'chat')?.key;
 
   // Respuesta al follow-up. reunited → celebración + donación; el resto
   // solo cierra la pregunta. El server marca la notif leída → desaparece.
@@ -119,6 +130,20 @@ export default function Messages() {
     if (petId) router.push(`/pet/${petId}`);
   };
 
+  // "Sobre Luna · Perdido" + punto de color (Mensajes.dc.html). El inbox trae
+  // pet_name / pet_status / pet_resolved_at; si el server todavía no los
+  // manda, la fila queda como antes.
+  const petState = (item) => {
+    if (!item.pet_status) return null;
+    if (item.pet_resolved_at) {
+      return { about: `Sobre ${item.pet_name || 'la mascota'} · Reencontrada`, dot: (t) => t.nocheSmall };
+    }
+    if (item.pet_status === 'lost') {
+      return { about: `Sobre ${item.pet_name || 'la mascota'} · Perdido`, dot: () => palette.coral };
+    }
+    return { about: `Sobre ${item.pet_name || 'una encontrada'} · Encontrado`, dot: () => palette.teal };
+  };
+
   const renderItem = ({ item }) => {
     if (item.kind === 'chat') {
       const unread = !item.is_read && Number(item.receiver_id) === Number(me?.id);
@@ -132,7 +157,12 @@ export default function Messages() {
             onPress={() => openChat(item)}
             style={({ pressed }) => [styles.row, { backgroundColor: c.card, opacity: pressed ? 0.85 : 1 }]}
           >
-            <Image source={{ uri: item.photo_url }} style={[styles.thumb, { backgroundColor: c.photo }]} />
+            <View>
+              <Image source={{ uri: item.photo_url }} style={[styles.thumb, { backgroundColor: c.photo }]} />
+              {petState(item) ? (
+                <View style={[styles.stateDot, { backgroundColor: petState(item).dot(c), borderColor: c.card }]} />
+              ) : null}
+            </View>
             <View style={styles.flex}>
               <View style={styles.rowTop}>
                 <Text style={[styles.name, { color: c.title }]} numberOfLines={1}>
@@ -142,6 +172,11 @@ export default function Messages() {
                   {shortTime(item.created_at)}
                 </Text>
               </View>
+              {petState(item) ? (
+                <Text style={[styles.about, { color: c.text }]} numberOfLines={1}>
+                  {petState(item).about}
+                </Text>
+              ) : null}
               <View style={styles.previewRow}>
                 <Text
                   style={[styles.preview, { color: c.text, fontFamily: unread ? fonts.bold : fonts.regular }]}
@@ -234,18 +269,49 @@ export default function Messages() {
         ) : null}
       </View>
 
+      {hasChats ? (
+        <View style={[styles.search, { backgroundColor: c.inputBg, borderColor: c.cardBorder }]}>
+          <Search size={18} color={c.text} strokeWidth={2} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar por persona o mascota"
+            placeholderTextColor={c.placeholder}
+            accessibilityLabel="Buscar conversación"
+            returnKeyType="search"
+            style={[styles.searchInput, { color: c.inputText }]}
+          />
+          {query ? (
+            <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityLabel="Borrar búsqueda">
+              <X size={18} color={c.text} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <FlatList
-        data={items}
+        data={visibleItems}
         keyExtractor={(item) => item.key}
         renderItem={renderItem}
-        contentContainerStyle={[{ paddingBottom: bottomSpace }, items.length === 0 && styles.emptyWrap]}
+        contentContainerStyle={[{ paddingBottom: bottomSpace }, visibleItems.length === 0 && styles.emptyWrap]}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
+          query.trim() ? (
+            <EmptyState
+              icon={SearchX}
+              color={palette.coral}
+              title="No encontramos conversaciones"
+              text="Probá con otro nombre de persona o de mascota."
+              action={{ title: 'Limpiar búsqueda', variant: 'outline', onPress: () => setQuery('') }}
+            />
+          ) : (
           <EmptyState
             icon={MessageCircle}
             color={palette.coral}
             title="Todavía no hay conversaciones"
             text="Cuando contactes (o te contacten) por una mascota, aparece acá."
           />
+          )
         }
       />
 
@@ -285,11 +351,18 @@ export default function Messages() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1, minWidth: 0, gap: 3 },
+  search: {
+    marginHorizontal: 20, marginBottom: 12, height: 52, paddingHorizontal: 16, borderWidth: 1, borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+  },
+  searchInput: { flex: 1, height: 44, fontFamily: fonts.regular, fontSize: 15, paddingVertical: 0 },
   header: {
     height: 48, marginTop: 16, marginBottom: 20, paddingHorizontal: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   title: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40 },
+  about: { fontFamily: fonts.bold, fontSize: 12 },
+  stateDot: { position: 'absolute', right: -4, bottom: -4, width: 14, height: 14, borderRadius: 7, borderWidth: 3 },
   unreadPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: palette.coral },
   unreadPillText: { fontFamily: fonts.bold, fontSize: 13, color: palette.arena },
 

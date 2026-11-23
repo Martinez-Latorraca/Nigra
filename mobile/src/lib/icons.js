@@ -25,6 +25,7 @@ export { default as Ellipsis } from 'lucide-react-native/icons/ellipsis';
 export { default as Eye } from 'lucide-react-native/icons/eye';
 export { default as EyeOff } from 'lucide-react-native/icons/eye-off';
 export { default as Globe } from 'lucide-react-native/icons/globe';
+export { default as Heart } from 'lucide-react-native/icons/heart';
 export { default as HeartHandshake } from 'lucide-react-native/icons/heart-handshake';
 export { default as Info } from 'lucide-react-native/icons/info';
 export { default as House } from 'lucide-react-native/icons/house';

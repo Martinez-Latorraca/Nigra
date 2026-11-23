@@ -1,17 +1,18 @@
 // Piezas visuales compartidas de la web (mismo sistema que la app):
 // banda de color de cada sección, pastillas de filtro, chips y estado vacío.
-import { Star } from 'lucide-react';
+import { Star, ChevronDown } from 'lucide-react';
 import { C } from '../utils/theme';
 import { tierOf } from '../utils/sponsorTiers';
 
 // Banda de color arriba de los listados (radio inferior 48, título Nunito 52).
-export function SectionBand({ color, title, subtitle, action }) {
+export function SectionBand({ color, eyebrow, title, subtitle, action }) {
     return (
         <section
             className="rounded-b-[32px] md:rounded-b-[48px] px-4 md:px-12 xl:px-[120px] pt-8 md:pt-10 pb-9 md:pb-12 flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-10"
             style={{ background: color, color: C.arena }}
         >
             <div className="flex flex-col gap-2.5 max-w-[760px]">
+                {eyebrow && <p className="m-0 text-[13px] font-bold tracking-[.1em] uppercase">{eyebrow}</p>}
                 <h1 className="m-0 font-display font-black text-[40px] md:text-[52px] leading-[1.05]">{title}</h1>
                 {subtitle && <p className="m-0 text-base md:text-lg leading-normal">{subtitle}</p>}
             </div>
@@ -122,5 +123,29 @@ export function SkeletonGrid({ cols = 4, count = 8 }) {
                 </div>
             ))}
         </CardGrid>
+    );
+}
+
+// Filtro desplegable en pastilla: etiqueta chica arriba y el valor abajo.
+// Es un <select> nativo transparente encima, así que el teclado y el lector
+// de pantalla funcionan como siempre.
+export function SelectPill({ label, value, onChange, options }) {
+    const current = options.find(([v]) => v === value)?.[1] ?? options[0]?.[1];
+    return (
+        <label className="relative flex items-center gap-3 h-[52px] pl-4 pr-3 rounded-2xl bg-white border border-mimo-muted focus-within:border-mimo-noche shrink-0">
+            <span className="flex flex-col leading-tight">
+                <span className="text-[11px] font-bold tracking-[.06em] uppercase">{label}</span>
+                <span className="text-[15px] font-bold whitespace-nowrap max-w-[180px] truncate">{current}</span>
+            </span>
+            <ChevronDown size={18} strokeWidth={2} className="shrink-0" />
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                aria-label={label}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            >
+                {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+        </label>
     );
 }

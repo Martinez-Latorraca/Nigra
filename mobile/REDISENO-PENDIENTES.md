@@ -71,8 +71,20 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Web
 
-- **Registro de vet en la web con otra lista de servicios** · `client/src/pages/VetRegister.jsx`
-  usa `SERVICE_SUGGESTIONS` ("Consulta general", "Emergencias 24h"…) mientras `Profile.jsx`
-  y `Vets.jsx` usan el catálogo único (Consultas, Urgencias 24h…). Lo que carga una vet al
-  registrarse desde la web no coincide con los filtros del directorio. En mobile ya se
-  unificó (`src/lib/services.js`); falta hacer lo mismo en la web.
+Rediseño de la web hecho el 2026-11-23 (barra, footer, fichas, listados, Inicio, Perdí /
+Encontré, cuentas, perfiles, chat, registro de vet). Falta el panel de admin y `/privacy`
+(punto 13 del handoff).
+
+- ~~Registro de vet en la web con otra lista de servicios~~ · resuelto: `VetRegister.jsx` usa
+  el mismo catálogo que el perfil y el directorio.
+- **Oculto en la web (igual que en la app):** "Cerca tuyo", Mimo Protect y Héroes Mimo en el
+  Inicio; "Ver en el mapa" en Explorar (la web no tiene mapa); "Marcar como reunida" en la
+  ficha propia (se cierra desde el chat); Apple en el login (falta la cuenta paga).
+- **Refugios sin contadores** (`Web-refugios`: "6 en adopción · 18 adoptadas") · `GET /api/shelters`
+  no los trae. Haría falta sumarlos en el servidor.
+- **Bandeja de entrada del refugio** (`Web-perfil-refugio`) · los refugios no tienen chat en la web.
+- **Filtros de color y fecha en Explorar** · el diseño no los tiene y se sacaron. El buscador
+  "barrio o nombre" filtra solo los reportes ya cargados (no hay búsqueda en el servidor).
+- **Probar con cuentas reales** (con la sesión de prueba no se pudo): pasos 2 y 3 de
+  Perdí / Encontré, panel del refugio (publicar, editar, marcar adoptado), perfil de vet con
+  métricas, enviar y ver fotos en el chat web, y el botón de Google en mimo.uy.

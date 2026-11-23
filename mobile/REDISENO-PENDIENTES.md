@@ -41,6 +41,10 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 - **Foto recortada de la cámara** (`8d796d8`) · en el emulador la captura con webcam sale negra,
   así que no se vio el recorte. Confirmar que la foto queda recortada al cuadrado de la silueta
   (perro y gato).
+- **Controles de la cámara** · probar todo lo que aparece al sacar la foto: flash (Off / Auto /
+  On), luz (linterna), girar cámara (trasera / frontal), zoom (− / +, que el % cambie y la imagen
+  se acerque), selector Perro / Gato, disparador y cerrar (X). También la pantalla de permiso
+  ("Dar permiso" y "Elegir de la galería") la primera vez que se abre.
 - **Anuncios de vets en Explorar** (`36b4fe9`) · en Veterinarias ya salen "Nuestros socios"; en
   Explorar no se llegó a ver un anuncio en la lista.
 

@@ -1,71 +1,100 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { MapPin, Search, ArrowUpRight, ArrowRight, PawPrint, Dog, Cat } from 'lucide-react';
 import { translateColor, translateType } from '../utils/translations';
 import { tierOf } from '../utils/sponsorTiers';
-import SponsorBadge from '../components/SponsorBadge';
 import { trackAdClick } from '../utils/vetTracking';
 import { useTrackImpression } from '../utils/useTrackImpressions';
-import { CARTO_LIGHT_TILES } from '../utils/links';
+import { C, STATUS, SECTION } from '../utils/theme';
+import {
+    SectionBand, PageBody, FilterChip, ChipDivider, StatusChip, TierChip, Count,
+    EmptyState, OutlineButton, CardGrid, SkeletonGrid,
+} from '../components/ui';
 
 const API = import.meta.env.VITE_API_URL || '';
 const AD_INTERVAL = 6; // 1 card de publicidad cada 6 pets
 
-// Card de publicidad de un vet sponsor. Look similar al PetCard pero con
-// badge "Publicidad" y ring del color del tier del sponsor.
+const STATUS_FILTERS = [['all', 'Todos'], ['lost', 'Perdidos'], ['found', 'Encontrados']];
+const TYPE_FILTERS = [['dog', 'Perros'], ['cat', 'Gatos']];
+
+const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+function PetCard({ pet }) {
+    const isLost = pet.status === 'lost';
+    const status = STATUS[isLost ? 'lost' : 'found'];
+    const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
+    const title = isLost ? pet.name || 'Sin nombre' : 'Encontrado';
+    const SpeciesIcon = pet.type === 'cat' ? Cat : Dog;
+    return (
+        <Link to={`/pet/${pet.id}`} className="group bg-white rounded-3xl p-3 flex flex-col gap-3 hover:shadow-card transition-shadow">
+            <div className="relative h-[200px] rounded-[18px] bg-mimo-muted overflow-hidden flex items-center justify-center">
+                {pet.photo_url ? (
+                    <img
+                        src={pet.photo_url}
+                        alt={`${title}${meta ? ` - ${meta}` : ''}`}
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                ) : (
+                    <SpeciesIcon size={56} strokeWidth={1.5} color={C.noche} opacity={0.35} />
+                )}
+                <span className="absolute top-2.5 left-2.5"><StatusChip color={status.color} small>{status.label}</StatusChip></span>
+            </div>
+            <div className="px-1.5 pb-1.5 flex flex-col gap-1 min-w-0">
+                {meta && <span className="text-[11px] font-bold tracking-[.06em] uppercase">{meta}</span>}
+                <b className="font-display font-black text-xl truncate">{title}</b>
+                {pet.address && (
+                    <span className="flex items-center gap-1 text-sm min-w-0">
+                        <MapPin size={14} strokeWidth={2} className="shrink-0" />
+                        <span className="truncate">{pet.address}</span>
+                    </span>
+                )}
+                <span className="mt-2 pt-2.5 border-t border-mimo-muted flex justify-between text-[13px] font-bold">
+                    <span>Mimo ID #{pet.id}</span>
+                    <span className="flex items-center gap-0.5 group-hover:text-mimo-coral">
+                        Contactar
+                        <ArrowUpRight size={14} strokeWidth={2} />
+                    </span>
+                </span>
+            </div>
+        </Link>
+    );
+}
+
+// Card de publicidad de un vet sponsor: borde del color del plan + etiqueta
+// "Publicidad", para no confundirla con contenido orgánico.
 function VetAdCard({ vet }) {
-    const tier = tierOf(vet);
-    const color = tier?.color || '#FF5C6C'; // fallback si por algún motivo no matchea
+    const color = tierOf(vet)?.color || C.coral;
     const impressionRef = useTrackImpression(vet.id);
     return (
         <Link
             to={`/vets/${vet.slug}`}
             onClick={() => trackAdClick(vet.id)}
             ref={impressionRef}
-            style={{ borderColor: color, boxShadow: `0 15px 40px ${color}2E` }}
-            className="group bg-mimo-warm rounded-[40px] p-5 flex flex-col gap-5 border-2 transition-all duration-500"
+            className="group bg-white rounded-3xl p-3 flex flex-col gap-3 border-2"
+            style={{ borderColor: color }}
         >
-            <div className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted">
+            <div className="relative h-[200px] rounded-[18px] bg-mimo-muted overflow-hidden flex items-center justify-center">
                 {vet.cover_url ? (
-                    <img
-                        src={vet.cover_url}
-                        alt={vet.name}
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                    />
+                    <img src={vet.cover_url} alt={vet.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
+                ) : vet.logo_url ? (
+                    <img src={vet.logo_url} alt={vet.name} className="w-20 h-20 rounded-[20px] object-cover" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        {vet.logo_url ? (
-                            <img src={vet.logo_url} alt={vet.name} className="w-24 h-24 rounded-3xl object-cover shadow-md" />
-                        ) : (
-                            <div className="w-24 h-24 rounded-3xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-4xl shadow-md">
-                                {vet.name.charAt(0)}
-                            </div>
-                        )}
-                    </div>
-                )}
-                <div className="absolute top-4 left-4">
-                    <span className="text-[8px] font-display font-extrabold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg bg-mimo-noche/70 text-white">
-                        Publicidad
+                    <span className="w-20 h-20 rounded-[20px] bg-mimo-coral flex items-center justify-center text-mimo-muted font-display font-black text-4xl">
+                        {vet.name.charAt(0)}
                     </span>
-                </div>
-                <div className="absolute bottom-4 left-4">
-                    <SponsorBadge vet={vet} width={110} />
-                </div>
+                )}
+                <span className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-mimo-noche/70 text-mimo-warm text-[11px] font-bold">
+                    Publicidad
+                </span>
             </div>
-            <div className="px-2">
-                <div className="flex justify-end items-center mb-2">
-                    {vet.city ? (
-                        <span className="text-[9px] font-bold text-mimo-quiet uppercase tracking-widest">{vet.city}</span>
-                    ) : null}
-                </div>
-                <h2 className="font-display font-black text-2xl text-mimo-noche leading-tight line-clamp-2 min-h-[3rem]">{vet.name}.</h2>
-                {vet.bio ? (
-                    <p className="mt-2 text-sm text-mimo-ink line-clamp-2 leading-relaxed">{vet.bio}</p>
-                ) : null}
-                <div className="mt-4 inline-flex items-center gap-1 text-[10px] font-display font-extrabold text-mimo-coral uppercase tracking-widest">
-                    Ver perfil →
-                </div>
+            <div className="px-1.5 pb-1.5 flex flex-col gap-1.5 min-w-0">
+                <TierChip vet={vet} />
+                <b className="font-display font-black text-xl leading-tight line-clamp-2">{vet.name}</b>
+                {vet.bio && <span className="text-sm line-clamp-2">{vet.bio}</span>}
+                <span className="flex items-center gap-1 text-[13px] font-bold group-hover:text-mimo-coral">
+                    Ver perfil <ArrowRight size={14} strokeWidth={2} />
+                </span>
             </div>
         </Link>
     );
@@ -76,31 +105,19 @@ function PetList() {
     const [ads, setAds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
 
-    // --- ESTADOS DE FILTRO ---
     const [filterType, setFilterType] = useState('all');
-    const [filterColor, setFilterColor] = useState('all');
-    const [filterDate, setFilterDate] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
-
-    // Colores disponibles desde el backend
-    const [availableColors, setAvailableColors] = useState([]);
-
-    useEffect(() => {
-        fetch(`${import.meta.env.VITE_API_URL}/api/pets/colors`)
-            .then(res => res.json())
-            .then(setAvailableColors)
-            .catch(() => {});
-    }, []);
+    const [query, setQuery] = useState('');
 
     // Ads del feed. Si el navegador ya tiene el permiso de ubicación otorgado
     // (Permissions API), usamos coords → orden por cercanía. Si no, sin
     // coords → orden por tier de sponsor. No pedimos permiso proactivamente
-    // acá (sería intrusivo): la geoloc queda al toggle explícito de otras
-    // pantallas (ej: /vets "Cerca mío") o cuando el user lo activa por su cuenta.
+    // acá (sería intrusivo).
     useEffect(() => {
         let cancelled = false;
         const fetchAds = (params) => {
@@ -133,219 +150,117 @@ function PetList() {
     const fetchPets = useCallback(async (pageNum, append = false) => {
         if (pageNum === 1) setLoading(true);
         else setLoadingMore(true);
-
+        setError('');
         try {
             const params = new URLSearchParams({ page: pageNum, limit: 12 });
             if (filterType !== 'all') params.set('type', filterType);
-            if (filterColor !== 'all') params.set('color', filterColor);
             if (filterStatus !== 'all') params.set('status', filterStatus);
-            if (filterDate !== 'all') params.set('date', filterDate);
-
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets?${params}`);
+            const response = await fetch(`${API}/api/pets?${params}`);
+            if (!response.ok) throw new Error();
             const data = await response.json();
-
             setPets(prev => append ? [...prev, ...data.pets] : data.pets);
             setPage(data.page);
             setTotalPages(data.totalPages);
             setTotal(data.total);
-        } catch (error) {
-            console.error("Error:", error);
+        } catch {
+            setError('No pudimos cargar los reportes. Probá de nuevo en un rato.');
         } finally {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [filterType, filterColor, filterStatus, filterDate]);
+    }, [filterType, filterStatus]);
 
-    // Cuando cambian los filtros, reseteamos a página 1
+    // Cuando cambian los filtros, volvemos a la página 1.
     useEffect(() => {
         fetchPets(1);
     }, [fetchPets]);
 
-    const handleLoadMore = () => {
-        fetchPets(page + 1, true);
-    };
+    // El buscador filtra lo que ya está cargado (barrio o nombre).
+    const visible = useMemo(() => {
+        const q = normalize(query.trim());
+        if (!q) return pets;
+        return pets.filter((p) => normalize(p.address).includes(q) || normalize(p.name).includes(q));
+    }, [pets, query]);
 
-    const handleResetFilters = () => {
+    const resetFilters = () => {
         setFilterType('all');
-        setFilterColor('all');
-        setFilterDate('all');
         setFilterStatus('all');
+        setQuery('');
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans">
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] animate-pulse">Sincronizando...</div>
-        </div>
-    );
+    const items = visible.reduce((acc, pet, i) => {
+        acc.push(<PetCard key={pet.id} pet={pet} />);
+        // Intercalar 1 card de publicidad cada AD_INTERVAL pets.
+        if (!query && (i + 1) % AD_INTERVAL === 0) {
+            const ad = ads[Math.floor((i + 1) / AD_INTERVAL) - 1];
+            if (ad) acc.push(<VetAdCard key={`ad-${ad.id}`} vet={ad} />);
+        }
+        return acc;
+    }, []);
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] p-6 md:p-12 font-sans text-gray-900 pb-24">
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            <SectionBand color={SECTION.explorar} title="Explorar" subtitle="Reportes de mascotas perdidas y encontradas en tu zona." />
 
-            {/* --- HEADER --- */}
-            <div className="max-w-7xl mx-auto mb-12">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-2 block">Explorar Base de Datos</span>
-                <h1 className="text-6xl md:text-7xl font-semibold tracking-tighter text-black mb-10">Comunidad.</h1>
-
-                {/* --- BARRA DE FILTROS --- */}
-                <div className="flex flex-wrap  items-center bg-white/50 p-4 rounded-[32px] border border-gray-100 backdrop-blur-xl">
-
-                    {/* Filtro Tipo */}
-                    <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
-                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Especie</label>
-                        <select
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer "
-                        >
-                            <option value="all">Todas</option>
-                            <option value="dog">Perros</option>
-                            <option value="cat">Gatos</option>
-                        </select>
+            <PageBody>
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    <div className="flex items-center gap-2.5 overflow-x-auto pb-1 lg:pb-0">
+                        {STATUS_FILTERS.map(([value, label]) => (
+                            <FilterChip key={value} active={filterStatus === value} onClick={() => setFilterStatus(value)}>{label}</FilterChip>
+                        ))}
+                        <ChipDivider />
+                        {TYPE_FILTERS.map(([value, label]) => (
+                            <FilterChip key={value} active={filterType === value} onClick={() => setFilterType(filterType === value ? 'all' : value)}>
+                                {label}
+                            </FilterChip>
+                        ))}
                     </div>
-
-                    {/* Filtro Estado */}
-                    <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
-                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Estado</label>
-                        <select
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer capitalize"
-                        >
-                            <option value="all">Todos</option>
-                            <option value="lost">Perdido</option>
-                            <option value="found">Encontrado</option>
-                        </select>
-                    </div>
-
-                    {/* Filtro Color */}
-                    <div className="flex flex-col gap-1.5 px-4 border-r border-gray-200">
-                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Color predominante</label>
-                        <select
-                            value={filterColor}
-                            onChange={(e) => setFilterColor(e.target.value)}
-                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer capitalize"
-                        >
-                            <option value="all">Cualquier color</option>
-                            {availableColors.map(c => (
-                                <option key={c} value={c}>{translateColor(c)}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Filtro Fecha */}
-                    <div className="flex flex-col gap-1.5 px-4">
-                        <label className="px-1 text-[9px] font-bold text-gray-400 uppercase tracking-widest">Antigüedad</label>
-                        <select
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
-                            className="bg-transparent text-sm font-semibold outline-none cursor-pointer"
-                        >
-                            <option value="all">Cualquier fecha</option>
-                            <option value="today">Últimas 24hs</option>
-                            <option value="week">Última semana</option>
-                            <option value="month">Último mes</option>
-                        </select>
-                    </div>
-
-                    <div className="ml-auto pr-4">
-                        <span className="text-[10px] font-bold text-pet-link bg-pet-link/10 px-3 py-1 rounded-full uppercase">
-                            {total} resultados
-                        </span>
-                    </div>
+                    <label className="lg:ml-auto flex items-center gap-2.5 w-full lg:w-[340px] h-[52px] px-4 rounded-2xl bg-white border border-mimo-muted focus-within:border-mimo-noche">
+                        <Search size={18} strokeWidth={2} className="shrink-0" />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Buscar por barrio o nombre"
+                            aria-label="Buscar por barrio o nombre"
+                            className="flex-1 min-w-0 bg-transparent outline-none text-[15px] placeholder:text-mimo-noche/60"
+                        />
+                    </label>
                 </div>
-            </div>
 
-            {/* --- GRILLA --- */}
-            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {pets.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 bg-white/30 rounded-[48px] border-2 border-dashed border-gray-200">
-                        {/* Icono sutil de búsqueda vacía */}
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-                            </svg>
-                        </div>
-
-                        <h3 className="text-2xl font-semibold text-gray-900 tracking-tight mb-2">
-                            No encontramos coincidencias
-                        </h3>
-                        <p className="text-sm text-gray-400 font-medium mb-8 text-center max-w-xs">
-                            Probá cambiando los filtros de especie, color o fecha para ver más resultados.
-                        </p>
-
-                        {/* Botón para resetear filtros */}
-                        <button
-                            onClick={handleResetFilters}
-                            className="px-8 py-3 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10"
-                        >
-                            Limpiar todos los filtros
-                        </button>
-                    </div>
-                ) : (
-                    pets.reduce((acc, pet, i) => {
-                        acc.push(
-                        <Link
-                            to={`/pet/${pet.id}`}
-                            key={pet.id}
-                            className="group bg-white rounded-[40px] p-5 flex flex-col gap-5 border border-gray-100 hover:shadow-[0_30px_60px_rgba(0,0,0,0.06)] transition-all duration-500"
-                        >
-                            <div className="relative w-full aspect-[4/3] rounded-[28px] overflow-hidden bg-gray-100">
-                                <img src={pet.photo_url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt={`${translateType(pet.type) || 'Mascota'} ${translateColor(pet.color) ? 'de color ' + translateColor(pet.color) : ''} - ${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`} />
-                                <div className="absolute top-4 left-4">
-                                    <span className={`text-[8px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg ${pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                                        {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="px-2">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[9px] font-bold text-pet-primary uppercase tracking-[0.2em]">{translateType(pet.type)} • {translateColor(pet.color)}</span>
-                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">#{pet.id}</span>
-                                </div>
-                                <h1 className="text-2xl font-semibold text-gray-900 leading-tight line-clamp-2 min-h-[3rem]">{pet.name == null ? 'Encontrado' : pet.name}.</h1>
-                                <h3 className="text-xl font-semibold text-gray-900 leading-tight line-clamp-2 min-h-[3rem]">{pet.description}</h3>
-                            </div>
-
-                            {pet.lat && (
-                                <div className="h-28 rounded-[24px] overflow-hidden border border-gray-50 grayscale group-hover:grayscale-0 transition-all">
-                                    <MapContainer center={[pet.lat, pet.lng]} zoom={17} zoomControl={false} scrollWheelZoom={false} dragging={false} className="w-full h-full z-0">
-                                        <TileLayer url={CARTO_LIGHT_TILES} />
-                                        <Marker position={[pet.lat, pet.lng]} />
-                                    </MapContainer>
-                                </div>
-                            )}
-
-                            <div className="px-2 pt-2 flex justify-between items-center border-t border-gray-50">
-                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Subido el {new Date(pet.created_at).toLocaleDateString()}</span>
-                                <div className="text-gray-200 group-hover:text-black transition-colors"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M5 12h14m-7-7 7 7-7 7" /></svg></div>
-                            </div>
-                        </Link>
-                        );
-                        // Intercalar 1 card de publicidad cada AD_INTERVAL pets.
-                        if ((i + 1) % AD_INTERVAL === 0) {
-                            const adIdx = Math.floor((i + 1) / AD_INTERVAL) - 1;
-                            const ad = ads[adIdx];
-                            if (ad) acc.push(<VetAdCard key={`ad-${ad.id}`} vet={ad} />);
-                        }
-                        return acc;
-                    }, [])
+                {!loading && !error && (
+                    <Count>{query ? `${visible.length} de ${pets.length} cargados` : `${total} ${total === 1 ? 'reporte' : 'reportes'}`}</Count>
                 )}
-            </div>
 
-            {/* --- BOTÓN CARGAR MÁS --- */}
-            {page < totalPages && (
-                <div className="max-w-7xl mx-auto flex justify-center mt-12">
-                    <button
-                        onClick={handleLoadMore}
-                        disabled={loadingMore}
-                        className="px-10 py-4 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-full hover:bg-gray-800 transition-all active:scale-95 shadow-lg shadow-black/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loadingMore ? 'Cargando...' : `Cargar más (${page} de ${totalPages})`}
-                    </button>
-                </div>
-            )}
+                {loading ? (
+                    <SkeletonGrid />
+                ) : (
+                    <CardGrid>
+                        {error ? (
+                            <EmptyState icon={PawPrint} color={SECTION.explorar} title="No pudimos cargar los reportes" text={error} />
+                        ) : items.length === 0 ? (
+                            <EmptyState
+                                icon={PawPrint}
+                                color={SECTION.explorar}
+                                title="No encontramos reportes"
+                                text={query || filterType !== 'all' || filterStatus !== 'all'
+                                    ? 'Probá con otros filtros o buscá otro barrio.'
+                                    : 'Por ahora nadie reportó mascotas perdidas ni encontradas. Buena señal.'}
+                                action={(query || filterType !== 'all' || filterStatus !== 'all') && (
+                                    <OutlineButton onClick={resetFilters}>Limpiar filtros</OutlineButton>
+                                )}
+                            />
+                        ) : items}
+                    </CardGrid>
+                )}
 
+                {!loading && page < totalPages && (
+                    <div className="flex justify-center mt-2">
+                        <OutlineButton onClick={() => fetchPets(page + 1, true)} disabled={loadingMore}>
+                            {loadingMore ? 'Cargando…' : 'Cargar más'}
+                        </OutlineButton>
+                    </div>
+                )}
+            </PageBody>
         </div>
     );
 }

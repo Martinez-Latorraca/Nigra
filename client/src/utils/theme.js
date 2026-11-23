@@ -21,3 +21,11 @@ export const STATUS = {
 };
 
 export const petStatusKey = (pet) => (pet?.resolved_at ? 'reunited' : pet?.status === 'lost' ? 'lost' : 'found');
+
+// Color de cada sección (igual que sectionColors en la app).
+export const SECTION = {
+    explorar: C.sol,
+    adopciones: C.violeta,
+    refugios: C.teal,
+    veterinarias: C.coral,
+};

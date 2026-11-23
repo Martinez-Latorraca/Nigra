@@ -66,9 +66,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 - **Cámara: zoom en "1,0×"** · se dejó en porcentaje porque el zoom de expo-camera va de
   0 a 1 y no es un multiplicador real.
 
-## Mensajes (`Mensajes.dc.html`)
-
-
 ## Web
 
 - **Registro de vet en la web con otra lista de servicios** · `client/src/pages/VetRegister.jsx`

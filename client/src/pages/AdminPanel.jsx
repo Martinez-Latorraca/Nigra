@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
+import AdminIcon from '../components/admin/AdminIcon';
+import { translateColor, translateType } from '../utils/translations';
+
+// Panel de admin (diseños Admin-*.dc.html del handoff). Solo cambió lo visual:
+// las llamadas a la API, los permisos y las confirmaciones son las de antes.
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -27,6 +32,11 @@ function AdminPanel() {
     const [filters, setFilters] = useState({ status: 'all', type: 'all' });
     const [loadingTab, setLoadingTab] = useState(false);
     const [loadingQuery, setLoadingQuery] = useState(false);
+    // Contadores de pendientes para la barra lateral y "Requiere atención".
+    const [counts, setCounts] = useState({ vets: 0, shelters: 0, reports: 0, alerts: 0 });
+    const [reportFilter, setReportFilter] = useState('pending');
+    const [userFilters, setUserFilters] = useState({ type: 'all', role: 'all' });
+    const [vetFilters, setVetFilters] = useState({ q: '', plan: 'all' });
 
     useEffect(() => {
         if (!token || user?.role !== 'admin') {
@@ -43,6 +53,24 @@ function AdminPanel() {
     }), [token]);
 
     // ─── FETCH FUNCTIONS ────
+    // Pendientes: se cuentan con los mismos listados que usan las pestañas
+    // (/api/admin/stats no los trae y el panel no toca el servidor).
+    const refreshCounts = useCallback(async () => {
+        const get = (url) => fetch(`${API}${url}`, { headers: authHeaders() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+        const [v, s, r, a] = await Promise.all([
+            get('/api/vets/admin/pending'),
+            get('/api/shelters/admin/pending'),
+            get('/api/admin/reports'),
+            get('/api/admin/deleted-user-matches'),
+        ]);
+        setCounts({
+            vets: v?.vets?.length || 0,
+            shelters: s?.shelters?.length || 0,
+            reports: (r?.reports || []).filter(x => x.status === 'pending').length,
+            alerts: (a?.items || []).filter(x => !x.read_at).length,
+        });
+    }, [authHeaders]);
+
     const fetchStats = useCallback(async (isTabChange = false) => {
         if (isTabChange) { setLoadingTab(true); setLoadingQuery(false); } else { setLoadingQuery(true); }
         try {
@@ -140,7 +168,7 @@ function AdminPanel() {
                 headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ approved: true }),
             });
-            if (res.ok) fetchPendingShelters();
+            if (res.ok) { fetchPendingShelters(); refreshCounts(); }
         } catch (err) {
             console.error(err);
         }
@@ -167,6 +195,7 @@ function AdminPanel() {
             });
             if (res.ok) {
                 setReports((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+                refreshCounts();
             }
         } catch (err) {
             console.error(err);
@@ -258,6 +287,7 @@ function AdminPanel() {
         setSearch('');
         setFilters({ status: 'all', type: 'all' });
         setActiveTab(tab);
+        refreshCounts();
         if (tab === 'dashboard') fetchStats(true);
         if (tab === 'users') fetchUsers(1, '', true);
         if (tab === 'pets') fetchPets(1, '', { status: 'all', type: 'all' }, true);
@@ -273,6 +303,7 @@ function AdminPanel() {
     if (!initialized[0]) {
         initialized[1](true);
         fetchStats(true);
+        refreshCounts();
     }
 
     // Re-fetch on search/filter (debounced) - using ref to avoid effect setState lint
@@ -374,7 +405,7 @@ function AdminPanel() {
                 headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ approved }),
             });
-            if (res.ok) fetchPendingVets();
+            if (res.ok) { fetchPendingVets(); refreshCounts(); }
         } catch (err) {
             console.error(err);
         }
@@ -394,890 +425,873 @@ function AdminPanel() {
 
     if (user?.role !== 'admin') return null;
 
-    const tabs = [
-        { id: 'dashboard', label: 'Dashboard' },
-        { id: 'users', label: 'Usuarios' },
-        { id: 'pets', label: 'Reportes' },
-        { id: 'vets', label: 'Vets pendientes' },
-        { id: 'vets_active', label: 'Vets activas' },
-        { id: 'shelters', label: 'Refugios pendientes' },
-        { id: 'alerts', label: 'Alertas' },
-        { id: 'reports', label: 'Denuncias' },
-    ];
-
     const REASON_LABEL = {
         spam: 'Spam', harassment: 'Acoso', scam: 'Estafa / recompensa',
         inappropriate: 'Contenido inapropiado', other: 'Otro',
     };
     const STATUS_LABEL = { pending: 'Pendiente', reviewed: 'Revisada', dismissed: 'Descartada' };
+    const STATUS_COLOR = { pending: C.coral, reviewed: C.teal, dismissed: C.lineaFuerte };
 
     const PLAN_OPTIONS = [
-        { value: 'ally', label: 'Ally (gratis)', color: null },
-        { value: 'sponsor_basic', label: 'Socio Mimo ⭐ (Basic)', color: '#FF5C6C' },
-        { value: 'sponsor_pro', label: 'Socio Mimo ⭐ (Pro)', color: '#9B6DFF' },
-        { value: 'sponsor_nation', label: 'Socio Mimo ⭐ (Nation)', color: '#FFB830' },
+        { value: 'ally', label: 'Ally (gratis)', short: 'Ally', color: null, km: null },
+        { value: 'sponsor_basic', label: 'Socio Mimo · Basic', short: 'Basic', color: C.coral, km: 5 },
+        { value: 'sponsor_pro', label: 'Socio Mimo · Pro', short: 'Pro', color: C.violeta, km: 20 },
+        { value: 'sponsor_nation', label: 'Socio Mimo · Nation', short: 'Nation', color: C.sol, km: 50 },
     ];
-    const PLAN_LABEL = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, o.label]));
-    const PLAN_COLOR = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, o.color]));
+    const PLAN = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, o]));
 
     const formatDate = (d) => new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
+    const formatTime = (d) => new Date(d).toLocaleString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const n = (v) => (v == null ? '—' : Number(v).toLocaleString('es-AR'));
+    const petKind = (p) => [translateType(p.type), translateColor(p.color)].filter(Boolean).map(cap).join(' · ');
+
+    const NAV = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'layoutDashboard' },
+        { id: 'users', label: 'Usuarios', icon: 'users' },
+        { id: 'pets', label: 'Reportes', icon: 'pawPrint' },
+        { group: 'Aprobaciones' },
+        { id: 'vets', label: 'Vets pendientes', icon: 'stethoscope', count: counts.vets },
+        { id: 'vets_active', label: 'Vets activas', icon: 'badgeCheck' },
+        { id: 'shelters', label: 'Refugios pendientes', icon: 'houseHeart', count: counts.shelters },
+        { group: 'Moderación' },
+        { id: 'alerts', label: 'Alertas', icon: 'bellRing', count: counts.alerts },
+        { id: 'reports', label: 'Denuncias', icon: 'flag', count: counts.reports },
+    ];
+
+    const loading = loadingTab || loadingQuery;
+
+    // Denuncias: filtro por estado en el cliente.
+    const reportCounts = {
+        pending: reports.filter(r => r.status === 'pending').length,
+        reviewed: reports.filter(r => r.status === 'reviewed').length,
+        dismissed: reports.filter(r => r.status === 'dismissed').length,
+        all: reports.length,
+    };
+    const visibleReports = reportFilter === 'all' ? reports : reports.filter(r => r.status === reportFilter);
+
+    // Usuarios: filtros Tipo y Rol sobre la página actual (en el cliente).
+    const userType = (u) => (u.vet_id ? 'vet' : u.shelter_id ? 'shelter' : 'person');
+    const visibleUsers = users.filter(u =>
+        (userFilters.type === 'all' || userType(u) === userFilters.type) &&
+        (userFilters.role === 'all' || u.role === userFilters.role)
+    );
+
+    // Vets activas: resumen y filtros sobre la lista que ya viene.
+    const planCounts = Object.fromEntries(PLAN_OPTIONS.map(o => [o.value, activeVets.filter(v => v.plan === o.value).length]));
+    const visibleVets = activeVets.filter(v =>
+        (vetFilters.plan === 'all' || v.plan === vetFilters.plan) &&
+        (!vetFilters.q || `${v.name} ${v.city || ''} ${v.owner_name || ''}`.toLowerCase().includes(vetFilters.q.toLowerCase()))
+    );
+
+    // Mensajes denunciados de la conversación abierta (borde Coral).
+    const flaggedIds = new Set(reports.filter(r => r.message_id).map(r => r.message_id));
+
+    const closeConversation = () => { setActiveConversation(null); setConversationMessages([]); };
 
     return (
-        <div className="max-w-7xl mx-auto flex flex-col items-center px-4 py-8">
-            <div className='flex flex-col '>
-
-                <h1 className="text-2xl font-bold mb-6">Panel de Administracion</h1>
-
-                {/* Tabs */}
-                <div className="flex flex-wrap justify-center gap-2 mb-6 border-b border-gray-200 pb-2">
-                    {tabs.map(tab => (
+        <div className="flex min-h-screen font-sans" style={{ background: C.crema, color: C.noche }}>
+            {/* ─── BARRA LATERAL ─── */}
+            <aside
+                className="w-[264px] shrink-0 sticky top-0 h-screen box-border px-4 py-7 flex flex-col gap-1 overflow-y-auto"
+                style={{ background: C.noche, color: C.crema }}
+            >
+                <div className="flex items-center gap-2.5 px-2 pb-[22px]">
+                    <img src="/landing/pin.svg" alt="" width={30} height={37} />
+                    <Wordmark size={26} color={C.crema} />
+                    <span className="ml-1 px-2.5 py-[3px] rounded-full text-xs font-bold" style={{ background: C.noche2, letterSpacing: '.06em' }}>Admin</span>
+                </div>
+                {NAV.map((item) =>
+                    item.group ? (
+                        <p key={item.group} className="mt-[18px] mb-1.5 mx-3 text-[11px] font-bold uppercase" style={{ letterSpacing: '.12em', color: C.lavanda }}>
+                            {item.group}
+                        </p>
+                    ) : (
                         <button
-                            key={tab.id}
-                            onClick={() => handleTabChange(tab.id)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap text-center ${activeTab === tab.id
-                                ? 'bg-black text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
+                            key={item.id}
+                            onClick={() => handleTabChange(item.id)}
+                            aria-current={activeTab === item.id ? 'page' : undefined}
+                            className="flex items-center gap-3 h-11 px-3 rounded-[14px] text-[15px] border-0 cursor-pointer text-left w-full"
+                            style={activeTab === item.id
+                                ? { background: C.crema, color: C.noche, fontWeight: 700 }
+                                : { background: 'transparent', color: C.crema, fontWeight: 500 }}
                         >
-                            {tab.label}
+                            <AdminIcon name={item.icon} size={20} />
+                            {item.label}
+                            {item.count ? (
+                                <span className="ml-auto min-w-[22px] h-[22px] px-[7px] box-border rounded-full text-xs font-bold flex items-center justify-center" style={{ background: C.coral, color: C.arena }}>
+                                    {item.count}
+                                </span>
+                            ) : null}
                         </button>
-                    ))}
+                    )
+                )}
+                <div className="mt-auto flex items-center gap-2.5 px-2.5 pt-3.5" style={{ borderTop: `1px solid ${C.linea}` }}>
+                    <span className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center font-display font-black" style={{ background: C.violeta, color: C.arena }}>
+                        {(user.name || '?').charAt(0).toUpperCase()}
+                    </span>
+                    <span className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold truncate">{user.name}</span>
+                        <span className="text-xs truncate" style={{ color: C.lavanda }}>{user.email}</span>
+                    </span>
+                    <Link to="/" title="Salir del panel" aria-label="Salir del panel" className="ml-auto" style={{ color: C.crema }}>
+                        <AdminIcon name="logOut" size={20} />
+                    </Link>
                 </div>
-            </div>
+            </aside>
 
-            {/* Search bar (no aplica a dashboard ni al listado de vets pendientes) */}
-            {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && activeTab !== 'reports' && !loadingTab && (
-                <div className="mb-6 flex flex-wrap gap-4 items-end">
-                    <div className="space-y-2">
-                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Buscar</label>
-                        <input
-                            type="text"
-                            placeholder="Nombre, email, descripcion..."
-                            value={search}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="w-64 px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-gray-100 focus:bg-white focus:ring-4 focus:ring-gray-100 outline-none transition-all font-medium"
-                        />
-                    </div>
-                    {activeTab === 'pets' && (
-                        <>
-                            <div className="space-y-2">
-                                <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Estado</label>
-                                <div className="relative group">
-                                    <select
-                                        value={filters.status}
-                                        onChange={(e) => handleFilterChange({ ...filters, status: e.target.value })}
-                                        className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
-                                    >
-                                        <option value="all">Todos</option>
-                                        <option value="lost">Perdidos</option>
-                                        <option value="found">Encontrados</option>
-                                    </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                                        </svg>
+            {/* ─── CONTENIDO ─── */}
+            <main className="flex-1 min-w-0 box-border px-10 pt-9 pb-12 flex flex-col gap-7">
+                {activeTab === 'dashboard' && (
+                    <>
+                        <PageHeader title="Dashboard" sub="Cómo viene Mimo hoy." />
+                        <Section title="Requiere atención">
+                            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3.5">
+                                <AttentionCard icon="stethoscope" color={C.noche} title={`${counts.vets} ${counts.vets === 1 ? 'veterinaria' : 'veterinarias'}`} sub="esperan aprobación" onClick={() => handleTabChange('vets')} />
+                                <AttentionCard icon="houseHeart" color={C.teal} title={`${counts.shelters} ${counts.shelters === 1 ? 'refugio' : 'refugios'}`} sub="esperan verificación" onClick={() => handleTabChange('shelters')} />
+                                <AttentionCard icon="flag" color={C.coral} title={`${counts.reports} ${counts.reports === 1 ? 'denuncia' : 'denuncias'}`} sub="pendientes de revisar" onClick={() => handleTabChange('reports')} />
+                                <AttentionCard icon="bellRing" color={C.sol} title={`${counts.alerts} ${counts.alerts === 1 ? 'alerta' : 'alertas'}`} sub="coincidencias con cuentas eliminadas" onClick={() => handleTabChange('alerts')} />
+                            </div>
+                        </Section>
+                        {loading && !stats ? <Loading /> : null}
+                        {stats ? (
+                            <>
+                                <Section title="Actividad">
+                                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+                                        <Metric label="Usuarios" value={n(stats.totalUsers)} color={C.violeta} icon="users" />
+                                        <Metric label="Reportes" value={n(stats.totalPets)} color={C.noche} icon="pawPrint" />
+                                        <Metric label="Perdidos" value={n(stats.totalLost)} color={C.coral} icon="search" />
+                                        <Metric label="Encontrados" value={n(stats.totalFound)} color={C.teal} icon="mapPin" />
+                                        <Metric label="Mensajes" value={n(stats.totalMessages)} color={C.sol} icon="messageCircle" />
                                     </div>
+                                </Section>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <ListCard title="Reportes recientes" onAll={() => handleTabChange('pets')}>
+                                        {stats.recentPets.map(pet => (
+                                            <ListRow key={pet.id} to={`/pet/${pet.id}`} thumb={<Thumb src={pet.photo_url} />}
+                                                title={pet.name || 'Sin nombre'} sub={`${pet.reporter_name} · ${formatDate(pet.created_at)}`}
+                                                right={<StatusChip status={pet.status} />} />
+                                        ))}
+                                    </ListCard>
+                                    <ListCard title="Usuarios recientes" onAll={() => handleTabChange('users')}>
+                                        {stats.recentUsers.map(u => (
+                                            <ListRow key={u.id} thumb={<Initial name={u.name} color={C.violeta} />}
+                                                title={u.name} sub={u.email}
+                                                right={u.role === 'admin' ? <Chip color={C.noche} text={C.crema}>Admin</Chip> : <span className="text-[13px]">{formatDate(u.created_at)}</span>} />
+                                        ))}
+                                    </ListCard>
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 px-1">Especie</label>
-                                <div className="relative group">
-                                    <select
-                                        value={filters.type}
-                                        onChange={(e) => handleFilterChange({ ...filters, type: e.target.value })}
-                                        className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 font-medium outline-none focus:ring-4 focus:ring-gray-100 transition-all appearance-none cursor-pointer pr-12"
-                                    >
-                                        <option value="all">Todos</option>
-                                        <option value="dog">Perros</option>
-                                        <option value="cat">Gatos</option>
-                                    </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-gray-400 group-focus-within:text-black transition-colors">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                    <span className="text-xs font-semibold uppercase tracking-widest text-gray-300 px-1 pb-4">{pagination.total} resultados</span>
-                </div>
-            )}
 
-            <div className="flex flex-col items-center w-full max-w-6xl mx-auto">
-                {(loadingTab || loadingQuery) && <div className="text-center py-8 text-gray-400">{loadingTab ? 'Cargando tab...' : 'Buscando...'}</div>}
-
-                {/* ─── DASHBOARD TAB ─────────────────────────── */}
-                {activeTab === 'dashboard' && stats && !loadingTab && !loadingQuery && (
-                    <div>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                            {[
-                                { label: 'Usuarios', value: stats.totalUsers, color: 'bg-blue-50 text-blue-700' },
-                                { label: 'Reportes', value: stats.totalPets, color: 'bg-purple-50 text-purple-700' },
-                                { label: 'Mensajes', value: stats.totalMessages, color: 'bg-green-50 text-green-700' },
-                                { label: 'Perdidos', value: stats.totalLost, color: 'bg-red-50 text-red-700' },
-                                { label: 'Encontrados', value: stats.totalFound, color: 'bg-amber-50 text-amber-700' },
-                            ].map(stat => (
-                                <div key={stat.label} className={`${stat.color} rounded-2xl p-4`}>
-                                    <p className="text-2xl font-bold">{stat.value}</p>
-                                    <p className="text-sm opacity-70">{stat.label}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-6">
-                            <div>
-                                <h3 className="font-semibold mb-3">Reportes recientes</h3>
-                                <div className="flex flex-col gap-4">
-                                    {stats.recentPets.map(pet => (
-                                        <Link to={`/pet/${pet.id}`} key={pet.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
-                                            <img src={pet.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">{pet.name || 'Sin nombre'}</p>
-                                                <p className="text-xs text-gray-400">{pet.reporter_name} - {formatDate(pet.created_at)}</p>
-                                            </div>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${pet.status === 'lost' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                {pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
-                                            </span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-3">Usuarios recientes</h3>
-                                <div className="flex flex-col gap-4">
-                                    {stats.recentUsers.map(u => (
-                                        <div key={u.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 min-h-[58px] gap-3">
-                                            <div>
-                                                <p className="text-sm font-medium">{u.name}</p>
-                                                <p className="text-xs text-gray-400">{u.email}</p>
-                                            </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                {u.role === 'admin' && <span className="text-xs px-2 py-1 bg-black text-white rounded-full">Admin</span>}
-                                                <span className="text-xs text-gray-400">{formatDate(u.created_at)}</span>
-                                            </div>
+                                {matchStats ? (
+                                    <Section title="Reencuentros y matching">
+                                        <div className="grid grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1fr_1.4fr] gap-3.5">
+                                            <Metric label="Reencuentros" value={n(matchStats.reunions_total)} color={C.violeta} icon="handshake" sub={`${n(matchStats.reunions_30d)} en los últimos 30 días`} />
+                                            <Metric label="Matches generados" value={n(matchStats.matches_generated)} color={C.sol} icon="scan" />
+                                            <Metric label="Match → reunidos" value={n(matchStats.matches_reunited)} color={C.teal} icon="circleCheck" />
+                                            <Metric label="Falsos positivos" value={n(matchStats.matches_rejected)} color={C.coral} icon="circleX" />
+                                            <Metric label="Precisión del matching" value={matchStats.precision_pct != null ? `${matchStats.precision_pct} %` : '—'} color={C.violeta} icon="target"
+                                                sub={`Reunidos / (reunidos + falsos positivos) · ${n(matchStats.matches_pending)} sin veredicto`}
+                                                bar={matchStats.precision_pct} />
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Refugios & Adopciones — analytics solo para admin. Los refugios
-                            no ven sus propias métricas (decisión de producto: no aporta valor). */}
-                        <div className="mt-12">
-                            <h3 className="text-lg font-semibold mb-4">Refugios & Adopciones</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-                                {[
-                                    { label: 'Refugios', value: stats.totalShelters, color: 'bg-emerald-50 text-emerald-700' },
-                                    { label: 'Pendientes', value: stats.pendingShelters, color: 'bg-yellow-50 text-yellow-700' },
-                                    { label: 'En adopción', value: stats.totalAdoptionsActive, color: 'bg-pink-50 text-pink-700' },
-                                    { label: 'Adoptadas', value: stats.totalAdopted, color: 'bg-teal-50 text-teal-700' },
-                                    { label: 'Perros / Gatos', value: `${stats.adoptionsBySpecies?.dog ?? 0} / ${stats.adoptionsBySpecies?.cat ?? 0}`, color: 'bg-indigo-50 text-indigo-700' },
-                                    { label: 'Días promedio', value: stats.avgDaysToAdopt != null ? stats.avgDaysToAdopt : '—', color: 'bg-orange-50 text-orange-700' },
-                                ].map(stat => (
-                                    <div key={stat.label} className={`${stat.color} rounded-2xl p-4`}>
-                                        <p className="text-2xl font-bold">{stat.value}</p>
-                                        <p className="text-sm opacity-70">{stat.label}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="flex gap-6 flex-wrap">
-                                <div className="flex-1 min-w-[280px]">
-                                    <h4 className="font-semibold mb-3">Top refugios (adopciones concretadas)</h4>
-                                    <div className="flex flex-col gap-3">
-                                        {stats.topShelters?.length === 0 ? (
-                                            <p className="text-xs text-gray-400">Todavía no hay refugios activos.</p>
-                                        ) : (
-                                            stats.topShelters?.map((s) => (
-                                                <Link key={s.id} to={`/shelters/${s.slug}`}
-                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
-                                                    {s.logo_url ? (
-                                                        <img src={s.logo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-mimo-coral text-white flex items-center justify-center font-bold">{s.name.charAt(0)}</div>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium truncate">{s.name}</p>
-                                                        <p className="text-xs text-gray-400">{s.city || 'Sin ciudad'}</p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-xs font-semibold text-teal-600">{s.adopted_count} adoptadas</p>
-                                                        <p className="text-xs text-gray-400">{s.active_count} activas</p>
-                                                    </div>
-                                                </Link>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 min-w-[280px]">
-                                    <h4 className="font-semibold mb-3">Últimas publicaciones</h4>
-                                    <div className="flex flex-col gap-3">
-                                        {stats.recentAdoptions?.length === 0 ? (
-                                            <p className="text-xs text-gray-400">Todavía no hay publicaciones activas.</p>
-                                        ) : (
-                                            stats.recentAdoptions?.map((ap) => (
-                                                <Link key={ap.id} to={`/adoptions/${ap.id}`}
-                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
-                                                    {ap.photos?.[0] ? (
-                                                        <img src={ap.photos[0]} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">🐾</div>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium truncate">{ap.name || 'Sin nombre'}</p>
-                                                        <p className="text-xs text-gray-400 truncate">{ap.shelter_name} · {formatDate(ap.created_at)}</p>
-                                                    </div>
-                                                </Link>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Reencuentros & Matching — dos métricas distintas:
-                            reencuentros totales (todo caso cerrado) vs calidad del
-                            matching del AI (subset que vino de un match). */}
-                        {matchStats ? (
-                            <div className="mt-12">
-                                <h3 className="text-lg font-semibold mb-4">Reencuentros & Matching</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-                                    <div className="bg-green-50 text-green-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.reunions_total}</p>
-                                        <p className="text-sm opacity-70">Reencuentros totales</p>
-                                    </div>
-                                    <div className="bg-emerald-50 text-emerald-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.reunions_30d}</p>
-                                        <p className="text-sm opacity-70">Últimos 30 días</p>
-                                    </div>
-                                    <div className="bg-blue-50 text-blue-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.matches_generated}</p>
-                                        <p className="text-sm opacity-70">Matches AI generados</p>
-                                    </div>
-                                    <div className="bg-teal-50 text-teal-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.matches_reunited}</p>
-                                        <p className="text-sm opacity-70">Matches → reunidos</p>
-                                    </div>
-                                    <div className="bg-red-50 text-red-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.matches_rejected}</p>
-                                        <p className="text-sm opacity-70">Falsos positivos</p>
-                                    </div>
-                                    <div className="bg-purple-50 text-purple-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{matchStats.precision_pct != null ? `${matchStats.precision_pct}%` : '—'}</p>
-                                        <p className="text-sm opacity-70">Precisión matching</p>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-400">
-                                    Distancia visual promedio de los matches: {matchStats.avg_distance != null ? matchStats.avg_distance : '—'}
-                                    {' · '}Precisión = reunidos / (reunidos + falsos positivos). {matchStats.matches_pending} matches todavía sin veredicto.
-                                </p>
-                            </div>
-                        ) : null}
-
-                        {/* Donaciones — fase 1: solo clicks en el banner de MP. Aún no
-                            hay tracking de donaciones concretadas (requiere webhook MP). */}
-                        {donationStats ? (
-                            <div className="mt-12">
-                                <h3 className="text-lg font-semibold mb-1">Donaciones</h3>
-                                <p className="text-xs text-gray-400 mb-4">
-                                    Clicks en el botón "Donar por Mercado Pago". Todavía no medimos
-                                    donaciones concretadas (requiere integración con MP).
-                                </p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                    <div className="bg-sky-50 text-sky-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{donationStats.total_clicks}</p>
-                                        <p className="text-sm opacity-70">Clicks totales</p>
-                                    </div>
-                                    <div className="bg-cyan-50 text-cyan-700 rounded-2xl p-4">
-                                        <p className="text-2xl font-bold">{donationStats.clicks_30d}</p>
-                                        <p className="text-sm opacity-70">Últimos 30 días</p>
-                                    </div>
-                                </div>
-                                {donationStats.top_pets?.length > 0 ? (
-                                    <div>
-                                        <h4 className="font-semibold mb-3">Casos que más motivan a donar</h4>
-                                        <div className="flex flex-col gap-3 max-w-lg">
-                                            {donationStats.top_pets.map((p) => (
-                                                <Link key={p.pet_id} to={`/pet/${p.pet_id}`}
-                                                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50">
-                                                    {p.photo_url ? (
-                                                        <img src={p.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">🐾</div>
-                                                    )}
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium truncate">{p.pet_name || `Caso #${p.pet_id}`}</p>
-                                                    </div>
-                                                    <span className="text-xs font-semibold text-sky-600">{p.clicks} clicks</span>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    </div>
+                                        <p className="m-0 text-[13px]">Distancia visual promedio de los matches: {matchStats.avg_distance != null ? matchStats.avg_distance : '—'}.</p>
+                                    </Section>
                                 ) : null}
-                            </div>
+
+                                <Section title="Refugios y adopciones">
+                                    <div className="grid grid-cols-2 lg:grid-cols-6 gap-3.5">
+                                        <Metric label="Refugios" value={n(stats.totalShelters)} color={C.teal} icon="houseHeart" />
+                                        <Metric label="Pendientes" value={n(stats.pendingShelters)} color={C.sol} icon="clock" />
+                                        <Metric label="En adopción" value={n(stats.totalAdoptionsActive)} color={C.violeta} icon="heart" />
+                                        <Metric label="Adoptadas" value={n(stats.totalAdopted)} color={C.teal} icon="partyPopper" />
+                                        <Metric label="Perros / gatos" value={`${stats.adoptionsBySpecies?.dog ?? 0}/${stats.adoptionsBySpecies?.cat ?? 0}`} color={C.noche} icon="pawPrint" />
+                                        <Metric label="Días promedio" value={stats.avgDaysToAdopt != null ? stats.avgDaysToAdopt : '—'} color={C.coral} icon="timer" sub="hasta ser adoptada" />
+                                    </div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <ListCard title="Top refugios">
+                                            {stats.topShelters?.length ? stats.topShelters.map((s) => (
+                                                <ListRow key={s.id} to={`/shelters/${s.slug}`}
+                                                    thumb={s.logo_url ? <Thumb src={s.logo_url} /> : <Initial name={s.name} color={C.teal} square />}
+                                                    title={s.name} sub={s.city || 'Sin ciudad'}
+                                                    right={<span className="flex flex-col items-end text-[13px]"><b>{s.adopted_count} adoptadas</b><span>{s.active_count} activas</span></span>} />
+                                            )) : <Empty>Todavía no hay refugios activos.</Empty>}
+                                        </ListCard>
+                                        <ListCard title="Últimas publicaciones">
+                                            {stats.recentAdoptions?.length ? stats.recentAdoptions.map((ap) => (
+                                                <ListRow key={ap.id} to={`/adoptions/${ap.id}`} thumb={<Thumb src={ap.photos?.[0]} />}
+                                                    title={ap.name || 'Sin nombre'} sub={`${ap.shelter_name} · ${formatDate(ap.created_at)}`}
+                                                    right={<Chip color={C.violeta}>En adopción</Chip>} />
+                                            )) : <Empty>Todavía no hay publicaciones activas.</Empty>}
+                                        </ListCard>
+                                    </div>
+                                </Section>
+
+                                {donationStats ? (
+                                    <Section title="Donaciones">
+                                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_2fr] gap-3.5 items-start">
+                                            <Metric label="Clicks en Donar" value={n(donationStats.total_clicks)} color={C.coral} icon="heart" sub="Total histórico" />
+                                            <Metric label="Últimos 30 días" value={n(donationStats.clicks_30d)} color={C.coral} icon="trendingUp" />
+                                            <ListCard title="Casos que más motivan a donar">
+                                                {donationStats.top_pets?.length ? donationStats.top_pets.map((p) => (
+                                                    <ListRow key={p.pet_id} to={`/pet/${p.pet_id}`} thumb={<Thumb src={p.photo_url} />}
+                                                        title={p.pet_name || 'Sin nombre'} sub={`Caso #${p.pet_id}`}
+                                                        right={<b className="text-[13px]">{p.clicks} clicks</b>} />
+                                                )) : <Empty>Todavía no hay clicks asociados a un caso.</Empty>}
+                                            </ListCard>
+                                        </div>
+                                        <Note>Por ahora medimos clicks en "Donar por Mercado Pago". Las donaciones concretadas necesitan la integración con Mercado Pago.</Note>
+                                    </Section>
+                                ) : null}
+                            </>
                         ) : null}
-                    </div>
+                    </>
                 )}
 
-                {/* ─── USERS TAB ────────────────────────────── */}
-                {activeTab === 'users' && !loadingTab && !loadingQuery && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-400 border-b">
-                                    <th className="pb-2 pr-4">ID</th>
-                                    <th className="pb-2 pr-4">Nombre</th>
-                                    <th className="pb-2 pr-4">Email</th>
-                                    <th className="pb-2 pr-4">Rol</th>
-                                    <th className="pb-2 pr-4">Tipo</th>
-                                    <th className="pb-2 pr-4">Registro</th>
-                                    <th className="pb-2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {users.map(u => (
-                                    <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                        <td className="py-3 pr-4 text-gray-400">{u.id}</td>
-                                        <td className="py-3 pr-4 font-medium">{u.name}</td>
-                                        <td className="py-3 pr-4 text-gray-500">{u.email}</td>
-                                        <td className="py-3 pr-4">
-                                            <span className={`text-xs px-2 py-1 rounded-full ${u.role === 'admin' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
-                                                {u.role}
-                                            </span>
-                                        </td>
-                                        {/* Tipo de cuenta: vet / refugio / particular. El ⏳ marca
-                                            que fue convertida pero todavía no aprobada. */}
-                                        <td className="py-3 pr-4">
-                                            <div className="flex gap-1 flex-wrap">
-                                                {u.vet_id && (
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${u.vet_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                                        Vet {u.vet_approved ? '✓' : '⏳'}
+                {/* ─── USUARIOS ─── */}
+                {activeTab === 'users' && (
+                    <>
+                        <PageHeader title="Usuarios" sub="Todas las cuentas de Mimo: personas, veterinarias y refugios." />
+                        <Toolbar>
+                            <SearchInput value={search} onChange={handleSearchChange} placeholder="Buscar por nombre o email" />
+                            <SelectPill label="Tipo" value={userFilters.type} onChange={(v) => setUserFilters({ ...userFilters, type: v })}
+                                options={[['all', 'Todos'], ['person', 'Personas'], ['vet', 'Veterinarias'], ['shelter', 'Refugios']]} />
+                            <SelectPill label="Rol" value={userFilters.role} onChange={(v) => setUserFilters({ ...userFilters, role: v })}
+                                options={[['all', 'Todos'], ['admin', 'Admin'], ['user', 'Usuario']]} />
+                            <Results n={pagination.total} />
+                        </Toolbar>
+                        {loading ? <Loading /> : (
+                            <>
+                                <Table head={['ID', 'Usuario', 'Rol', 'Tipo', 'Registro', 'Acciones']}>
+                                    {visibleUsers.map(u => (
+                                        <tr key={u.id}>
+                                            <Td><span className="text-[13px]">#{u.id}</span></Td>
+                                            <Td>
+                                                <span className="flex items-center gap-3">
+                                                    <Initial name={u.name} color={u.vet_id ? C.noche : u.shelter_id ? C.teal : C.violeta} size={38} />
+                                                    <span className="flex flex-col"><b className="text-[15px]">{u.name}</b><span className="text-[13px]">{u.email}</span></span>
+                                                </span>
+                                            </Td>
+                                            <Td>{u.role === 'admin' ? <Chip color={C.noche} text={C.crema}>Admin</Chip> : <span className="text-[13px]">Usuario</span>}</Td>
+                                            <Td>
+                                                <span className="flex gap-1.5">
+                                                    {u.vet_id ? <Chip color={u.vet_approved ? C.noche : C.sol} text={u.vet_approved ? C.crema : C.arena}>{u.vet_approved ? 'Vet' : 'Vet · pendiente'}</Chip> : null}
+                                                    {u.shelter_id ? <Chip color={u.shelter_approved ? C.teal : C.sol}>{u.shelter_approved ? 'Refugio' : 'Refugio · pendiente'}</Chip> : null}
+                                                    {!u.vet_id && !u.shelter_id ? <span className="text-[13px]">Particular</span> : null}
+                                                </span>
+                                            </Td>
+                                            <Td><span className="text-sm">{formatDate(u.created_at)}</span></Td>
+                                            <Td>
+                                                {u.id === user.id ? <span className="text-[13px] font-bold">Sos vos</span> : (
+                                                    <span className="flex gap-1.5">
+                                                        <IconBtn icon="shield" title={u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'} onClick={() => handleToggleRole(u.id, u.role)} />
+                                                        {!u.vet_id ? <IconBtn icon="stethoscope" title="Convertir en vet" onClick={() => handleSetAccountType(u.id, 'vet')} /> : null}
+                                                        {!u.shelter_id ? <IconBtn icon="houseHeart" title="Convertir en refugio" onClick={() => handleSetAccountType(u.id, 'shelter')} /> : null}
+                                                        <IconBtn icon="trash" title="Eliminar cuenta" danger onClick={() => handleDeleteUser(u.id)} />
                                                     </span>
                                                 )}
-                                                {u.shelter_id && (
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${u.shelter_approved ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                                                        Refugio {u.shelter_approved ? '✓' : '⏳'}
-                                                    </span>
-                                                )}
-                                                {!u.vet_id && !u.shelter_id && <span className="text-xs text-gray-300">Particular</span>}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 pr-4 text-gray-400">{formatDate(u.created_at)}</td>
-                                        <td className="py-3">
-                                            <div className="flex gap-2 flex-wrap">
-                                                {u.id !== user.id && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleToggleRole(u.id, u.role)}
-                                                            className="text-xs px-3 py-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                                                        >
-                                                            {u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
-                                                        </button>
-                                                        {/* Solo ofrecemos convertir a lo que todavía no es. */}
-                                                        {!u.vet_id && (
-                                                            <button
-                                                                onClick={() => handleSetAccountType(u.id, 'vet')}
-                                                                className="text-xs px-3 py-1 rounded-full bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors"
-                                                            >
-                                                                Hacer vet
-                                                            </button>
-                                                        )}
-                                                        {!u.shelter_id && (
-                                                            <button
-                                                                onClick={() => handleSetAccountType(u.id, 'shelter')}
-                                                                className="text-xs px-3 py-1 rounded-full bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
-                                                            >
-                                                                Hacer refugio
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleDeleteUser(u.id)}
-                                                            className="text-xs px-3 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                                        >
-                                                            Eliminar
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {u.id === user.id && <span className="text-xs text-gray-300">Sos vos</span>}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {/* ─── PETS TAB ─────────────────────────────── */}
-                {activeTab === 'pets' && !loadingTab && !loadingQuery && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-400 border-b">
-                                    <th className="pb-2 pr-4">Foto</th>
-                                    <th className="pb-2 pr-4">Nombre</th>
-                                    <th className="pb-2 pr-4">Estado</th>
-                                    <th className="pb-2 pr-4">Tipo</th>
-                                    <th className="pb-2 pr-4">Reportado por</th>
-                                    <th className="pb-2 pr-4">Fecha</th>
-                                    <th className="pb-2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pets.map(p => (
-                                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                        <td className="py-3 pr-4">
-                                            <img src={p.photo_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                                        </td>
-                                        <td className="py-3 pr-4 font-medium">{p.name || 'Sin nombre'}</td>
-                                        <td className="py-3 pr-4">
-                                            <span className={`text-xs px-2 py-1 rounded-full ${p.status === 'lost' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                                                {p.status === 'lost' ? 'Perdido' : 'Encontrado'}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 pr-4 text-gray-500 capitalize">{p.type === 'dog' ? 'Perro' : 'Gato'}</td>
-                                        <td className="py-3 pr-4 text-gray-500">{p.reporter_name}</td>
-                                        <td className="py-3 pr-4 text-gray-400">{formatDate(p.created_at)}</td>
-                                        <td className="py-3">
-                                            <button
-                                                onClick={() => handleDeletePet(p.id)}
-                                                className="text-xs px-3 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                            >
-                                                Eliminar
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {/* ─── VETS TAB ─────────────────────────────── */}
-                {activeTab === 'vets' && !loadingTab && !loadingQuery && (
-                    <div className="overflow-x-auto w-full">
-                        {pendingVets.length === 0 ? (
-                            <p className="text-center text-gray-400 py-8">No hay veterinarias pendientes de aprobación.</p>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left text-gray-400 border-b">
-                                        <th className="pb-2 pr-4">ID</th>
-                                        <th className="pb-2 pr-4">Nombre</th>
-                                        <th className="pb-2 pr-4">Email vet</th>
-                                        <th className="pb-2 pr-4">Ciudad</th>
-                                        <th className="pb-2 pr-4">Owner</th>
-                                        <th className="pb-2 pr-4">Registro</th>
-                                        <th className="pb-2">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pendingVets.map(v => (
-                                        <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                            <td className="py-3 pr-4 text-gray-400">{v.id}</td>
-                                            <td className="py-3 pr-4 font-medium">
-                                                <Link to={`/vets/${v.slug}`} className="hover:underline">{v.name}</Link>
-                                            </td>
-                                            <td className="py-3 pr-4 text-gray-500">{v.email || '—'}</td>
-                                            <td className="py-3 pr-4 text-gray-500">{v.city || '—'}</td>
-                                            <td className="py-3 pr-4 text-gray-500">
-                                                {v.owner_name}
-                                                <br />
-                                                <span className="text-xs text-gray-400">{v.owner_email}</span>
-                                            </td>
-                                            <td className="py-3 pr-4 text-gray-400">{formatDate(v.created_at)}</td>
-                                            <td className="py-3">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleSetVetApproval(v.id, true)}
-                                                        className="text-xs px-3 py-1 rounded-full bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
-                                                    >
-                                                        Aprobar
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleSetVetApproval(v.id, false)}
-                                                        className="text-xs px-3 py-1 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                                                    >
-                                                        Rechazar
-                                                    </button>
-                                                </div>
-                                            </td>
+                                            </Td>
                                         </tr>
                                     ))}
-                                </tbody>
-                            </table>
+                                </Table>
+                                <Legend items={[['shield', 'Hacer / quitar admin'], ['stethoscope', 'Convertir en vet'], ['houseHeart', 'Convertir en refugio'], ['trash', 'Eliminar cuenta']]} />
+                                <Pager pagination={pagination} onPage={(p) => fetchUsers(p, search)} />
+                            </>
                         )}
-                    </div>
+                    </>
                 )}
 
-                {/* ─── VETS ACTIVAS TAB (gestión de plan) ─────────── */}
-                {activeTab === 'vets_active' && !loadingTab && !loadingQuery && (
-                    <div className="overflow-x-auto w-full">
-                        {activeVets.length === 0 ? (
-                            <p className="text-center text-gray-400 py-8">No hay veterinarias aprobadas todavía.</p>
-                        ) : (
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left text-gray-400 border-b">
-                                        <th className="pb-2 pr-4">ID</th>
-                                        <th className="pb-2 pr-4">Nombre</th>
-                                        <th className="pb-2 pr-4">Ciudad</th>
-                                        <th className="pb-2 pr-4">Owner</th>
-                                        <th className="pb-2 pr-4">Plan actual</th>
-                                        <th className="pb-2">Cambiar plan</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {activeVets.map(v => (
-                                        <tr key={v.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                            <td className="py-3 pr-4 text-gray-400">{v.id}</td>
-                                            <td className="py-3 pr-4 font-medium">
-                                                <Link to={`/vets/${v.slug}`} className="hover:underline">{v.name}</Link>
-                                            </td>
-                                            <td className="py-3 pr-4 text-gray-500">{v.city || '—'}</td>
-                                            <td className="py-3 pr-4 text-gray-500">
-                                                {v.owner_name}
-                                                <br />
-                                                <span className="text-xs text-gray-400">{v.owner_email}</span>
-                                            </td>
-                                            <td className="py-3 pr-4">
-                                                {PLAN_COLOR[v.plan] ? (
-                                                    <span
-                                                        style={{ backgroundColor: PLAN_COLOR[v.plan] }}
-                                                        className="text-xs px-2 py-1 rounded-full text-white font-semibold"
-                                                    >
-                                                        {PLAN_LABEL[v.plan]}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                                                        {PLAN_LABEL[v.plan] || v.plan}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-3">
+                {/* ─── REPORTES ─── */}
+                {activeTab === 'pets' && (
+                    <>
+                        <PageHeader title="Reportes" sub="Mascotas perdidas y encontradas publicadas por la comunidad." />
+                        <Toolbar>
+                            <SearchInput value={search} onChange={handleSearchChange} placeholder="Buscar por nombre o descripción" />
+                            <SelectPill label="Estado" value={filters.status} onChange={(v) => handleFilterChange({ ...filters, status: v })}
+                                options={[['all', 'Todos'], ['lost', 'Perdidos'], ['found', 'Encontrados']]} />
+                            <SelectPill label="Especie" value={filters.type} onChange={(v) => handleFilterChange({ ...filters, type: v })}
+                                options={[['all', 'Todas'], ['dog', 'Perros'], ['cat', 'Gatos']]} />
+                            <Results n={pagination.total} />
+                        </Toolbar>
+                        {loading ? <Loading /> : (
+                            <>
+                                <Table head={['Mascota', 'Estado', 'Tipo', 'Reportado por', 'Fecha', 'Acciones']}>
+                                    {pets.map(p => (
+                                        <tr key={p.id}>
+                                            <Td><span className="flex items-center gap-3"><Thumb src={p.photo_url} /><b className="text-[15px]">{p.name || 'Sin nombre'}</b></span></Td>
+                                            <Td><StatusChip status={p.status} /></Td>
+                                            <Td><span className="text-sm">{petKind(p)}</span></Td>
+                                            <Td><span className="text-sm">{p.reporter_name}</span></Td>
+                                            <Td><span className="text-sm">{formatDate(p.created_at)}</span></Td>
+                                            <Td>
+                                                <span className="flex gap-1.5">
+                                                    <IconBtn icon="externalLink" title="Ver ficha" to={`/pet/${p.id}`} />
+                                                    <IconBtn icon="trash" title="Eliminar reporte" danger onClick={() => handleDeletePet(p.id)} />
+                                                </span>
+                                            </Td>
+                                        </tr>
+                                    ))}
+                                </Table>
+                                <Pager pagination={pagination} onPage={(p) => fetchPets(p, search, filters)} />
+                            </>
+                        )}
+                    </>
+                )}
+
+                {/* ─── VETS PENDIENTES ─── */}
+                {activeTab === 'vets' && (
+                    <>
+                        <PageHeader title="Veterinarias pendientes" sub="Revisá los datos antes de aprobar: al aprobarla aparece en el directorio y empieza a recibir alertas." />
+                        {loading ? <Loading /> : pendingVets.length === 0 ? <EmptyCard>No hay veterinarias pendientes de aprobación.</EmptyCard> : (
+                            <div className="flex flex-col gap-3">
+                                {pendingVets.map(v => (
+                                    <EntityCard key={v.id}
+                                        thumb={<Initial name={v.name} color={C.noche} size={56} square text={C.crema} />}
+                                        title={v.name} chip={<Chip color={C.sol}>Pendiente</Chip>}
+                                        meta={[['mail', v.email || 'Sin email'], ['mapPin', v.city || 'Sin ciudad'], ['user', `${v.owner_name || '—'} · ${v.owner_email || ''}`], ['calendar', formatDate(v.created_at)]]}
+                                        actions={<>
+                                            <Btn icon="externalLink" to={`/vets/${v.slug}`}>Ver ficha</Btn>
+                                            <Btn icon="x" variant="danger" onClick={() => handleSetVetApproval(v.id, false)}>Rechazar</Btn>
+                                            <Btn icon="check" variant="teal" onClick={() => handleSetVetApproval(v.id, true)}>Aprobar</Btn>
+                                        </>} />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* ─── VETS ACTIVAS ─── */}
+                {activeTab === 'vets_active' && (
+                    <>
+                        <PageHeader title="Veterinarias activas" sub="Cambiá el plan de cada clínica. Se pide confirmación antes de aplicar el cambio." />
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                            {PLAN_OPTIONS.filter(o => o.color).map(o => (
+                                <span key={o.value} className="flex items-center gap-2.5 px-4 py-3.5 rounded-[18px]" style={{ background: o.color, color: C.arena }}>
+                                    <span className="flex flex-col"><span className="text-xs font-bold">{o.short}</span><span className="font-display font-black text-[22px]">{planCounts[o.value]}</span></span>
+                                    <span className="ml-auto text-[13px] text-right">{o.km} km de alcance</span>
+                                </span>
+                            ))}
+                            <span className="flex flex-col px-4 py-3.5 rounded-[18px] bg-white" style={{ border: `1px solid ${C.arena}` }}>
+                                <span className="text-xs font-bold">Ally (gratis)</span>
+                                <span className="font-display font-black text-[22px]">{planCounts.ally}</span>
+                            </span>
+                        </div>
+                        <Toolbar>
+                            <SearchInput value={vetFilters.q} onChange={(v) => setVetFilters({ ...vetFilters, q: v })} placeholder="Buscar veterinaria" />
+                            <SelectPill label="Plan" value={vetFilters.plan} onChange={(v) => setVetFilters({ ...vetFilters, plan: v })}
+                                options={[['all', 'Todos'], ...PLAN_OPTIONS.map(o => [o.value, o.short === 'Ally' ? 'Ally' : o.short])]} />
+                        </Toolbar>
+                        {loading ? <Loading /> : activeVets.length === 0 ? <EmptyCard>No hay veterinarias aprobadas todavía.</EmptyCard> : (
+                            <Table head={['Veterinaria', 'Dueño', 'Plan actual', 'Cambiar plan']}>
+                                {visibleVets.map(v => (
+                                    <tr key={v.id}>
+                                        <Td>
+                                            <Link to={`/vets/${v.slug}`} className="flex items-center gap-3 no-underline" style={{ color: C.noche }}>
+                                                <Initial name={v.name} color={C.noche} size={38} square text={C.crema} />
+                                                <span className="flex flex-col"><b className="text-[15px]">{v.name}</b><span className="text-[13px]">{v.city || 'Sin ciudad'}</span></span>
+                                            </Link>
+                                        </Td>
+                                        <Td><span className="flex flex-col text-sm"><b>{v.owner_name || '—'}</b><span className="text-[13px]">{v.owner_email}</span></span></Td>
+                                        <Td>
+                                            {PLAN[v.plan]?.color ? (
+                                                <span className="inline-flex items-center gap-1.5 h-[22px] px-2.5 rounded-full text-xs font-bold" style={{ background: PLAN[v.plan].color, color: C.arena }}>
+                                                    <AdminIcon name="sparkles" size={12} />{PLAN[v.plan].label}
+                                                </span>
+                                            ) : <Chip color={C.arena} text={C.noche}>{PLAN[v.plan]?.label || v.plan}</Chip>}
+                                        </Td>
+                                        <Td>
+                                            <span className="relative inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-bold min-w-[220px] box-border" style={{ border: `1.5px solid ${C.arena}` }}>
+                                                <span className="w-2.5 h-2.5 rounded-full shrink-0 box-border" style={PLAN[v.plan]?.color ? { background: PLAN[v.plan].color } : { border: `1.5px solid ${C.noche}` }} />
+                                                {PLAN[v.plan]?.label || v.plan}
+                                                <AdminIcon name="chevronDown" size={18} className="ml-auto" />
                                                 <select
+                                                    aria-label={`Cambiar plan de ${v.name}`}
                                                     value={v.plan}
                                                     onChange={(e) => {
                                                         const next = e.target.value;
                                                         if (next === v.plan) return;
-                                                        if (!confirm(`Cambiar plan de ${v.name} a "${PLAN_LABEL[next]}"?`)) return;
+                                                        if (!confirm(`Cambiar plan de ${v.name} a "${PLAN[next].label}"?`)) return;
                                                         handleSetVetPlan(v.id, next);
                                                     }}
-                                                    className="px-3 py-2 rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-100"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
                                                 >
-                                                    {PLAN_OPTIONS.map(o => (
-                                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                                    ))}
+                                                    {PLAN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                                 </select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            </span>
+                                        </Td>
+                                    </tr>
+                                ))}
+                            </Table>
                         )}
-                    </div>
+                    </>
                 )}
 
-                {/* ─── MODAL DE CONVERSACIÓN (contexto de una denuncia) ───
-                    Reemplaza la vieja tab "Mensajes" de navegar-todo (privacidad).
-                    Solo se abre desde una denuncia puntual, no hay browse general. */}
-                {activeConversation && (
-                    <div
-                        className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-                        onClick={() => { setActiveConversation(null); setConversationMessages([]); }}
-                    >
-                        <div
-                            className="bg-white rounded-3xl w-full max-w-lg max-h-[80vh] flex flex-col p-6"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <p className="text-sm font-semibold">{activeConversation.user_a_name} y {activeConversation.user_b_name}</p>
-                                    <p className="text-xs text-gray-400">Caso: {activeConversation.pet_name || `#${activeConversation.pet_id}`}</p>
-                                </div>
-                                <button
-                                    onClick={() => { setActiveConversation(null); setConversationMessages([]); }}
-                                    className="text-gray-400 hover:text-gray-900 text-lg"
-                                >
-                                    ✕
-                                </button>
+                {/* ─── REFUGIOS PENDIENTES ─── */}
+                {activeTab === 'shelters' && (
+                    <>
+                        <PageHeader title="Refugios pendientes" sub="Refugios que se registraron y esperan verificación." />
+                        <Note icon="shield">Antes de aprobar, chequeá los comprobantes que el refugio mandó por email (papeles de la ONG, cuenta bancaria a nombre del refugio, redes sociales).</Note>
+                        {loading ? <Loading /> : pendingShelters.length === 0 ? <EmptyCard>No hay refugios pendientes.</EmptyCard> : (
+                            <div className="flex flex-col gap-3">
+                                {pendingShelters.map(s => (
+                                    <EntityCard key={s.id}
+                                        thumb={<Initial name={s.name} color={C.teal} size={56} square />}
+                                        title={s.name} chip={<Chip color={C.sol}>Pendiente de aprobación</Chip>}
+                                        meta={[['user', `${s.owner_name || '—'} · ${s.owner_email || s.email || 'sin email'}`], ['mapPin', s.city || 'Sin ciudad'], ['calendar', formatDate(s.created_at)]]}
+                                        actions={<>
+                                            <Btn icon="externalLink" to={`/shelters/${s.slug}`}>Ver perfil</Btn>
+                                            <Btn icon="check" variant="teal" onClick={() => handleApproveShelter(s.id)}>Aprobar</Btn>
+                                        </>} />
+                                ))}
                             </div>
-                            <div className="overflow-y-auto flex-1">
-                                {loadingQuery ? (
-                                    <p className="text-center text-gray-400 py-8 text-sm">Cargando…</p>
-                                ) : conversationMessages.length === 0 ? (
-                                    <p className="text-center text-gray-400 py-8 text-sm">Sin mensajes en este hilo.</p>
-                                ) : (
-                                    conversationMessages.map(m => (
-                                        <div key={m.id} className="mb-4 group">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-xs font-semibold text-gray-700">{m.sender_name}</span>
-                                                <span className="text-[10px] text-gray-300">{new Date(m.created_at).toLocaleString('es-AR')}</span>
+                        )}
+                    </>
+                )}
+
+                {/* ─── ALERTAS ─── */}
+                {activeTab === 'alerts' && (
+                    <>
+                        <PageHeader title="Alertas" sub="Matches de la IA donde el dueño de la mascota original ya se dio de baja." />
+                        <Note>Contactalos por el email que tenían registrado para coordinar el reencuentro por fuera de la app.</Note>
+                        {loading ? <Loading /> : deletedUserMatches.length === 0 ? <EmptyCard>Sin alertas por ahora.</EmptyCard> : (
+                            <div className="flex flex-col gap-3">
+                                {deletedUserMatches.map((nItem) => {
+                                    const d = nItem.data || {};
+                                    const isUnread = !nItem.read_at;
+                                    return (
+                                        <div key={nItem.id} className="flex items-center gap-4 p-[18px] rounded-3xl bg-white" style={{ border: `2px solid ${isUnread ? C.coral : 'transparent'}` }}>
+                                            <span className="relative flex gap-1.5 items-center">
+                                                <Thumb src={d.new_pet_photo} size={56} />
+                                                <AdminIcon name="arrowLeftRight" size={18} />
+                                                <Thumb src={d.original_pet_photo} size={56} />
+                                                {isUnread ? <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full box-border" style={{ background: C.coral, border: '3px solid #fff' }} /> : null}
+                                            </span>
+                                            <span className="flex-1 min-w-0 flex flex-col gap-1">
+                                                <span className="flex items-center gap-2">
+                                                    <b className="text-base">Match con mascota {d.new_pet_status === 'lost' ? 'perdida' : 'encontrada'} #{d.new_pet_id} ↔ original #{d.original_pet_id}</b>
+                                                    {isUnread ? <Chip color={C.coral}>Nueva</Chip> : null}
+                                                </span>
+                                                <span className="text-sm">Ex-dueño: <b>{d.original_user_email || 'sin email'}</b>{d.original_pet_name ? ` · original: ${d.original_pet_name}` : ''}</span>
+                                                <span className="text-[13px]">{formatDate(nItem.created_at)}</span>
+                                            </span>
+                                            <span className="flex gap-2">
+                                                {d.original_user_email ? (
+                                                    <Btn icon="mail" variant="dark" href={`mailto:${d.original_user_email}?subject=Posible%20coincidencia%20de%20tu%20mascota%20en%20Mimo`}>Contactar</Btn>
+                                                ) : null}
+                                                <Btn icon="externalLink" to={`/pet/${d.new_pet_id}`}>Ver match</Btn>
+                                                {isUnread ? <Btn icon="check" onClick={() => { markDeletedUserMatchRead(nItem.id); setCounts(c => ({ ...c, alerts: Math.max(0, c.alerts - 1) })); }}>Marcar leída</Btn> : null}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* ─── DENUNCIAS ─── */}
+                {activeTab === 'reports' && (
+                    <>
+                        <PageHeader title="Denuncias" sub="Revisá cada caso, mirá la conversación y decidí." />
+                        <Note>Denuncias de usuarios y mensajes. Quien denunció ya pudo haber bloqueado a la otra persona. La expulsión aparece recién cuando la denuncia está revisada.</Note>
+                        <div className="flex flex-wrap gap-2">
+                            {[['pending', 'Pendientes'], ['reviewed', 'Revisadas'], ['dismissed', 'Descartadas'], ['all', 'Todas']].map(([k, label]) => (
+                                <button key={k} onClick={() => setReportFilter(k)}
+                                    className="flex items-center gap-2 h-10 px-4 rounded-full text-sm font-bold cursor-pointer"
+                                    style={reportFilter === k ? { background: C.noche, color: C.crema, border: 'none' } : { background: '#fff', color: C.noche, border: `1px solid ${C.arena}` }}>
+                                    {label}<span className="text-xs opacity-80">{reportCounts[k]}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {loading ? <Loading /> : visibleReports.length === 0 ? <EmptyCard>No hay denuncias {reportFilter === 'all' ? '' : 'en este estado'}.</EmptyCard> : (
+                            <div className="flex flex-col gap-3">
+                                {visibleReports.map((r) => {
+                                    const pending = r.status === 'pending';
+                                    return (
+                                        <div key={r.id} className="flex flex-col gap-3.5 p-5 rounded-3xl bg-white" style={{ border: `2px solid ${pending ? C.coral : 'transparent'}` }}>
+                                            <div className="flex items-center gap-2">
+                                                <Chip color={C.noche} text={C.crema}>{REASON_LABEL[r.reason] || r.reason}</Chip>
+                                                <Chip color={STATUS_COLOR[r.status]}>{STATUS_LABEL[r.status]}</Chip>
+                                                <span className="ml-auto text-[13px]">{formatDate(r.created_at)}</span>
                                             </div>
-                                            <div className="flex justify-between items-center gap-2">
-                                                <p className="text-sm text-gray-600 bg-gray-50 rounded-xl px-4 py-2" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{m.content}</p>
-                                                <button
-                                                    onClick={() => handleDeleteMessage(m.id)}
-                                                    className="opacity-0 group-hover:opacity-100 shrink-0 text-xs px-4 py-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                                                >
-                                                    Eliminar
-                                                </button>
+                                            <p className="m-0 text-base">
+                                                <b>{r.reporter_name}</b> denunció a <b>{r.reported_name}</b>{' '}
+                                                <span className="text-sm">· {r.reported_email}</span>
+                                                {r.reported_deleted_at ? <span className="ml-2"><Chip color={C.lineaFuerte} text={C.crema}>Cuenta eliminada</Chip></span> : null}
+                                            </p>
+                                            {r.message_snapshot ? (
+                                                <div className="px-4 py-3.5 rounded-2xl text-[15px] leading-[1.45]" style={{ background: C.crema, borderLeft: `4px solid ${C.coral}`, overflowWrap: 'anywhere' }}>
+                                                    “{r.message_snapshot}”
+                                                </div>
+                                            ) : null}
+                                            {r.note ? <p className="m-0 text-sm"><b>Nota:</b> {r.note}</p> : null}
+                                            <div className="flex flex-wrap gap-2 justify-end">
+                                                {r.pet_id ? (
+                                                    <Btn icon="messageCircle" onClick={() => fetchConversationMessages({
+                                                        pet_id: r.pet_id, user_a_id: r.reporter_id, user_b_id: r.reported_user_id,
+                                                        pet_name: null, user_a_name: r.reporter_name, user_b_name: r.reported_name,
+                                                    })}>Ver conversación</Btn>
+                                                ) : null}
+                                                {r.pet_id ? <Btn icon="externalLink" to={`/pet/${r.pet_id}`}>Ver caso</Btn> : null}
+                                                {r.message_id ? <Btn icon="trash" variant="danger" onClick={() => deleteReportedMessage(r.message_id, r.id)}>Borrar mensaje</Btn> : null}
+                                                {pending ? (
+                                                    <>
+                                                        <Btn icon="x" onClick={() => updateReportStatus(r.id, 'dismissed')}>Descartar</Btn>
+                                                        <Btn icon="check" variant="teal" onClick={() => updateReportStatus(r.id, 'reviewed')}>Marcar revisada</Btn>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {/* La expulsión aparece recién con la denuncia revisada:
+                                                            primero se mira, después se actúa. Se oculta si la
+                                                            cuenta ya fue eliminada. */}
+                                                        {r.status === 'reviewed' && r.reported_user_id && !r.reported_deleted_at ? (
+                                                            <Btn icon="lock" variant="dangerSolid" onClick={() => banReportedUser(r)}>Eliminar usuario y bloquear email</Btn>
+                                                        ) : null}
+                                                        <Btn icon="rotateCcw" onClick={() => updateReportStatus(r.id, 'pending')}>Reabrir</Btn>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
-                                    ))
-                                )}
+                                    );
+                                })}
                             </div>
+                        )}
+                    </>
+                )}
+            </main>
+
+            {/* ─── MODAL DE CONVERSACIÓN (contexto de una denuncia) ───
+                Solo se abre desde una denuncia puntual, no hay browse general. */}
+            {activeConversation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(26,26,46,.55)' }} onClick={closeConversation}>
+                    <div role="dialog" aria-label="Conversación" className="w-full max-w-[620px] max-h-[85vh] rounded-[28px] bg-white flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-3.5 px-6 py-5" style={{ borderBottom: `1px solid ${C.arena}` }}>
+                            <span className="w-12 h-12 shrink-0 rounded-[14px] flex items-center justify-center" style={{ background: C.arena }}>
+                                <AdminIcon name="messageCircle" size={22} />
+                            </span>
+                            <span className="flex-1 flex flex-col gap-0.5 min-w-0">
+                                <b className="font-display font-black text-xl">Caso: {activeConversation.pet_name || `#${activeConversation.pet_id}`}</b>
+                                <span className="text-sm truncate">{activeConversation.user_a_name} ↔ {activeConversation.user_b_name}</span>
+                            </span>
+                            <button onClick={closeConversation} aria-label="Cerrar" className="w-10 h-10 rounded-full border-0 flex items-center justify-center cursor-pointer" style={{ background: C.crema, color: C.noche }}>
+                                <AdminIcon name="x" size={20} />
+                            </button>
+                        </div>
+                        <div className="px-6 py-5 flex flex-col gap-3.5 overflow-y-auto">
+                            {loadingQuery ? <p className="text-center py-8 text-sm m-0">Cargando…</p>
+                                : conversationMessages.length === 0 ? <p className="text-center py-8 text-sm m-0">Sin mensajes en este hilo.</p>
+                                : conversationMessages.map(m => {
+                                    const mine = String(m.sender_id) === String(activeConversation.user_b_id); // denunciado a la derecha
+                                    const flagged = flaggedIds.has(m.id);
+                                    return (
+                                        <div key={m.id} className={`group flex flex-col gap-1 ${mine ? 'items-end' : 'items-start'}`}>
+                                            <span className="text-xs font-bold">{m.sender_name} · {formatTime(m.created_at)}</span>
+                                            <div className={`flex items-center gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                <div className="max-w-[380px] px-3.5 py-3 rounded-[18px] text-[15px] leading-[1.4]"
+                                                    style={flagged
+                                                        ? { background: 'rgba(255,92,108,.1)', border: `1.5px solid ${C.coral}`, overflowWrap: 'anywhere' }
+                                                        : { background: C.crema, overflowWrap: 'anywhere' }}>
+                                                    {m.content}
+                                                </div>
+                                                <span className={flagged ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
+                                                    <IconBtn icon="trash" title="Borrar mensaje" danger onClick={() => handleDeleteMessage(m.id)} />
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                        <div className="flex items-center gap-2.5 px-6 py-3.5 text-[13px]" style={{ background: C.crema }}>
+                            <AdminIcon name="info" size={18} />
+                            Solo lectura. Los mensajes denunciados se marcan en Coral y se pueden borrar.
                         </div>
                     </div>
-                )}
+                </div>
+            )}
+        </div>
+    );
+}
 
-                {/* ─── SHELTERS PENDIENTES TAB ─────────────────── */}
-                {activeTab === 'shelters' && !loadingTab && !loadingQuery && (
-                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
-                        {pendingShelters.length === 0 ? (
-                            <p className="text-center text-gray-400 py-8">No hay refugios pendientes.</p>
-                        ) : (
-                            pendingShelters.map((s) => (
-                                <div key={s.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-white">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{s.name}</p>
-                                        <p className="text-xs text-gray-500 truncate">
-                                            Owner: {s.owner_name || '—'} · {s.owner_email || s.email || 'sin email'}
-                                            {s.city ? ` · ${s.city}` : ''}
-                                        </p>
-                                        <p className="text-[10px] text-gray-400 mt-1">{formatDate(s.created_at)}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Link
-                                            to={`/shelters/${s.slug}`}
-                                            className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
-                                        >
-                                            Ver
-                                        </Link>
-                                        <button
-                                            onClick={() => handleApproveShelter(s.id)}
-                                            className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800"
-                                        >
-                                            Aprobar
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
+// ─── Componentes del panel (Admin-*.dc.html) ─────────────────────────────
 
-                {/* ─── ALERTS TAB ────────────────────────────── */}
-                {activeTab === 'alerts' && !loadingTab && !loadingQuery && (
-                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
-                        <p className="text-xs text-gray-500 mb-3">
-                            Matches del AI donde el dueño del pet original se dio de baja de la app.
-                            Contactalos por el email histórico para coordinar por fuera.
-                        </p>
-                        {deletedUserMatches.length === 0 ? (
-                            <p className="text-center text-gray-400 py-8">Sin alertas por ahora.</p>
-                        ) : (
-                            deletedUserMatches.map((n) => {
-                                const d = n.data || {};
-                                const isUnread = !n.read_at;
-                                return (
-                                    <div
-                                        key={n.id}
-                                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                                            isUnread ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
-                                        }`}
-                                    >
-                                        {d.new_pet_photo && (
-                                            <img src={d.new_pet_photo} alt="" className="w-14 h-14 rounded-xl object-cover" />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium truncate">
-                                                Match {d.new_pet_status === 'lost' ? 'perdida' : 'encontrada'} #{d.new_pet_id} ↔ original #{d.original_pet_id}
-                                            </p>
-                                            <p className="text-xs text-gray-500 truncate">
-                                                Ex-dueño: <span className="font-mono">{d.original_user_email || 'sin email'}</span>
-                                                {d.original_pet_name ? ` · original: ${d.original_pet_name}` : ''}
-                                            </p>
-                                            <p className="text-[10px] text-gray-400 mt-1">{formatDate(n.created_at)}</p>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            {d.original_user_email && (
-                                                <a
-                                                    href={`mailto:${d.original_user_email}?subject=Posible%20coincidencia%20de%20tu%20mascota%20en%20Mimo`}
-                                                    className="px-3 py-1.5 rounded-full bg-gray-900 text-white text-xs font-medium hover:bg-gray-700"
-                                                >
-                                                    Contactar
-                                                </a>
-                                            )}
-                                            <Link
-                                                to={`/pet/${d.new_pet_id}`}
-                                                className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
-                                            >
-                                                Ver match
-                                            </Link>
-                                            {isUnread && (
-                                                <button
-                                                    onClick={() => markDeletedUserMatchRead(n.id)}
-                                                    className="text-[10px] text-gray-500 hover:text-gray-900"
-                                                >
-                                                    Marcar leída
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                )}
+const C = {
+    coral: '#FF5C6C', teal: '#3ECFB2', sol: '#FFB830', violeta: '#9B6DFF',
+    noche: '#1A1A2E', noche2: '#262642', linea: '#33334F', lineaFuerte: '#3A3A58',
+    crema: '#FFF6F0', arena: '#F0EBE8', lavanda: '#B4B4C6',
+};
 
-                {/* ─── DENUNCIAS TAB ─────────────────────────── */}
-                {activeTab === 'reports' && !loadingTab && !loadingQuery && (
-                    <div className="space-y-3" style={{ width: '100%', maxWidth: '900px' }}>
-                        <p className="text-xs text-gray-500 mb-3">
-                            Denuncias de usuarios y mensajes. El reportante ya pudo haber bloqueado a la persona.
-                        </p>
-                        {reports.length === 0 ? (
-                            <p className="text-center text-gray-400 py-8">No hay denuncias.</p>
-                        ) : (
-                            reports.map((r) => {
-                                const pending = r.status === 'pending';
-                                return (
-                                    <div
-                                        key={r.id}
-                                        className={`p-4 rounded-2xl border transition-all ${
-                                            pending ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-900 text-white">
-                                                        {REASON_LABEL[r.reason] || r.reason}
-                                                    </span>
-                                                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
-                                                        r.status === 'pending' ? 'bg-red-100 text-red-700'
-                                                            : r.status === 'reviewed' ? 'bg-green-100 text-green-700'
-                                                            : 'bg-gray-100 text-gray-500'
-                                                    }`}>
-                                                        {STATUS_LABEL[r.status]}
-                                                    </span>
-                                                    <span className="text-[10px] text-gray-400">{formatDate(r.created_at)}</span>
-                                                </div>
-                                                <p className="text-sm mt-2">
-                                                    <span className="text-gray-400">Denunció</span>{' '}
-                                                    <span className="font-medium">{r.reporter_name}</span>{' '}
-                                                    <span className="text-gray-400">a</span>{' '}
-                                                    <span className="font-medium">{r.reported_name}</span>
-                                                    {r.reported_deleted_at ? <span className="text-[10px] text-red-500 ml-1">(cuenta eliminada)</span> : null}
-                                                </p>
-                                                <p className="text-[11px] text-gray-400 font-mono truncate">{r.reported_email}</p>
-                                                {r.message_snapshot ? (
-                                                    <div className="mt-2 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 border border-gray-100" style={{ overflowWrap: 'anywhere' }}>
-                                                        “{r.message_snapshot}”
-                                                    </div>
-                                                ) : null}
-                                                {r.note ? (
-                                                    <p className="mt-2 text-xs text-gray-500">Nota: {r.note}</p>
-                                                ) : null}
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2 mt-3">
-                                            {r.pet_id ? (
-                                                <button
-                                                    onClick={() => fetchConversationMessages({
-                                                        pet_id: r.pet_id,
-                                                        user_a_id: r.reporter_id,
-                                                        user_b_id: r.reported_user_id,
-                                                        pet_name: null,
-                                                        user_a_name: r.reporter_name,
-                                                        user_b_name: r.reported_name,
-                                                    })}
-                                                    className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200"
-                                                >
-                                                    Ver conversación
-                                                </button>
-                                            ) : null}
-                                            {r.pet_id ? (
-                                                <Link to={`/pet/${r.pet_id}`} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200">
-                                                    Ver caso
-                                                </Link>
-                                            ) : null}
-                                            {r.message_id ? (
-                                                <button
-                                                    onClick={() => deleteReportedMessage(r.message_id, r.id)}
-                                                    className="px-3 py-1.5 rounded-full bg-red-50 text-red-600 text-xs font-medium hover:bg-red-100"
-                                                >
-                                                    Borrar mensaje
-                                                </button>
-                                            ) : null}
-                                            {pending ? (
-                                                <>
-                                                    <button
-                                                        onClick={() => updateReportStatus(r.id, 'reviewed')}
-                                                        className="px-3 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-gray-800"
-                                                    >
-                                                        Marcar revisada
-                                                    </button>
-                                                    <button
-                                                        onClick={() => updateReportStatus(r.id, 'dismissed')}
-                                                        className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium hover:bg-gray-200"
-                                                    >
-                                                        Descartar
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {/* La expulsión aparece recién con la denuncia
-                                                        revisada: primero se mira, después se actúa.
-                                                        Se oculta si la cuenta ya fue eliminada. */}
-                                                    {r.status === 'reviewed' && r.reported_user_id && !r.reported_deleted_at ? (
-                                                        <button
-                                                            onClick={() => banReportedUser(r)}
-                                                            className="px-3 py-1.5 rounded-full bg-red-600 text-white text-xs font-medium hover:bg-red-700"
-                                                        >
-                                                            Eliminar usuario y bloquear email
-                                                        </button>
-                                                    ) : null}
-                                                    <button
-                                                        onClick={() => updateReportStatus(r.id, 'pending')}
-                                                        className="px-3 py-1.5 rounded-full text-gray-400 text-xs font-medium hover:bg-gray-100"
-                                                    >
-                                                        Reabrir
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                )}
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-                {/* ─── PAGINATION ────────────────────────────── */}
-                {activeTab !== 'dashboard' && activeTab !== 'vets' && activeTab !== 'vets_active' && activeTab !== 'shelters' && activeTab !== 'alerts' && activeTab !== 'reports' && !loadingTab && !loadingQuery && !activeConversation && pagination.totalPages > 1 && (
-                    <div className="flex justify-center gap-2 mt-6">
-                        {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
-                            <button
-                                key={p}
-                                onClick={() => {
-                                    if (activeTab === 'users') fetchUsers(p, search);
-                                    if (activeTab === 'pets') fetchPets(p, search, filters);
-                                }}
-                                className={`w-9 h-9 rounded-full text-sm font-medium transition-all ${p === pagination.page
-                                    ? 'bg-black text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                    }`}
-                            >
-                                {p}
-                            </button>
-                        ))}
-                    </div>
-                )}
+// "mimo" con solo el punto de la i en Coral.
+function Wordmark({ size, color }) {
+    return (
+        <span className="font-display font-extrabold leading-none" style={{ fontSize: size, color }} aria-label="mimo">
+            m<span style={{ background: `linear-gradient(to bottom, ${C.coral} 0, ${C.coral} 0.29em, ${color} 0.29em)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>i</span>mo
+        </span>
+    );
+}
+
+function PageHeader({ title, sub }) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <h1 className="m-0 font-display font-black text-[34px] leading-[1.1]">{title}</h1>
+            {sub ? <p className="m-0 text-[15px]">{sub}</p> : null}
+        </div>
+    );
+}
+
+function Section({ title, children }) {
+    return (
+        <section className="flex flex-col gap-3">
+            <h2 className="m-0 font-display font-black text-[22px]">{title}</h2>
+            {children}
+        </section>
+    );
+}
+
+function Chip({ color, text = C.arena, children }) {
+    return (
+        <span className="shrink-0 px-2.5 py-[3px] rounded-full text-[11px] font-bold whitespace-nowrap" style={{ background: color, color: text }}>
+            {children}
+        </span>
+    );
+}
+
+function StatusChip({ status }) {
+    return status === 'lost' ? <Chip color={C.coral}>Perdido</Chip> : <Chip color={C.teal}>Encontrado</Chip>;
+}
+
+function Metric({ label, value, color, icon, sub, bar }) {
+    return (
+        <div className="min-w-0 bg-white rounded-[22px] p-[18px] flex flex-col gap-2" style={{ borderTop: `4px solid ${color}` }}>
+            <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase" style={{ letterSpacing: '.08em' }}>{label}</span>
+                <AdminIcon name={icon} size={20} color={color} />
             </div>
+            <span className="font-display font-black text-[32px] leading-none whitespace-nowrap">{value}</span>
+            {bar != null ? (
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: C.arena }}>
+                    <div className="h-full" style={{ width: `${Math.max(0, Math.min(100, bar))}%`, background: color }} />
+                </div>
+            ) : null}
+            {sub ? <span className="text-[13px]">{sub}</span> : null}
+        </div>
+    );
+}
+
+function AttentionCard({ icon, color, title, sub, onClick }) {
+    return (
+        <button onClick={onClick} className="min-w-0 flex items-center gap-3.5 p-4 rounded-[22px] bg-white border-0 cursor-pointer text-left" style={{ color: C.noche }}>
+            <span className="w-12 h-12 shrink-0 rounded-2xl flex items-center justify-center" style={{ background: color }}>
+                <AdminIcon name={icon} size={22} color={color === C.noche ? C.crema : C.arena} />
+            </span>
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="font-display font-black text-lg">{title}</span>
+                <span className="text-[13px]">{sub}</span>
+            </span>
+            <AdminIcon name="chevronRight" size={20} />
+        </button>
+    );
+}
+
+function ListCard({ title, onAll, children }) {
+    return (
+        <div className="min-w-0 bg-white rounded-3xl px-5 pt-5 pb-2.5 flex flex-col gap-2">
+            <div className="flex items-baseline justify-between">
+                <h2 className="m-0 font-display font-black text-[22px]">{title}</h2>
+                {onAll ? <button onClick={onAll} className="border-0 bg-transparent p-0 text-sm font-bold underline cursor-pointer" style={{ color: C.noche }}>Ver todos</button> : null}
+            </div>
+            {children}
+        </div>
+    );
+}
+
+function ListRow({ to, thumb, title, sub, right }) {
+    const inner = (
+        <>
+            {thumb}
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="text-[15px] font-bold truncate">{title}</span>
+                <span className="text-[13px] truncate">{sub}</span>
+            </span>
+            {right}
+        </>
+    );
+    const cls = 'flex items-center gap-3 py-2.5 no-underline';
+    const style = { borderTop: `1px solid ${C.arena}`, color: C.noche };
+    return to ? <Link to={to} className={cls} style={style}>{inner}</Link> : <div className={cls} style={style}>{inner}</div>;
+}
+
+function Thumb({ src, size = 44 }) {
+    return src ? (
+        <img src={src} alt="" className="shrink-0 object-cover" style={{ width: size, height: size, borderRadius: 14 }} />
+    ) : (
+        <span className="shrink-0 flex items-center justify-center" style={{ width: size, height: size, borderRadius: 14, background: C.arena }}>
+            <AdminIcon name="pawPrint" size={size / 2.4} />
+        </span>
+    );
+}
+
+function Initial({ name, color, size = 44, square, text = C.arena }) {
+    return (
+        <span className="shrink-0 flex items-center justify-center font-display font-black"
+            style={{ width: size, height: size, borderRadius: square ? Math.round(size / 3) : '50%', background: color, color: text, fontSize: size * 0.42 }}>
+            {(name || '?').charAt(0).toUpperCase()}
+        </span>
+    );
+}
+
+function Empty({ children }) {
+    return <p className="m-0 py-3 text-[13px]" style={{ borderTop: `1px solid ${C.arena}` }}>{children}</p>;
+}
+
+function EntityCard({ thumb, title, chip, meta, actions }) {
+    return (
+        <div className="flex flex-wrap items-center gap-[18px] p-5 rounded-3xl bg-white">
+            {thumb}
+            <span className="flex-1 min-w-[260px] flex flex-col gap-1">
+                <span className="flex items-center gap-2.5">
+                    <b className="font-display font-black text-[19px]">{title}</b>
+                    {chip}
+                </span>
+                <span className="flex flex-wrap gap-x-[18px] gap-y-1.5 text-sm">
+                    {meta.map(([icon, text]) => (
+                        <span key={icon + text} className="flex items-center gap-1.5"><AdminIcon name={icon} size={16} />{text}</span>
+                    ))}
+                </span>
+            </span>
+            <span className="flex gap-2">{actions}</span>
+        </div>
+    );
+}
+
+function EmptyCard({ children }) {
+    return <div className="bg-white rounded-3xl p-8 text-center text-[15px]">{children}</div>;
+}
+
+function Loading() {
+    return <div className="py-8 text-center text-[15px]">Cargando…</div>;
+}
+
+function Note({ icon = 'info', children }) {
+    return (
+        <p className="m-0 flex items-start gap-2.5 px-4 py-3.5 rounded-[18px] bg-white text-sm leading-[1.45]">
+            <AdminIcon name={icon} size={18} className="mt-px" />
+            <span>{children}</span>
+        </p>
+    );
+}
+
+function Toolbar({ children }) {
+    return <div className="flex flex-wrap items-center gap-3">{children}</div>;
+}
+
+function SearchInput({ value, onChange, placeholder }) {
+    return (
+        <label className="flex items-center gap-2.5 w-[360px] max-w-full h-12 px-4 box-border rounded-2xl bg-white" style={{ border: `1px solid ${C.arena}` }}>
+            <AdminIcon name="search" size={18} />
+            <span className="sr-only">{placeholder}</span>
+            <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+                className="flex-1 min-w-0 border-0 outline-none bg-transparent text-[15px]" style={{ color: C.noche }} />
+        </label>
+    );
+}
+
+// Selector con el look de las pastillas del diseño: un <select> nativo invisible encima.
+function SelectPill({ label, value, options, onChange }) {
+    const current = options.find(([v]) => v === value)?.[1] ?? value;
+    return (
+        <span className="relative flex items-center gap-2 h-12 px-3.5 box-border rounded-2xl bg-white text-sm" style={{ border: `1px solid ${C.arena}` }}>
+            <span className="text-[11px] font-bold uppercase" style={{ letterSpacing: '.08em' }}>{label}</span>
+            <b>{current}</b>
+            <AdminIcon name="chevronDown" size={18} />
+            <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer">
+                {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+        </span>
+    );
+}
+
+function Results({ n: count }) {
+    return <span className="ml-auto text-[13px] font-bold uppercase" style={{ letterSpacing: '.08em' }}>{Number(count || 0).toLocaleString('es-AR')} resultados</span>;
+}
+
+function Table({ head, children }) {
+    return (
+        <div className="bg-white rounded-3xl overflow-x-auto">
+            <table className="w-full border-collapse">
+                <thead>
+                    <tr>{head.map(h => <th key={h} className="text-left px-4 py-3.5 text-[11px] font-bold uppercase whitespace-nowrap" style={{ letterSpacing: '.08em' }}>{h}</th>)}</tr>
+                </thead>
+                <tbody>{children}</tbody>
+            </table>
+        </div>
+    );
+}
+
+function Td({ children }) {
+    return <td className="whitespace-nowrap px-4 py-3.5 align-middle" style={{ borderTop: `1px solid ${C.arena}` }}>{children}</td>;
+}
+
+function IconBtn({ icon, title, onClick, to, danger }) {
+    const cls = 'w-[38px] h-[38px] shrink-0 flex items-center justify-center rounded-xl cursor-pointer p-0';
+    const style = danger
+        ? { border: 'none', background: 'rgba(255,92,108,.1)', color: C.coral }
+        : { border: `1.5px solid ${C.arena}`, background: '#fff', color: C.noche };
+    if (to) return <Link to={to} title={title} aria-label={title} className={cls} style={style}><AdminIcon name={icon} size={18} /></Link>;
+    return <button onClick={onClick} title={title} aria-label={title} className={cls} style={style}><AdminIcon name={icon} size={18} /></button>;
+}
+
+const BTN_STYLES = {
+    outline: { border: `1.5px solid ${C.arena}`, background: '#fff', color: C.noche },
+    danger: { border: 'none', background: 'rgba(255,92,108,.1)', color: C.coral },
+    dangerSolid: { border: 'none', background: C.coral, color: C.arena },
+    teal: { border: 'none', background: C.teal, color: C.arena },
+    dark: { border: 'none', background: C.noche, color: C.crema },
+};
+
+function Btn({ icon, children, onClick, to, href, variant = 'outline' }) {
+    const cls = 'flex items-center gap-1.5 h-[38px] px-3.5 rounded-xl text-sm font-bold cursor-pointer whitespace-nowrap no-underline';
+    const style = BTN_STYLES[variant];
+    const content = <>{icon ? <AdminIcon name={icon} size={18} /> : null}{children}</>;
+    if (to) return <Link to={to} className={cls} style={style}>{content}</Link>;
+    if (href) return <a href={href} className={cls} style={style}>{content}</a>;
+    return <button onClick={onClick} className={cls} style={style}>{content}</button>;
+}
+
+function Legend({ items }) {
+    return (
+        <p className="m-0 flex flex-wrap items-center gap-4 text-[13px]">
+            {items.map(([icon, label]) => <span key={label} className="flex items-center gap-1.5"><AdminIcon name={icon} size={16} />{label}</span>)}
+        </p>
+    );
+}
+
+// Paginación: "Mostrando a–b de total" + páginas con elipsis.
+function Pager({ pagination, onPage }) {
+    const { page, totalPages, total } = pagination;
+    if (!total) return null;
+    const per = 20;
+    const from = (page - 1) * per + 1;
+    const to = Math.min(page * per, total);
+    const pages = [];
+    for (let p = 1; p <= totalPages; p++) {
+        if (p === 1 || p === totalPages || Math.abs(p - page) <= 1) pages.push(p);
+        else if (pages[pages.length - 1] !== '…') pages.push('…');
+    }
+    return (
+        <div className="flex items-center justify-between">
+            <span className="text-sm">Mostrando {from}–{to} de {Number(total).toLocaleString('es-AR')}</span>
+            {totalPages > 1 ? (
+                <div className="flex gap-1.5">
+                    {pages.map((p, i) => p === '…' ? (
+                        <span key={`e${i}`} className="w-10 h-10 flex items-center justify-center text-sm font-bold">…</span>
+                    ) : (
+                        <button key={p} onClick={() => onPage(p)} aria-current={p === page ? 'page' : undefined}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold cursor-pointer"
+                            style={p === page ? { background: C.noche, color: C.crema, border: 'none' } : { background: '#fff', color: C.noche, border: `1px solid ${C.arena}` }}>
+                            {p}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
         </div>
     );
 }

@@ -36,7 +36,9 @@ function App() {
   const token = useSelector((state) => state.user?.token);
   const location = useLocation();
   // La landing es standalone: sin navbar, sin chat widget, sin toasts.
-  const isLanding = location.pathname === '/';
+  // La landing y el panel de admin tienen su propio layout: sin Navbar,
+  // Footer ni widgets generales.
+  const isLanding = location.pathname === '/' || location.pathname.startsWith('/admin');
 
 
 

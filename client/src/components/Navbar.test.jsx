@@ -4,7 +4,7 @@ import { renderWithProviders } from '../tests/testUtils';
 import Navbar from './Navbar';
 
 describe('<Navbar />', () => {
-    it('sin token: muestra "Iniciar Sesión" y el wordmark mimo', () => {
+    it('sin token: muestra "Iniciar sesión" y el wordmark mimo', () => {
         renderWithProviders(<Navbar />, {
             preloadedState: {
                 user: { token: null, data: null },
@@ -13,13 +13,13 @@ describe('<Navbar />', () => {
             },
         });
 
-        expect(screen.getByText('Iniciar Sesión')).toBeInTheDocument();
-        expect(screen.queryByText('Mi Perfil')).not.toBeInTheDocument();
+        expect(screen.getByText('Iniciar sesión')).toBeInTheDocument();
+        expect(screen.queryByText('Mi perfil')).not.toBeInTheDocument();
         // El wordmark es un SVG (no un nodo de texto). Lo identificamos por aria-label.
         expect(screen.getByLabelText('mimo')).toBeInTheDocument();
     });
 
-    it('con token: muestra "Mi Perfil" y esconde "Iniciar Sesión"', () => {
+    it('con token: muestra "Mi perfil" y esconde "Iniciar sesión"', () => {
         renderWithProviders(<Navbar />, {
             preloadedState: {
                 user: { token: 't', data: { id: 7, name: 'Ana', role: 'user' } },
@@ -28,8 +28,8 @@ describe('<Navbar />', () => {
             },
         });
 
-        expect(screen.getByText('Mi Perfil')).toBeInTheDocument();
-        expect(screen.queryByText('Iniciar Sesión')).not.toBeInTheDocument();
+        expect(screen.getByText('Mi perfil')).toBeInTheDocument();
+        expect(screen.queryByText('Iniciar sesión')).not.toBeInTheDocument();
     });
 
     it('admin: muestra el link "Admin"', () => {

@@ -1,55 +1,59 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import {
+    ChevronLeft, ChevronRight, Map as MapIcon, Maximize2, User, Calendar, Stethoscope, Star,
+    MapPin, ExternalLink, MessageCircle, Share2, ShieldCheck, HeartHandshake, Trash2, Dog, Cat,
+} from 'lucide-react';
 import { openChat } from '../store/chatSlice';
 import { translateColor, translateType } from '../utils/translations';
 import { CARTO_LIGHT_TILES } from '../utils/links';
+import { C, STATUS, petStatusKey } from '../utils/theme';
+import { petShareMessage } from '../utils/shareText';
 
+const API = import.meta.env.VITE_API_URL;
+const SITE_URL = 'https://mimo.uy';
 
+// Pin de marca para el mapa (handoff: estilo de mapa actual, pin de Mimo).
+const PIN_ICON = L.icon({ iconUrl: '/landing/pin.svg', iconSize: [36, 44], iconAnchor: [18, 44] });
+
+const extraPhotos = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') {
+        try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch { return []; }
+    }
+    return [];
+};
+
+const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 function Pet() {
     const { id } = useParams();
     const token = useSelector(state => state.user?.token);
+    const currentUser = useSelector(state => state.user?.data);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const [pet, setPet] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [selectedImage, setSelectedImage] = useState(null);
-
-    const currentUser = useSelector(state => state.user?.data);
-
-
-    function RecenterMap({ lat, lng }) {
-        const map = useMap();
-        useEffect(() => {
-            if (lat && lng) map.setView([lat, lng], 15);
-        }, [lat, lng, map]);
-        return null;
-    }
-
-
-
+    const [photoIdx, setPhotoIdx] = useState(0);
+    const [viewer, setViewer] = useState(null);
+    const [copied, setCopied] = useState(false);
 
     useEffect(() => {
         const fetchPet = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${id}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                const response = await fetch(`${API}/api/pets/${id}`, {
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
                 });
-                if (!response.ok) throw new Error('Mascota no encontrada.');
-                const data = await response.json();
-                setPet(data);
+                if (!response.ok) throw new Error('No pudimos encontrar esta mascota.');
+                setPet(await response.json());
             } catch (err) {
-                setError(err.message);
+                setError(err.message === 'Failed to fetch' ? 'No pudimos conectarnos. Probá de nuevo en un rato.' : err.message);
             } finally {
                 setLoading(false);
             }
@@ -57,230 +61,262 @@ function Pet() {
         fetchPet();
     }, [id, token]);
 
+    // Título de la pestaña. Las meta tags para compartir las pone el servidor.
     useEffect(() => {
         if (!pet) return;
-
-        const petName = pet.name || 'una mascota';
-        const petType = translateType(pet.type) || 'mascota';
-        const petColor = translateColor(pet.color);
-
-        const title = pet.status === 'lost'
-            ? `🔍 ¡Ayudanos a encontrar a ${petName}!`
-            : `🐾 ¡Una mascota fue encontrado/a!`;
-        const desc = pet.status === 'lost'
-            ? `Se perdió un/a ${petType}${petColor ? ' de color ' + petColor : ''}. Compartí para ayudar a que vuelva a casa.`
-            : `Un/a ${petType}${petColor ? ' de color ' + petColor : ''} fue encontrado/a. Compartí para ayudar a que vuelva a casa. ¿Lo reconocés?`;
-        const image = pet.photo_url;
-        const url = window.location.href;
-
-        document.title = title;
-
-        const setMeta = (attr, key, content) => {
-            let el = document.querySelector(`meta[${attr}="${key}"]`);
-            if (!el) {
-                el = document.createElement('meta');
-                el.setAttribute(attr, key);
-                document.head.appendChild(el);
-            }
-            el.setAttribute('content', content);
-        };
-
-        setMeta('property', 'og:title', title);
-        setMeta('property', 'og:description', desc);
-        setMeta('property', 'og:image', image);
-        setMeta('property', 'og:url', url);
-        setMeta('name', 'twitter:title', title);
-        setMeta('name', 'twitter:description', desc);
-        setMeta('name', 'twitter:image', image);
-
+        const who = pet.status === 'lost' ? pet.name || capitalize(translateType(pet.type)) || 'Mascota' : `${capitalize(translateType(pet.type)) || 'Mascota'} encontrado`;
+        document.title = `${who} · Mimo`;
         return () => { document.title = 'Mimo - Comunidad de Reencuentro Animal'; };
     }, [pet]);
 
-    const handleOpenChat = () => {
-        if (!token) {
-            navigate('/login');
-        } else {
-            dispatch(openChat({
-                pet_id: pet.id,
-                petPhoto: pet.photo_url,
-                otherUserId: pet.user_id,
-                otherUserName: pet.reporter_name
-            }));
-        }
-    };
-    const handleResolve = async (resolved) => {
-        const ok = window.confirm(
-            resolved
-                ? '¿Confirmás que se reunió con su familia? Se ocultará de búsquedas y del feed.'
-                : '¿Reabrir el reporte? Vuelve a aparecer en búsquedas y feed.'
-        );
-        if (!ok) return;
-        try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/pets/${pet.id}/resolve`, {
-                method: 'PATCH',
-                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resolved }),
-            });
-            if (!res.ok) throw new Error('No se pudo actualizar el estado.');
-            const data = await res.json();
-            setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
-        } catch (err) {
-            alert(err.message);
-        }
-    };
-
-    const handleShare = async () => {
-        const shareData = {
-            title: pet.status === 'lost' ? `🔍 ¡Ayudanos a encontrar a ${pet.name || 'una mascota'}!` : `🐾 ¡${pet.name || 'Una mascota'} fue encontrado/a!`,
-            text: pet.status === 'lost' ? 'Compartí para ayudar a que vuelva a casa.' : '¿Lo reconocés? Ayudanos a difundir.',
-            url: `${import.meta.env.VITE_API_URL}/pet/${pet.id}`,
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                console.log("Error al compartir:", err);
-            }
-        }
-    };
-
-    if (loading) return (
-        <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center font-sans text-gray-400">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Sincronizando Mimo ID</div>
-        </div>
-    );
+    if (loading) return <PetSkeleton />;
 
     if (error || !pet) return (
-        <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center font-sans p-6 text-center">
-            <h1 className="text-6xl font-semibold text-black mb-4">404.</h1>
-            <p className="text-gray-500 mb-10">{error || 'No pudimos encontrar esta mascota.'}</p>
-            <Link to="/app" className="px-8 py-3 bg-black text-white rounded-full font-semibold">Volver al inicio</Link>
+        <div className="flex-1 bg-mimo-warm flex flex-col items-center justify-center font-sans p-6 text-center text-mimo-noche">
+            <p className="font-display font-black text-7xl m-0">404</p>
+            <p className="mt-3 mb-8 text-base">{error || 'No pudimos encontrar esta mascota.'}</p>
+            <Link to="/pets" className="h-12 px-6 rounded-[18px] bg-mimo-noche text-mimo-warm font-bold flex items-center">
+                Ver mascotas reportadas
+            </Link>
         </div>
     );
 
-    return (
-        <div className="min-h-screen bg-[#F5F5F7] p-6 pb-20 font-sans text-gray-900 flex flex-col items-center">
+    const isLost = pet.status === 'lost';
+    const isOwn = currentUser?.id != null && Number(currentUser.id) === Number(pet.user_id);
+    const isResolved = !!pet.resolved_at;
+    const status = STATUS[petStatusKey(pet)];
+    const photos = [pet.photo_url, ...extraPhotos(pet.extra_photos)].filter(Boolean);
+    const mainPhoto = photos[photoIdx] || pet.photo_url;
+    const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
+    const title = isLost ? pet.name || 'Sin nombre' : 'Encontrado';
+    const description = pet.description && pet.description !== 'Desconocido' ? pet.description : 'Sin detalles adicionales.';
+    const SpeciesIcon = pet.type === 'cat' ? Cat : Dog;
 
-            {/* --- MODAL PANTALLA COMPLETA --- */}
-            {selectedImage && (
-                <div className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm cursor-zoom-out" onClick={() => setSelectedImage(null)}>
-                    <img src={selectedImage} alt={`${pet.name || translateType(pet.type) || 'Mascota'} - vista completa`} className="max-w-full max-h-full object-contain rounded-3xl animate-slide-up" />
+    const handleOpenChat = () => {
+        if (!token) return navigate('/login');
+        dispatch(openChat({
+            pet_id: pet.id,
+            petPhoto: pet.photo_url,
+            otherUserId: pet.user_id,
+            otherUserName: pet.reporter_name,
+        }));
+    };
+
+    // El caso se cierra desde el chat (igual que en la app). Desde la ficha el
+    // dueño solo puede reabrir un caso cerrado.
+    const handleReopen = async () => {
+        if (!window.confirm('¿Reabrir el reporte? Vuelve a aparecer en las búsquedas y en el feed.')) return;
+        try {
+            const res = await fetch(`${API}/api/pets/${pet.id}/resolve`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resolved: false }),
+            });
+            if (!res.ok) throw new Error();
+            const data = await res.json();
+            setPet((prev) => ({ ...prev, resolved_at: data.resolved_at }));
+        } catch {
+            alert('No se pudo actualizar el estado. Probá de nuevo.');
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm('¿Eliminar esta publicación? Se borra de forma permanente, con sus fotos. No se puede deshacer.')) return;
+        try {
+            const res = await fetch(`${API}/api/pets/${pet.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error();
+            navigate('/profile');
+        } catch {
+            alert('No se pudo eliminar la publicación. Probá de nuevo.');
+        }
+    };
+
+    // En el celular abre el menú de compartir; en la compu copia el texto.
+    const handleShare = async () => {
+        const text = petShareMessage(pet, SITE_URL);
+        if (navigator.share) {
+            try { await navigator.share({ text }); } catch { /* cancelado */ }
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch {
+            window.prompt('Copiá el texto para compartir:', text);
+        }
+    };
+
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${pet.lat},${pet.lng}`;
+
+    return (
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            {viewer && (
+                <div className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setViewer(null)}>
+                    <img src={viewer} alt={`${title} - vista completa`} className="max-w-full max-h-full object-contain rounded-3xl" />
                 </div>
             )}
 
-            {/* Header de navegación */}
-            <div className="w-full max-w-6xl mb-12 flex justify-between items-center">
-                <button onClick={() => navigate(-1)} className="text-[10px] font-bold text-gray-400 hover:text-black transition-colors flex items-center gap-2 uppercase tracking-widest">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="m15 18-6-6 6-6" /></svg>
-                    Volver
-                </button>
-                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.3em]">Registro Oficial</span>
-            </div>
-
-            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-16">
-
-                {/* COLUMNA IZQUIERDA: GALERÍA (Sin cambios) */}
-                <div className="md:col-span-6 space-y-6">
-                    <div className="bg-white rounded-[40px] p-4 shadow-[0_15px_40px_rgba(0,0,0,0.03)] border border-gray-100 cursor-zoom-in" onClick={() => setSelectedImage(pet.photo_url)}>
-                        <img src={pet.photo_url} alt={`${translateType(pet.type) || 'Mascota'} ${pet.name ? pet.name + ' - ' : ''}${pet.status === 'lost' ? 'Perdido' : 'Encontrado'}`} className="w-full aspect-[4/3] object-cover rounded-[32px]" />
-                    </div>
-                    {pet.extra_photos?.length > 0 && (
-                        <div className="grid grid-cols-4 gap-4 px-2">
-                            {pet.extra_photos.map((url, i) => (
-                                <div key={i} className="bg-white rounded-3xl p-2 border border-gray-100 cursor-zoom-in shadow-sm" onClick={() => setSelectedImage(url)}>
-                                    <img src={url} alt={`${pet.name || translateType(pet.type) || 'Mascota'} - foto ${i + 1}`} className="w-full aspect-square object-cover rounded-2xl" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            <main className="w-full max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-7 pb-20 flex flex-col gap-6">
+                <div className="flex items-center justify-between gap-4">
+                    <button
+                        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/pets'))}
+                        className="flex items-center gap-1.5 h-10 pl-2 pr-3.5 rounded-full bg-white text-sm font-bold"
+                    >
+                        <ChevronLeft size={18} strokeWidth={2} />
+                        Volver
+                    </button>
+                    <span className="flex items-center gap-1.5 text-[13px] font-bold min-w-0">
+                        <MapIcon size={16} strokeWidth={2} className="shrink-0" />
+                        <Link to="/pets" className="hover:text-mimo-coral">Explorar</Link>
+                        <span className="opacity-50">/</span>
+                        <span className="truncate">{title}</span>
+                    </span>
                 </div>
 
-                {/* COLUMNA DERECHA: INFORMACIÓN ADAPTADA A CARDS */}
-                <div className="md:col-span-6 space-y-8">
-
-                    <div className="space-y-6">
-                        {/* 1. Badge de Estado y Metadatos Superiores (Igual que en Card) */}
-                        <div className="flex justify-between items-center">
-                            <span className={`text-[9px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-sm ${pet.resolved_at ? 'bg-blue-500 text-white' : pet.status === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                                {pet.resolved_at ? 'Reencontrada ✓' : pet.status === 'lost' ? 'Perdido' : 'Encontrado'}
-                            </span>
-                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
+                    {/* Fotos */}
+                    <div className="w-full lg:flex-[0_0_620px] flex flex-col gap-3.5">
+                        <div className="relative h-[340px] sm:h-[460px] lg:h-[520px] rounded-[32px] bg-mimo-muted overflow-hidden flex items-center justify-center">
+                            {mainPhoto ? (
+                                <img src={mainPhoto} alt={title} className="absolute inset-0 w-full h-full object-cover" />
+                            ) : (
+                                <SpeciesIcon size={96} strokeWidth={1.5} color={C.noche} opacity={0.35} />
+                            )}
+                            <span className="absolute top-[18px] left-[18px] h-8 px-3 rounded-full bg-mimo-noche/55 text-mimo-warm text-[13px] font-bold flex items-center">
                                 Mimo ID #{pet.id}
                             </span>
-                        </div>
-
-                        {/* 2. Título y Especie (Igual que en Card) */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-bold text-pet-accent uppercase tracking-[0.2em]">
-                                    {translateType(pet.type)} • {translateColor(pet.color)}
-                                </span>
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-black leading-none">
-                                {pet.name || "Encontrado"}.
-                            </h2>
-                        </div>
-
-                        {/* 3. Información del Informante */}
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.2em]  block">Informante: </span>
-                            <p className="text-sm font-semibold text-gray-900">{pet.reporter_name || 'Usuario Anónimo'}</p>
-                            {pet.vet_name ? (
-                                <Link
-                                    to={`/vets/${pet.vet_slug}`}
-                                    className="inline-flex items-center gap-1.5 rounded-full bg-[#FFB830]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-[#C98800] transition-all hover:bg-[#FFB830]/25"
+                            {mainPhoto && (
+                                <button
+                                    aria-label="Ver en pantalla completa"
+                                    onClick={() => setViewer(mainPhoto)}
+                                    className="absolute right-[18px] bottom-[18px] w-11 h-11 rounded-full bg-mimo-noche/55 flex items-center justify-center"
                                 >
-                                    <span>🏥</span>
-                                    <span>{pet.vet_name}</span>
-                                    {pet.vet_verified_at ? <span>⭐</span> : null}
-                                </Link>
-                            ) : null}
+                                    <Maximize2 size={20} strokeWidth={2} color={C.crema} />
+                                </button>
+                            )}
                         </div>
-
-
-                        {/* 4. Descripción Larga */}
-                        <div className=" border-t border-gray-100">
-                            <p className="text-gray-600 text-base leading-relaxed font-medium">
-                                Informacion adicional: {pet.description || "Sin detalles adicionales proporcionados."}
-                            </p>
-                        </div>
+                        {photos.length > 1 && (
+                            <div className="flex gap-3 flex-wrap">
+                                {photos.map((url, i) => (
+                                    <button
+                                        key={`${url}-${i}`}
+                                        aria-label={`Foto ${i + 1}`}
+                                        onClick={() => setPhotoIdx(i)}
+                                        className="w-24 h-24 rounded-[20px] bg-mimo-muted overflow-hidden box-border"
+                                        style={i === photoIdx ? { border: `3px solid ${status.color}` } : undefined}
+                                    >
+                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
-                    {/* SECCIÓN MAPA Y BOTONES (Sin cambios en lógica, ajuste visual) */}
-                    <div className="space-y-6">
-                        <div className="h-64 rounded-[40px] overflow-hidden border border-gray-100 shadow-inner">
-
-                            {pet.lat && (
-                                <div className="h-full rounded-[24px] overflow-hidden border border-gray-50 grayscale group-hover:grayscale-0 transition-all">
-                                    <MapContainer center={[pet.lat, pet.lng]} zoom={17} zoomControl={false} scrollWheelZoom={false} dragging={false} className="w-full h-full z-0">
-                                        <TileLayer url={CARTO_LIGHT_TILES} />
-                                        <Marker position={[pet.lat, pet.lng]} />
-                                    </MapContainer>
-                                </div>
-                            )}
+                    {/* Datos */}
+                    <div className="w-full flex-1 min-w-0 flex flex-col gap-[22px]">
+                        <div className="flex flex-col gap-2.5">
+                            <div className="flex items-center justify-between gap-3">
+                                <span className="px-3.5 py-[5px] rounded-full text-mimo-muted text-[13px] font-bold" style={{ background: status.color }}>
+                                    {status.label}
+                                </span>
+                                {meta && <span className="text-[13px] font-bold tracking-[.08em] uppercase">{meta}</span>}
+                            </div>
+                            <h1 className="mt-1 mb-0 font-display font-black text-4xl md:text-5xl leading-[1.05] break-words">{title}</h1>
+                            <div className="flex flex-wrap gap-x-5 gap-y-2 text-[15px]">
+                                <span className="flex items-center gap-1.5">
+                                    <User size={16} strokeWidth={2} />
+                                    Informante: <b>{pet.reporter_name || 'Anónimo'}</b>
+                                </span>
+                                {pet.created_at && (
+                                    <span className="flex items-center gap-1.5">
+                                        <Calendar size={16} strokeWidth={2} />
+                                        {new Date(pet.created_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="flex flex-col gap-4">
+                        {pet.vet_name && (
+                            <Link
+                                to={pet.vet_slug ? `/vets/${pet.vet_slug}` : '/vets'}
+                                className="self-start px-3.5 py-2 rounded-full bg-white border border-mimo-muted flex items-center gap-2 text-sm font-bold hover:border-mimo-noche transition-colors"
+                            >
+                                <Stethoscope size={16} strokeWidth={2} />
+                                Reportado por {pet.vet_name}
+                                {pet.vet_verified_at && <Star size={14} strokeWidth={2} color={C.sol} fill={C.sol} />}
+                                <ChevronRight size={16} strokeWidth={2} />
+                            </Link>
+                        )}
 
-                            {pet.resolved_at && currentUser?.id !== pet.user_id && (
-                                <p className="text-center text-sm text-gray-500 font-medium py-4">
-                                    Esta mascota ya se reencontró con su familia.
-                                </p>
+                        <section className="bg-white rounded-3xl p-5 flex flex-col gap-2">
+                            <p className="m-0 text-xs font-bold tracking-[.08em] uppercase">Descripción</p>
+                            <p className="m-0 text-base leading-[1.55] whitespace-pre-line break-words">{description}</p>
+                        </section>
+
+                        {(pet.address || (pet.lat && pet.lng)) && (
+                            <section className="flex flex-col gap-2.5">
+                                {pet.address && (
+                                    <p className="m-0 flex items-start gap-1.5 text-[15px]">
+                                        <MapPin size={16} strokeWidth={2} className="shrink-0 mt-[3px]" />
+                                        <span>{isLost ? 'Perdido' : 'Encontrado'} cerca de <b>{pet.address}</b></span>
+                                    </p>
+                                )}
+                                {pet.lat && pet.lng && (
+                                    <div className="relative h-[220px] rounded-3xl overflow-hidden bg-mimo-muted">
+                                        <MapContainer
+                                            center={[pet.lat, pet.lng]}
+                                            zoom={16}
+                                            zoomControl={false}
+                                            scrollWheelZoom={false}
+                                            dragging={false}
+                                            doubleClickZoom={false}
+                                            attributionControl={false}
+                                            className="w-full h-full z-0"
+                                        >
+                                            <TileLayer url={CARTO_LIGHT_TILES} />
+                                            <Marker position={[pet.lat, pet.lng]} icon={PIN_ICON} />
+                                        </MapContainer>
+                                        <a
+                                            href={mapsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="absolute right-3.5 bottom-3.5 z-[400] flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-[13px] font-bold hover:text-mimo-coral"
+                                        >
+                                            <ExternalLink size={14} strokeWidth={2} />
+                                            Abrir en Maps
+                                        </a>
+                                    </div>
+                                )}
+                            </section>
+                        )}
+
+                        <div className="flex flex-col gap-2.5">
+                            {isResolved && (
+                                <div className="flex items-center gap-4 rounded-3xl px-5 py-4 text-mimo-muted" style={{ background: C.violeta }}>
+                                    <HeartHandshake size={30} strokeWidth={2} className="shrink-0" />
+                                    <div>
+                                        <p className="m-0 font-display font-black text-xl">¡Volvió a casa!</p>
+                                        <p className="m-0 text-sm">Esta mascota ya se reencontró con su familia.</p>
+                                    </div>
+                                </div>
                             )}
 
-                            {!pet.resolved_at && currentUser?.id !== pet.user_id && (
+                            {isOwn && <p className="m-0 mt-1 text-[13px] font-bold tracking-[.08em] uppercase">Esta es tu publicación</p>}
+
+                            {!isOwn && !isResolved && (
                                 <button
                                     onClick={handleOpenChat}
-                                    className="w-full py-5 border-2 border-transparent bg-black hover:bg-gray-800 text-white text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+                                    className="h-[58px] rounded-[18px] bg-mimo-noche hover:bg-mimo-nocheAlt text-mimo-warm font-bold text-base flex items-center justify-center gap-2 transition-colors"
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                                    </svg>
-                                    {pet.status === 'lost' ? 'Enviar información' : 'Contactar al rescatista'}
+                                    <MessageCircle size={20} strokeWidth={2} />
+                                    {isLost ? 'Enviar información' : 'Contactar al rescatista'}
                                 </button>
-
                             )}
+
                             {/* Sin "Llamar": el contacto por una mascota perdida va SOLO por
                                 el chat interno. Un teléfono expuesto no se puede retirar
                                 después, no deja rastro moderable y es la vía habitual de las
@@ -288,33 +324,55 @@ function Pet() {
                                 bloquear/denunciar. */}
                             <button
                                 onClick={handleShare}
-                                className="w-full py-5 border-2 border-gray-100 bg-white hover:border-black text-gray-400 hover:text-black text-[10px] font-bold uppercase tracking-[0.2em] rounded-full transition-all shadow-sm active:scale-95 flex items-center justify-center gap-3"
+                                className="h-[54px] rounded-[18px] border-2 border-mimo-noche bg-transparent hover:bg-white font-bold text-[15px] flex items-center justify-center gap-2 transition-colors"
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                                    <polyline points="16 6 12 2 8 6" />
-                                    <line x1="12" y1="2" x2="12" y2="15" />
-                                </svg>
-                                Compartir
+                                <Share2 size={18} strokeWidth={2} />
+                                {copied ? 'Texto copiado, pegalo donde quieras' : 'Compartir'}
                             </button>
 
-                            {currentUser?.id === pet.user_id && pet.resolved_at && (
-                                <button
-                                    onClick={() => handleResolve(false)}
-                                    className="text-[10px] font-bold text-gray-400 hover:text-black uppercase tracking-[0.2em] underline transition-colors py-3 mt-2"
-                                >
+                            {isOwn && isResolved && (
+                                <button onClick={handleReopen} className="mt-2 py-2 text-[15px] font-bold hover:text-mimo-coral">
                                     Reabrir reporte
                                 </button>
                             )}
 
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center">
-                                Sistema de Mensajería Privada Comunidad Mimo
-                            </p>
+                            {isOwn && (
+                                <button onClick={handleDelete} className="mt-2 py-2 flex items-center justify-center gap-2 text-[15px] font-bold hover:text-mimo-coral">
+                                    <Trash2 size={18} strokeWidth={2} />
+                                    Eliminar publicación
+                                </button>
+                            )}
+
+                            {!isOwn && !isResolved && (
+                                <p className="m-0 mt-0.5 flex items-start gap-2 text-[13px] leading-[1.45]">
+                                    <ShieldCheck size={16} strokeWidth={2} className="shrink-0 mt-px" />
+                                    Por tu seguridad, el contacto es solo por el chat de Mimo. Nunca compartas datos de pago.
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
+            </main>
+        </div>
+    );
+}
+
+function PetSkeleton() {
+    return (
+        <div className="flex-1 bg-mimo-warm">
+            <div className="w-full max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-7 pb-20 flex flex-col gap-6 animate-pulse" aria-label="Cargando">
+                <div className="h-10 w-28 rounded-full bg-mimo-muted" />
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+                    <div className="w-full lg:flex-[0_0_620px] h-[340px] lg:h-[520px] rounded-[32px] bg-mimo-muted" />
+                    <div className="flex-1 flex flex-col gap-4">
+                        <div className="h-7 w-28 rounded-full bg-mimo-muted" />
+                        <div className="h-12 w-2/3 rounded-2xl bg-mimo-muted" />
+                        <div className="h-28 rounded-3xl bg-mimo-muted" />
+                        <div className="h-[220px] rounded-3xl bg-mimo-muted" />
+                    </div>
+                </div>
             </div>
-        </div >
+        </div>
     );
 }
 

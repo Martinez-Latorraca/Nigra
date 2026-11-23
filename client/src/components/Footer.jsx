@@ -1,85 +1,56 @@
-import { Link } from 'react-router-dom';
-import MimoLogo from './MimoLogo';
-import { MP_DONATION_URL, INSTAGRAM_URL } from '../utils/links';
+import { Mail, AtSign, Smartphone } from 'lucide-react';
+import Wordmark from './Wordmark';
+import { C } from '../utils/theme';
+import { INSTAGRAM_URL, CONTACT_EMAIL } from '../utils/links';
 
-const CURRENT_YEAR = new Date().getFullYear();
+// Mismo footer Noche que la landing. Los links de "Mimo" y "Sumate" llevan a
+// las secciones de la landing.
+const COLS = [
+    ['Mimo', [['Cómo funciona', '/#como'], ['Preguntas frecuentes', '/#faq'], ['Apoyar', '/#apoyar']]],
+    ['Sumate', [['Veterinarias', '/vets'], ['Refugios', '/shelters'], ['Socio Mimo', '/#vets']]],
+];
+
+const colTitle = 'm-0 text-[13px] font-bold uppercase tracking-[.1em]';
 
 export default function Footer() {
     return (
-        <footer className="bg-mimo-noche text-white font-sans">
-            <div className="max-w-6xl mx-auto px-6 py-16 grid grid-cols-1 md:grid-cols-4 gap-10">
-                <div className="md:col-span-1">
-                    <MimoLogo variant="wordmark" size={132} bg="dark" />
-                    <p className="text-sm text-white/60 font-medium mt-4">
-                        Cada mascota merece un mimo.
+        <footer className="px-5 md:px-20 pt-[72px] pb-10 flex flex-col gap-14 font-sans" style={{ background: C.noche, color: C.crema }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr] gap-12 items-start">
+                <div className="flex flex-col gap-[18px] max-w-[380px]">
+                    <Wordmark size={30} color={C.crema} />
+                    <p className="m-0 text-base leading-[1.55]">
+                        Comunidad de reencuentro animal. Hecha en Uruguay para que cada mascota vuelva a casa.
                     </p>
+                    <span className="self-start flex items-center gap-2 h-[34px] px-3.5 rounded-full text-[13px] font-bold" style={{ background: C.noche2 }}>
+                        <Smartphone size={16} strokeWidth={2} />
+                        Próximamente en iPhone y Android
+                    </span>
                 </div>
-
-                <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-sol mb-4">
-                        Producto
-                    </div>
-                    <ul className="space-y-2">
-                        <li><Link to="/#pilares" className="text-sm text-white/80 hover:text-white transition-colors">Pilares</Link></li>
-                        <li><Link to="/#como-funciona" className="text-sm text-white/80 hover:text-white transition-colors">Cómo funciona</Link></li>
-                        <li><Link to="/#waitlist" className="text-sm text-white/80 hover:text-white transition-colors">Lista de espera</Link></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-sol mb-4">
-                        Comunidad
-                    </div>
-                    <ul className="space-y-2">
-                        <li>
-                            <a
-                                href={INSTAGRAM_URL}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors"
-                            >
-                                {/* Glifo de Instagram inline: evita sumar una librería de
-                                    iconos entera por un solo símbolo. */}
-                                <svg
-                                    width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" strokeWidth="2"
-                                    strokeLinecap="round" strokeLinejoin="round"
-                                    aria-hidden="true" className="shrink-0"
-                                >
-                                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                                </svg>
-                                @somos.mimo.uy
+                {COLS.map(([title, links]) => (
+                    <div key={title} className="flex flex-col gap-3.5">
+                        <p className={colTitle} style={{ color: C.lavanda }}>{title}</p>
+                        {links.map(([label, href]) => (
+                            <a key={label} href={href} className="text-base font-medium no-underline hover:opacity-80" style={{ color: C.crema }}>
+                                {label}
                             </a>
-                        </li>
-                        <li>
-                            <a
-                                href={MP_DONATION_URL}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-sm text-white/80 hover:text-white transition-colors"
-                            >
-                                Invitanos un mimo <span aria-hidden="true">💖</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-
-                <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-sol mb-4">
-                        Legal
+                        ))}
                     </div>
-                    <ul className="space-y-2">
-                        <li><Link to="/privacy" className="text-sm text-white/80 hover:text-white transition-colors">Política de privacidad</Link></li>
-                    </ul>
+                ))}
+                <div className="flex flex-col gap-3.5">
+                    <p className={colTitle} style={{ color: C.lavanda }}>Contacto</p>
+                    <a href={`mailto:${CONTACT_EMAIL}`} className="flex items-center gap-2.5 text-[15px] font-medium no-underline [overflow-wrap:anywhere] hover:opacity-80" style={{ color: C.crema }}>
+                        <Mail size={18} strokeWidth={2} className="shrink-0" />
+                        {CONTACT_EMAIL}
+                    </a>
+                    <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 text-base font-medium no-underline hover:opacity-80" style={{ color: C.crema }}>
+                        <AtSign size={18} strokeWidth={2} className="shrink-0" />
+                        somos.mimo.uy
+                    </a>
                 </div>
             </div>
-
-            <div className="border-t border-white/10">
-                <div className="max-w-6xl mx-auto px-6 py-6 text-center text-xs text-white/50 font-medium">
-                    Hecho con <span aria-hidden="true">💖</span> en Montevideo, Uruguay · {CURRENT_YEAR}
-                </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-7 text-sm" style={{ borderTop: `1px solid ${C.linea}`, color: C.lavanda }}>
+                <span>© {new Date().getFullYear()} Mimo · mimo.uy</span>
+                <a href="/privacy" className="no-underline hover:opacity-80" style={{ color: C.lavanda }}>Privacidad</a>
             </div>
         </footer>
     );

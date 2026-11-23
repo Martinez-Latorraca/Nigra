@@ -1023,7 +1023,7 @@ const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 function Wordmark({ size, color }) {
     return (
         <span className="font-display font-extrabold leading-none" style={{ fontSize: size, color }} aria-label="mimo">
-            m<span style={{ background: `linear-gradient(to bottom, ${C.coral} 0, ${C.coral} 0.29em, ${color} 0.29em)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>i</span>mo
+            m<span style={{ background: `linear-gradient(to bottom, ${C.coral} 0, ${C.coral} 0.47em, ${color} 0.47em)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>i</span>mo
         </span>
     );
 }

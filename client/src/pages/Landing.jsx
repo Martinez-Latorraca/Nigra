@@ -75,7 +75,7 @@ function Logo({ size = 34, color = C.noche }) {
         m
         <span
           style={{
-            background: `linear-gradient(to bottom, ${C.coral} 0, ${C.coral} 0.29em, ${color} 0.29em)`,
+            background: `linear-gradient(to bottom, ${C.coral} 0, ${C.coral} 0.47em, ${color} 0.47em)`,
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
             color: 'transparent',

@@ -918,7 +918,12 @@ function AdminPanel() {
                                             </p>
                                             {r.message_snapshot ? (
                                                 <div className="px-4 py-3.5 rounded-2xl text-[15px] leading-[1.45]" style={{ background: C.crema, borderLeft: `4px solid ${C.coral}`, overflowWrap: 'anywhere' }}>
-                                                    “{r.message_snapshot}”
+                                                    {/* Las fotos denunciadas llegan como "[Foto] <url>" en el snapshot. */}
+                                                    {r.message_snapshot.split('\n').map((line, i) => line.startsWith('[Foto] ') ? (
+                                                        <a key={i} href={line.slice(7)} target="_blank" rel="noopener noreferrer" className="block my-1">
+                                                            <img src={line.slice(7)} alt="Foto denunciada" className="block w-[220px] max-w-full rounded-xl" />
+                                                        </a>
+                                                    ) : <span key={i} className="block">“{line}”</span>)}
                                                 </div>
                                             ) : null}
                                             {r.note ? <p className="m-0 text-sm"><b>Nota:</b> {r.note}</p> : null}
@@ -988,7 +993,12 @@ function AdminPanel() {
                                                     style={flagged
                                                         ? { background: 'rgba(255,92,108,.1)', border: `1.5px solid ${C.coral}`, overflowWrap: 'anywhere' }
                                                         : { background: C.crema, overflowWrap: 'anywhere' }}>
-                                                    {m.content}
+                                                    {m.image_url ? (
+                                                        <a href={m.image_url} target="_blank" rel="noopener noreferrer" className="block">
+                                                            <img src={m.image_url} alt="Foto del chat" className="block w-[220px] max-w-full rounded-xl" />
+                                                        </a>
+                                                    ) : null}
+                                                    {m.content ? <span className={m.image_url ? 'block mt-2' : ''}>{m.content}</span> : null}
                                                 </div>
                                                 <span className={flagged ? '' : 'opacity-0 group-hover:opacity-100 transition-opacity'}>
                                                     <IconBtn icon="trash" title="Borrar mensaje" danger onClick={() => handleDeleteMessage(m.id)} />

@@ -21,7 +21,7 @@ import {
 } from '../../src/lib/icons';
 import { confirm, toast } from '../../src/lib/feedback';
 import { translateType, translateColor } from '../../src/lib/translations';
-import { API_URL } from '../../src/lib/config';
+import { API_URL, SITE_URL } from '../../src/lib/config';
 import { petShareMessage } from '../../src/lib/shareText';
 import PetMap from '../../src/components/PetMap';
 import IconButton from '../../src/components/IconButton';
@@ -92,7 +92,7 @@ export default function PetDetail() {
   const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
 
   const handleShare = () => {
-    Share.share({ message: petShareMessage(pet, API_URL) });
+    Share.share({ message: petShareMessage(pet, SITE_URL) });
   };
   const handleMap = () => {
     if (pet.lat && pet.lng) {

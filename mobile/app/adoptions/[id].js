@@ -7,7 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
 import { SkeletonDetail } from '../../src/components/Skeleton';
-import { API_URL } from '../../src/lib/config';
+import { API_URL, SITE_URL } from '../../src/lib/config';
 import { adoptionShareMessage } from '../../src/lib/shareText';
 import {
   ChevronLeft, ChevronRight, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
@@ -82,7 +82,7 @@ export default function AdoptionDetail() {
     ? `mailto:${pet.shelter_email}?subject=Consulta%20por%20adopci%C3%B3n%20-%20${encodeURIComponent(pet.name || 'mascota')}`
     : null;
   const handleShare = () => {
-    Share.share({ message: adoptionShareMessage(pet, API_URL) });
+    Share.share({ message: adoptionShareMessage(pet, SITE_URL) });
   };
   const shelterColor = palette.teal;
   const name = pet.name || 'Sin nombre';

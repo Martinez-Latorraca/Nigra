@@ -3,6 +3,11 @@
 export const API_URL =
   process.env.EXPO_PUBLIC_API_URL || 'https://mimo.uy';
 
+// Links públicos (compartir fichas): siempre el dominio de la web, aunque
+// API_URL apunte directo a Render. Desde otro dominio la web no puede
+// llamar a la API (CORS) y muestra "Failed to fetch".
+export const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL || 'https://mimo.uy';
+
 // Link de donación de Mercado Pago. Vive acá y no en cada componente: en la
 // web el mismo link estaba copiado en varios archivos y uno quedó viejo
 // (apuntaba a un short link genérico que mandaba a Mercado Pago Brasil).

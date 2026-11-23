@@ -1,35 +1,55 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { Pencil, LogOut, Plus, Check, Trash2, ArrowRight, Camera, X, ChevronLeft, ChevronRight, FileText, PawPrint } from 'lucide-react';
 import { clearCredentials } from '../store/userSlice';
 import { CONTACT_EMAIL, mailtoContact } from '../utils/links';
-import MimoLogo from './MimoLogo';
+import { C } from '../utils/theme';
 import LinkedAccounts from './LinkedAccounts';
 
 const API = import.meta.env.VITE_API_URL || '';
 
 const SPECIES_LABEL = { dog: 'Perro', cat: 'Gato', other: 'Otro' };
 const SIZE_LABEL = { small: 'Chico', medium: 'Mediano', large: 'Grande' };
-const AGE_LABEL = { puppy: 'Cachorro', young: 'Joven', adult: 'Adulto', senior: 'Senior', unknown: '—' };
+const AGE_LABEL = { puppy: 'Cachorro', young: 'Joven', adult: 'Adulto', senior: 'Senior' };
 const MAX_PHOTOS = 6;
 
-const inputCls =
-    'w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0';
+const kicker = 'm-0 text-xs font-bold tracking-[.1em] uppercase';
+const inputCls = 'w-full h-[52px] px-4 rounded-2xl bg-white border border-mimo-muted focus:border-mimo-noche outline-none text-[15px] placeholder:text-mimo-noche/60';
 
 function Field({ label, hint, required, children }) {
     return (
-        <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">
+        <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-bold tracking-[.08em] uppercase">
                 {label}{required ? <span className="text-mimo-coral"> *</span> : null}
-            </label>
+            </span>
             {children}
-            {hint ? <div className="mt-1.5 text-[11px] text-gray-400">{hint}</div> : null}
+            {hint ? <span className="text-[13px]">{hint}</span> : null}
+        </label>
+    );
+}
+
+function Pills({ value, onChange, options }) {
+    return (
+        <div className="flex flex-wrap gap-2">
+            {options.map(([v, l]) => (
+                <button
+                    key={v}
+                    type="button"
+                    onClick={() => onChange(v)}
+                    aria-pressed={value === v}
+                    className={`h-10 px-4 rounded-full text-sm transition-colors ${value === v ? 'bg-mimo-noche text-mimo-warm font-bold' : 'bg-white border border-mimo-muted hover:border-mimo-noche'}`}
+                >
+                    {l}
+                </button>
+            ))}
         </div>
     );
 }
 
-// Form para crear o editar una mascota en adopción. Modo controlado por `pet`
-// (null = crear, objeto = editar).
+const iconBtn = 'w-7 h-7 rounded-full bg-mimo-noche/70 hover:bg-mimo-noche text-mimo-warm flex items-center justify-center disabled:opacity-30';
+
+// Crear (pet = null) o editar una mascota en adopción.
 function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
     const [form, setForm] = useState(() => ({
         name: pet?.name || '',
@@ -42,16 +62,16 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
         vaccinated: !!pet?.vaccinated,
         neutered: !!pet?.neutered,
     }));
-    const [photos, setPhotos] = useState(() => Array.isArray(pet?.photos) ? pet.photos : []);
+    const [photos, setPhotos] = useState(() => (Array.isArray(pet?.photos) ? pet.photos : []));
     const [uploading, setUploading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const editing = !!pet;
 
-    const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
+    const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
+    const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-    // Sube una foto al server. Si replaceIndex viene, reemplaza la foto en
-    // esa posición del array; si no, la agrega al final.
+    // Sube una foto. Con replaceIndex reemplaza esa posición; si no, agrega al final.
     const uploadPhoto = async (file, replaceIndex = null) => {
         setUploading(true);
         setError('');
@@ -93,13 +113,11 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
         setSaving(true);
         setError('');
         try {
-            const body = { ...form, photos };
             const url = editing ? `${API}/api/adoption-pets/${pet.id}` : `${API}/api/adoption-pets`;
-            const method = editing ? 'PATCH' : 'POST';
             const res = await fetch(url, {
-                method,
+                method: editing ? 'PATCH' : 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify(body),
+                body: JSON.stringify({ ...form, photos }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
@@ -112,148 +130,84 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
     };
 
     return (
-        <form onSubmit={submit} className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-8">
-            <div className="flex items-center justify-between">
-                <h3 className="font-display font-black text-2xl text-mimo-noche">
-                    {editing ? 'Editar publicación' : 'Nueva publicación'}
-                </h3>
-                <button type="button" onClick={onCancel} className="text-xs font-semibold text-gray-400 hover:text-black">
-                    Cancelar
-                </button>
+        <form onSubmit={submit} className="bg-white rounded-3xl p-5 md:p-6 flex flex-col gap-5">
+            <div className="flex items-center justify-between gap-4">
+                <h3 className="m-0 font-display font-black text-2xl">{editing ? 'Editar publicación' : 'Nueva mascota'}</h3>
+                <button type="button" onClick={onCancel} className="text-[15px] font-bold underline hover:text-mimo-coral">Cancelar</button>
             </div>
 
-            <Field label="Fotos" required hint={`Hasta ${MAX_PHOTOS}. La primera es la principal.`}>
+            <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold tracking-[.08em] uppercase">Fotos <span className="text-mimo-coral">*</span></span>
                 <div className="flex flex-wrap gap-3">
                     {photos.map((url, i) => (
-                        <div key={`${url}-${i}`} className="relative h-28 w-28 rounded-2xl overflow-hidden group border border-gray-100">
-                            <img src={url} alt="" className="h-full w-full object-cover" />
-                            {i === 0 ? (
-                                <span className="absolute top-1 left-1 rounded-full bg-mimo-noche/85 text-white text-[8px] font-bold uppercase tracking-widest px-2 py-0.5">
-                                    Principal
-                                </span>
-                            ) : null}
-                            {/* Barra de acciones — visible en hover */}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col justify-between p-1 transition-opacity">
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={() => removePhotoAt(i)}
-                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 text-white text-xs font-bold flex items-center justify-center"
-                                        title="Quitar"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                                <div className="flex items-center justify-between gap-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => movePhoto(i, -1)}
-                                        disabled={i === 0}
-                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 text-white text-sm font-bold flex items-center justify-center"
-                                        title="Mover a la izquierda"
-                                    >
-                                        ‹
-                                    </button>
-                                    <label className="h-6 flex-1 rounded-full bg-white/20 hover:bg-white/40 text-white text-[10px] font-bold flex items-center justify-center cursor-pointer" title="Reemplazar">
-                                        Reemplazar
-                                        <input
-                                            type="file" accept="image/*" className="hidden"
-                                            disabled={uploading}
-                                            onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0], i)}
-                                        />
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => movePhoto(i, 1)}
-                                        disabled={i === photos.length - 1}
-                                        className="h-6 w-6 rounded-full bg-white/20 hover:bg-white/40 disabled:opacity-30 text-white text-sm font-bold flex items-center justify-center"
-                                        title="Mover a la derecha"
-                                    >
-                                        ›
-                                    </button>
-                                </div>
+                        <div key={`${url}-${i}`} className="relative w-28 h-28 rounded-[18px] overflow-hidden bg-mimo-muted">
+                            <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                            {i === 0 && <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-full bg-mimo-noche/80 text-mimo-warm text-[11px] font-bold">Principal</span>}
+                            <div className="absolute top-1.5 right-1.5 flex gap-1">
+                                <button type="button" onClick={() => movePhoto(i, -1)} disabled={i === 0} aria-label="Mover a la izquierda" className={iconBtn}><ChevronLeft size={14} strokeWidth={2.5} /></button>
+                                <button type="button" onClick={() => movePhoto(i, 1)} disabled={i === photos.length - 1} aria-label="Mover a la derecha" className={iconBtn}><ChevronRight size={14} strokeWidth={2.5} /></button>
+                                <button type="button" onClick={() => removePhotoAt(i)} aria-label="Quitar foto" className={iconBtn}><X size={14} strokeWidth={2.5} /></button>
                             </div>
+                            <label className="absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full bg-mimo-noche/70 hover:bg-mimo-noche text-mimo-warm flex items-center justify-center cursor-pointer" aria-label="Reemplazar foto">
+                                <Camera size={14} strokeWidth={2.5} />
+                                <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0], i)} />
+                            </label>
                         </div>
                     ))}
-                    {photos.length < MAX_PHOTOS ? (
-                        <label className="h-28 w-28 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-400 hover:border-gray-400 hover:text-gray-600 cursor-pointer">
-                            {uploading ? '…' : '+ Foto'}
-                            <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])}
-                                disabled={uploading}
-                            />
+                    {photos.length < MAX_PHOTOS && (
+                        <label className="w-28 h-28 rounded-[18px] border-2 border-dashed border-mimo-violeta bg-white flex items-center justify-center cursor-pointer hover:bg-mimo-warm" aria-label="Agregar foto">
+                            {uploading ? <span className="text-sm font-bold">Subiendo…</span> : <Plus size={26} strokeWidth={2} />}
+                            <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />
                         </label>
-                    ) : null}
+                    )}
                 </div>
-            </Field>
+                <span className="text-[13px]">Hasta {MAX_PHOTOS}. La primera es la principal.</span>
+            </div>
 
             <Field label="Nombre">
                 <input className={inputCls} value={form.name} onChange={upd('name')} placeholder="Firulais" maxLength={60} />
             </Field>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <Field label="Especie" required>
-                    <select className={inputCls} value={form.species} onChange={upd('species')}>
-                        <option value="dog">Perro</option>
-                        <option value="cat">Gato</option>
-                        <option value="other">Otro</option>
-                    </select>
-                </Field>
-                <Field label="Sexo">
-                    <select className={inputCls} value={form.sex} onChange={upd('sex')}>
-                        <option value="unknown">Sin dato</option>
-                        <option value="male">Macho</option>
-                        <option value="female">Hembra</option>
-                    </select>
-                </Field>
-                <Field label="Edad">
-                    <select className={inputCls} value={form.age_group} onChange={upd('age_group')}>
-                        <option value="unknown">Sin dato</option>
-                        <option value="puppy">Cachorro</option>
-                        <option value="young">Joven</option>
-                        <option value="adult">Adulto</option>
-                        <option value="senior">Senior</option>
-                    </select>
-                </Field>
-                <Field label="Tamaño">
-                    <select className={inputCls} value={form.size} onChange={upd('size')}>
-                        <option value="small">Chico</option>
-                        <option value="medium">Mediano</option>
-                        <option value="large">Grande</option>
-                    </select>
-                </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="flex flex-col gap-2"><span className="text-xs font-bold tracking-[.08em] uppercase">Especie</span>
+                    <Pills value={form.species} onChange={set('species')} options={[['dog', 'Perro'], ['cat', 'Gato'], ['other', 'Otro']]} /></div>
+                <div className="flex flex-col gap-2"><span className="text-xs font-bold tracking-[.08em] uppercase">Sexo</span>
+                    <Pills value={form.sex} onChange={set('sex')} options={[['male', 'Macho'], ['female', 'Hembra'], ['unknown', 'Sin dato']]} /></div>
+                <div className="flex flex-col gap-2"><span className="text-xs font-bold tracking-[.08em] uppercase">Edad</span>
+                    <Pills value={form.age_group} onChange={set('age_group')} options={[['puppy', 'Cachorro'], ['young', 'Joven'], ['adult', 'Adulto'], ['senior', 'Senior'], ['unknown', 'Sin dato']]} /></div>
+                <div className="flex flex-col gap-2"><span className="text-xs font-bold tracking-[.08em] uppercase">Tamaño</span>
+                    <Pills value={form.size} onChange={set('size')} options={[['small', 'Chico'], ['medium', 'Mediano'], ['large', 'Grande']]} /></div>
             </div>
 
             <Field label="Color">
                 <input className={inputCls} value={form.color} onChange={upd('color')} placeholder="Marrón, blanco…" maxLength={30} />
             </Field>
 
-            <Field label="Descripción" hint="Contá su historia, personalidad, necesidades. Máx 2000.">
-                <textarea className={`${inputCls} min-h-[120px] resize-y`} value={form.description} onChange={upd('description')} maxLength={2000} />
+            <Field label="Descripción" hint="Su historia, carácter y qué hogar necesita. Hasta 2000 caracteres.">
+                <textarea className={`${inputCls} h-auto min-h-[120px] py-3.5 resize-y`} value={form.description} onChange={upd('description')} maxLength={2000} />
             </Field>
 
-            <div className="flex gap-6">
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <input type="checkbox" checked={form.vaccinated} onChange={upd('vaccinated')} className="h-4 w-4" />
-                    Vacunado
-                </label>
-                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <input type="checkbox" checked={form.neutered} onChange={upd('neutered')} className="h-4 w-4" />
-                    Castrado
-                </label>
+            <div className="flex flex-wrap gap-2">
+                {[['vaccinated', 'Vacunado'], ['neutered', 'Castrado']].map(([k, l]) => (
+                    <button
+                        key={k}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, [k]: !f[k] }))}
+                        aria-pressed={form[k]}
+                        className={`h-10 px-4 rounded-full text-sm flex items-center gap-1.5 transition-colors ${form[k] ? 'bg-mimo-noche text-mimo-warm font-bold' : 'bg-white border border-mimo-muted hover:border-mimo-noche'}`}
+                    >
+                        {form[k] && <Check size={15} strokeWidth={2.5} />}
+                        {l}
+                    </button>
+                ))}
             </div>
 
-            {error ? (
-                <div className="rounded-2xl bg-red-50 p-3 text-center text-xs font-semibold text-red-500">{error}</div>
-            ) : null}
+            {error && <p className="m-0 text-sm font-bold text-mimo-coral" role="alert">{error}</p>}
 
             <button
                 type="submit"
                 disabled={saving || uploading}
-                className="w-full rounded-full bg-mimo-noche py-4 text-sm font-display font-extrabold uppercase tracking-widest text-white transition-all hover:opacity-90 disabled:opacity-40"
+                className="h-[52px] rounded-2xl bg-mimo-noche text-mimo-warm font-bold text-[15px] hover:bg-mimo-nocheAlt disabled:opacity-50"
             >
                 {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Publicar'}
             </button>
@@ -263,43 +217,38 @@ function AdoptionPetForm({ pet, onCancel, onSaved, token }) {
 
 function PetRow({ pet, onMarkAdopted, onDelete, onEdit }) {
     const adopted = !!pet.adopted_at;
+    const meta = [SPECIES_LABEL[pet.species], SIZE_LABEL[pet.size], AGE_LABEL[pet.age_group]].filter(Boolean).join(' · ');
+    const ghost = 'h-10 px-4 rounded-xl border border-mimo-muted bg-white text-[15px] font-bold flex items-center gap-1.5 hover:border-mimo-noche';
     return (
-        <div className={`flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 ${adopted ? 'opacity-60' : ''}`}>
-            {pet.photos?.[0] ? (
-                <img src={pet.photos[0]} alt="" className="h-16 w-16 rounded-xl object-cover" />
-            ) : (
-                <div className="h-16 w-16 rounded-xl bg-gray-100 flex items-center justify-center text-2xl">🐾</div>
-            )}
-            <div className="flex-1 min-w-0">
-                <div className="font-display font-black text-base text-mimo-noche truncate">{pet.name || 'Sin nombre'}</div>
-                <div className="text-[11px] font-bold uppercase tracking-widest text-gray-400">
-                    {SPECIES_LABEL[pet.species]}
-                    {pet.size ? ` · ${SIZE_LABEL[pet.size]}` : ''}
-                    {pet.age_group && pet.age_group !== 'unknown' ? ` · ${AGE_LABEL[pet.age_group]}` : ''}
-                    {adopted ? ' · ADOPTADO' : ''}
-                </div>
+        <div className="bg-white rounded-3xl p-3 flex flex-col sm:flex-row sm:items-center gap-3.5">
+            <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                <span className="w-[72px] h-[72px] rounded-[18px] bg-mimo-muted overflow-hidden shrink-0 flex items-center justify-center">
+                    {pet.photos?.[0] ? <img src={pet.photos[0]} alt="" className="w-full h-full object-cover" /> : <PawPrint size={28} strokeWidth={1.5} opacity={0.35} />}
+                </span>
+                <span className="flex-1 min-w-0 flex flex-col items-start gap-1">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold text-mimo-muted" style={{ background: adopted ? C.noche : C.violeta }}>
+                        {adopted ? 'Adoptado' : 'En adopción'}
+                    </span>
+                    <Link to={`/adoptions/${pet.id}`} className="text-[17px] font-bold truncate max-w-full hover:text-mimo-coral">{pet.name || 'Sin nombre'}</Link>
+                    {meta && <span className="text-sm">{meta}</span>}
+                </span>
             </div>
-            <div className="flex gap-2">
-                {!adopted ? (
-                    <>
-                        <button onClick={() => onEdit(pet)} className="text-xs font-semibold text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-full hover:bg-gray-100">
-                            Editar
-                        </button>
-                        <button onClick={() => onMarkAdopted(pet.id)} className="text-xs font-semibold text-white bg-mimo-noche hover:opacity-90 px-3 py-1.5 rounded-full">
-                            ✓ Adoptado
-                        </button>
-                    </>
-                ) : null}
-                <button onClick={() => onDelete(pet.id)} className="text-xs font-semibold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-full">
-                    Borrar
-                </button>
+            <div className="flex flex-wrap gap-2">
+                {!adopted && (
+                    <button onClick={() => onMarkAdopted(pet.id)} className="h-10 px-4 rounded-xl bg-mimo-teal text-mimo-noche text-[15px] font-bold flex items-center gap-1.5 hover:opacity-90">
+                        <Check size={17} strokeWidth={2.5} />
+                        Adoptado
+                    </button>
+                )}
+                <button onClick={() => onEdit(pet)} className={ghost}><Pencil size={16} strokeWidth={2} />Editar</button>
+                <button onClick={() => onDelete(pet.id)} className={`${ghost} hover:text-mimo-coral`}><Trash2 size={16} strokeWidth={2} />Borrar</button>
             </div>
         </div>
     );
 }
 
-// Form muy compacto para editar el perfil del refugio.
-function ShelterEditForm({ shelter, onSaved, token }) {
+// Datos del refugio + logo y portada.
+function ShelterEditForm({ shelter, onSaved, onClose, onUpload, token }) {
     const [form, setForm] = useState(() => ({
         name: shelter.name || '',
         city: shelter.city || '',
@@ -314,8 +263,15 @@ function ShelterEditForm({ shelter, onSaved, token }) {
         bio: shelter.bio || '',
     }));
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(null);
     const [msg, setMsg] = useState('');
     const upd = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+    const upload = async (field, file) => {
+        setUploading(field);
+        await onUpload(field, file);
+        setUploading(null);
+    };
 
     const submit = async (e) => {
         e.preventDefault();
@@ -331,7 +287,6 @@ function ShelterEditForm({ shelter, onSaved, token }) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'No se pudo guardar.');
             onSaved(data);
-            setMsg('✓ Guardado');
         } catch (err) {
             setMsg(err.message);
         } finally {
@@ -339,32 +294,52 @@ function ShelterEditForm({ shelter, onSaved, token }) {
         }
     };
 
+    const imgPick = (field, label, preview, wide) => (
+        <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold tracking-[.08em] uppercase">{label}</span>
+            <div className="flex items-center gap-3">
+                {preview ? (
+                    <img src={preview} alt="" className={`h-16 ${wide ? 'w-24' : 'w-16'} rounded-2xl object-cover bg-mimo-muted`} />
+                ) : (
+                    <div className={`h-16 ${wide ? 'w-24' : 'w-16'} rounded-2xl bg-mimo-muted`} />
+                )}
+                <label className={`h-10 px-4 rounded-xl border-2 border-mimo-noche text-sm font-bold flex items-center gap-1.5 ${uploading ? 'opacity-50' : 'cursor-pointer hover:bg-mimo-warm'}`}>
+                    <Camera size={16} strokeWidth={2} />
+                    {uploading === field ? 'Subiendo…' : 'Cambiar'}
+                    <input type="file" accept="image/*" className="hidden" disabled={!!uploading} onChange={(e) => e.target.files?.[0] && upload(field, e.target.files[0])} />
+                </label>
+            </div>
+        </div>
+    );
+
     return (
-        <form onSubmit={submit} className="space-y-4 rounded-[32px] border border-gray-100 bg-white p-8">
+        <form onSubmit={submit} className="bg-white rounded-3xl p-5 md:p-6 flex flex-col gap-5">
+            <p className={kicker}>Editar datos del refugio</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {imgPick('logo', 'Logo', shelter.logo_url)}
+                {imgPick('cover', 'Portada', shelter.cover_url, true)}
+            </div>
             <Field label="Nombre" required>
                 <input className={inputCls} value={form.name} onChange={upd('name')} maxLength={120} required />
             </Field>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Ciudad"><input className={inputCls} value={form.city} onChange={upd('city')} maxLength={80} /></Field>
                 <Field label="Teléfono"><input className={inputCls} value={form.phone} onChange={upd('phone')} maxLength={30} /></Field>
                 <Field label="WhatsApp"><input className={inputCls} value={form.whatsapp} onChange={upd('whatsapp')} maxLength={30} /></Field>
                 <Field label="Email"><input type="email" className={inputCls} value={form.email} onChange={upd('email')} maxLength={150} /></Field>
                 <Field label="Sitio web"><input type="url" className={inputCls} value={form.website} onChange={upd('website')} maxLength={200} /></Field>
+                <Field label="Instagram" hint="Sin @"><input className={inputCls} value={form.instagram} onChange={upd('instagram')} maxLength={80} /></Field>
             </div>
-            <Field label="Instagram" hint="Sin @">
-                <input className={inputCls} value={form.instagram} onChange={upd('instagram')} maxLength={80} />
+            <Field label="Sobre el refugio">
+                <textarea className={`${inputCls} h-auto min-h-[110px] py-3.5 resize-y`} value={form.bio} onChange={upd('bio')} maxLength={2000} />
             </Field>
-            <Field label="Bio">
-                <textarea className={`${inputCls} min-h-[100px] resize-y`} value={form.bio} onChange={upd('bio')} maxLength={2000} />
-            </Field>
-            <button
-                type="submit"
-                disabled={saving}
-                className="w-full rounded-full bg-mimo-noche py-3 text-sm font-display font-extrabold uppercase tracking-widest text-white hover:opacity-90 disabled:opacity-40"
-            >
-                {saving ? 'Guardando…' : 'Guardar cambios'}
-            </button>
-            {msg ? <p className="text-center text-xs font-semibold text-gray-500">{msg}</p> : null}
+            <div className="flex flex-col sm:flex-row gap-2.5">
+                <button type="submit" disabled={saving} className="flex-1 h-[52px] rounded-2xl bg-mimo-noche text-mimo-warm font-bold text-[15px] hover:bg-mimo-nocheAlt disabled:opacity-50">
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+                <button type="button" onClick={onClose} className="h-[52px] px-6 rounded-2xl border-2 border-mimo-noche font-bold text-[15px] hover:bg-mimo-warm">Cancelar</button>
+            </div>
+            {msg && <p className="m-0 text-sm font-bold text-mimo-coral" role="alert">{msg}</p>}
         </form>
     );
 }
@@ -373,7 +348,6 @@ export default function ShelterPanel() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const token = useSelector((s) => s.user?.token);
-    const user = useSelector((s) => s.user?.data);
     const [shelter, setShelter] = useState(null);
     const [pets, setPets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -382,7 +356,6 @@ export default function ShelterPanel() {
     const [editingPet, setEditingPet] = useState(null);
 
     const load = useCallback(async () => {
-        setLoading(true);
         try {
             const [r1, r2] = await Promise.all([
                 fetch(`${API}/api/shelters/me`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -411,7 +384,7 @@ export default function ShelterPanel() {
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
         });
-        if (res.ok) load();
+        if (res.ok) await load();
     };
 
     const markAdopted = async (id) => {
@@ -419,20 +392,16 @@ export default function ShelterPanel() {
         load();
     };
     const removePet = async (id) => {
-        if (!confirm('¿Borrar esta publicación?')) return;
+        if (!window.confirm('¿Borrar esta publicación?')) return;
         await fetch(`${API}/api/adoption-pets/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         load();
     };
 
-    // Eliminar cuenta = soft-delete del user (que en cascade soft-deletea
-    // vet + shelter). Un shelter que "elimina su refugio" está cerrando la
-    // cuenta entera — no queda como user regular. Reactivable via re-registro
-    // con el mismo email.
+    // Eliminar cuenta = soft-delete del user (que en cascada oculta el refugio).
+    // Se recupera registrándose de nuevo con el mismo email.
     const deleteAccount = async () => {
-        const confirm1 = confirm('¿Eliminar tu cuenta? Se ocultarán tus publicaciones activas y el perfil público del refugio.');
-        if (!confirm1) return;
-        const confirm2 = confirm('Esta acción cierra la cuenta. Si te arrepentís, podés recuperarla registrándote de nuevo con el mismo email. ¿Confirmás?');
-        if (!confirm2) return;
+        if (!window.confirm('¿Eliminar tu cuenta? Se ocultan tus publicaciones activas y el perfil público del refugio.')) return;
+        if (!window.confirm('Esta acción cierra la cuenta. Si te arrepentís, podés recuperarla registrándote de nuevo con el mismo email. ¿Confirmás?')) return;
         try {
             const res = await fetch(`${API}/api/users/me`, {
                 method: 'DELETE',
@@ -448,177 +417,139 @@ export default function ShelterPanel() {
 
     if (loading || !shelter) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-mimo-muted">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">Cargando</div>
+            <div className="flex-1 bg-mimo-warm" aria-label="Cargando">
+                <div className="max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-9 pb-20 flex flex-col lg:flex-row gap-7 animate-pulse">
+                    <div className="w-full lg:w-[340px] h-[360px] rounded-[32px] bg-mimo-muted" />
+                    <div className="flex-1 flex flex-col gap-5">
+                        <div className="h-28 rounded-3xl bg-mimo-muted" />
+                        <div className="h-48 rounded-3xl bg-mimo-muted" />
+                    </div>
+                </div>
             </div>
         );
     }
 
     const active = pets.filter((p) => !p.adopted_at && !p.deleted_at);
     const historical = pets.filter((p) => p.adopted_at || p.deleted_at);
+    const adoptedCount = pets.filter((p) => p.adopted_at).length;
     const approved = shelter.approved;
+    const formOpen = creatingPet || !!editingPet;
 
     return (
-        <div className="min-h-screen bg-mimo-muted pb-20 font-sans text-mimo-noche">
-            <div className="mx-auto w-full max-w-4xl px-6 pt-10">
-                <div className="flex items-center justify-between mb-6">
-                    <MimoLogo variant="wordmarkText" size={80} />
-                    <Link to={`/shelters/${shelter.slug}`} className="text-xs font-semibold text-gray-400 hover:text-black">
-                        Ver perfil público →
-                    </Link>
-                </div>
-
-                {/* Hero: cover como banner arriba + logo y meta abajo. */}
-                <div className="rounded-[32px] border border-gray-100 bg-white overflow-hidden mb-6">
-                    <label className="relative block h-40 bg-gradient-to-br from-mimo-warm to-mimo-muted cursor-pointer group">
-                        {shelter.cover_url ? (
-                            <img src={shelter.cover_url} alt="" className="h-full w-full object-cover" />
-                        ) : null}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold uppercase tracking-widest transition-opacity">
-                            {shelter.cover_url ? 'Cambiar cover' : '+ Subir cover'}
-                        </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage('cover', e.target.files[0])} />
-                    </label>
-                    <div className="p-6 flex items-center gap-4">
-                        <label className="relative h-20 w-20 rounded-2xl overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer group -mt-14 ring-4 ring-white shadow-md shrink-0">
-                            {shelter.logo_url ? (
-                                <img src={shelter.logo_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                                <span className="text-3xl font-bold text-gray-400">{shelter.name.charAt(0)}</span>
-                            )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] font-bold transition-opacity">
-                                Cambiar
-                            </div>
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage('logo', e.target.files[0])} />
-                        </label>
-                        <div className="flex-1">
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Refugio</div>
-                            <div className="mt-1 flex items-center gap-2 flex-wrap">
-                                <h1 className="font-display font-black text-3xl tracking-tight text-mimo-noche">{shelter.name}</h1>
-                                {!approved ? (
-                                    <span className="rounded-full bg-yellow-100 text-yellow-800 px-3 py-1 text-[9px] font-bold uppercase tracking-widest">
-                                        Pendiente
-                                    </span>
-                                ) : null}
-                            </div>
-                            {shelter.city ? <p className="text-sm font-medium text-gray-500">📍 {shelter.city}</p> : null}
-                        </div>
-                    </div>
-                </div>
-
-                {!approved ? (
-                    <div className="mb-6 rounded-[24px] bg-yellow-50 border border-yellow-200 p-6">
-                        <div className="text-[10px] font-bold uppercase tracking-widest text-yellow-800 mb-3">
-                            📋 Verificación pendiente
-                        </div>
-                        <p className="text-sm leading-relaxed text-yellow-900 mb-3">
-                            Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-                            Enviá a{' '}
-                            <a href={mailtoContact('Verificación de refugio Mimo')}
-                                className="font-semibold underline">{CONTACT_EMAIL}</a>{' '}
-                            los comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
-                            redes sociales, etc.) desde el email de tu cuenta.
-                        </p>
-                        <p className="text-[13px] leading-relaxed text-yellow-800">
-                            Mientras tanto podés completar los datos de tu refugio. Un admin te aprueba y ya podés empezar a publicar.
-                        </p>
-                    </div>
-                ) : null}
-
-                {/* Edit toggle */}
-                <div className="mb-6">
-                    <button
-                        onClick={() => setEditingShelter(!editingShelter)}
-                        className="w-full rounded-full bg-mimo-warm border border-gray-100 py-3 text-sm font-display font-extrabold uppercase tracking-widest text-mimo-noche hover:bg-mimo-muted"
-                    >
-                        {editingShelter ? 'Ocultar edición del refugio' : 'Editar datos del refugio'}
-                    </button>
-                    {editingShelter ? (
-                        <div className="mt-4">
-                            <ShelterEditForm
-                                shelter={shelter}
-                                token={token}
-                                onSaved={(s) => { setShelter(s); setEditingShelter(false); }}
-                            />
-                        </div>
-                    ) : null}
-                </div>
-
-                {/* Adopciones — solo visibles si el refugio está aprobado.
-                    El server también gate-a con requireShelter.approved, pero
-                    escondemos el UI para evitar botones que van a devolver 403. */}
-                {approved ? (
-                    <div className="mb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-display font-black text-2xl text-mimo-noche">Publicaciones activas</h2>
-                            {!creatingPet && !editingPet ? (
-                                <button
-                                    onClick={() => setCreatingPet(true)}
-                                    className="rounded-full bg-mimo-coral px-5 py-2 text-xs font-display font-extrabold uppercase tracking-widest text-white hover:bg-mimo-coralDark"
-                                >
-                                    + Nueva
-                                </button>
-                            ) : null}
-                        </div>
-
-                        {creatingPet ? (
-                            <AdoptionPetForm
-                                pet={null}
-                                token={token}
-                                onCancel={() => setCreatingPet(false)}
-                                onSaved={() => { setCreatingPet(false); load(); }}
-                            />
-                        ) : editingPet ? (
-                            <AdoptionPetForm
-                                pet={editingPet}
-                                token={token}
-                                onCancel={() => setEditingPet(null)}
-                                onSaved={() => { setEditingPet(null); load(); }}
-                            />
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            <main className="max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-9 pb-20 flex flex-col lg:flex-row gap-7 items-start">
+                <aside className="w-full lg:w-[340px] lg:sticky lg:top-[100px] shrink-0 flex flex-col gap-4">
+                    <section className="rounded-[32px] p-7 flex flex-col gap-4 text-mimo-warm" style={{ background: C.teal }}>
+                        <p className={kicker}>Mi refugio</p>
+                        {shelter.logo_url ? (
+                            <img src={shelter.logo_url} alt="" className="w-[84px] h-[84px] rounded-[24px] object-cover bg-white" />
                         ) : (
-                            <>
-                                {active.length === 0 ? (
-                                    <p className="text-sm text-gray-500 text-center py-8">Todavía no publicaste ninguna mascota en adopción.</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {active.map((p) => (
-                                            <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
-                                        ))}
-                                    </div>
-                                )}
-                            </>
+                            <span className="w-[84px] h-[84px] rounded-[24px] bg-white text-mimo-noche flex items-center justify-center font-display font-black text-[40px]">
+                                {shelter.name.charAt(0).toUpperCase()}
+                            </span>
                         )}
-                    </div>
-                ) : null}
-
-                {approved && historical.length > 0 && !creatingPet && !editingPet ? (
-                    <div className="mb-6">
-                        <h2 className="font-display font-black text-lg text-gray-500 mb-3">Historial</h2>
-                        <div className="space-y-3">
-                            {historical.map((p) => (
-                                <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />
-                            ))}
+                        <div className="flex flex-col gap-1.5 min-w-0">
+                            <h1 className="m-0 font-display font-black text-[30px] leading-[1.05] break-words">{shelter.name}</h1>
+                            {shelter.city && <span className="text-[15px]">{shelter.city}</span>}
                         </div>
-                    </div>
-                ) : null}
-
-                <LinkedAccounts />
-
-                <div className="mt-6 space-y-2">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full rounded-full border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                    >
+                        {!approved && <span className="self-start px-3 py-1 rounded-full bg-mimo-noche text-[13px] font-bold">Verificación pendiente</span>}
+                        {approved && (
+                            <Link to={`/shelters/${shelter.slug}`} className="flex items-center gap-1 text-[15px] font-bold underline hover:opacity-80">
+                                Ver perfil público <ArrowRight size={16} strokeWidth={2} />
+                            </Link>
+                        )}
+                        <button
+                            onClick={() => setEditingShelter((v) => !v)}
+                            className="self-start h-10 px-4 rounded-full border border-white/60 font-bold text-[15px] flex items-center gap-1.5 hover:bg-white/10"
+                        >
+                            <Pencil size={16} strokeWidth={2} />
+                            {editingShelter ? 'Cerrar edición' : 'Editar'}
+                        </button>
+                    </section>
+                    <button onClick={handleLogout} className="h-[52px] rounded-2xl border-2 border-mimo-noche font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-white">
+                        <LogOut size={18} strokeWidth={2} />
                         Cerrar sesión
                     </button>
-                    <button
-                        onClick={deleteAccount}
-                        className="w-full rounded-full border border-red-100 bg-white py-3 text-sm font-semibold text-red-500 hover:bg-red-50"
-                    >
-                        Eliminar cuenta
-                    </button>
+                    <button onClick={deleteAccount} className="self-center text-[15px] font-bold underline hover:text-mimo-coral">Eliminar cuenta</button>
+                </aside>
+
+                <div className="w-full flex-1 min-w-0 flex flex-col gap-6">
+                    {editingShelter && (
+                        <ShelterEditForm
+                            shelter={shelter}
+                            token={token}
+                            onUpload={uploadImage}
+                            onClose={() => setEditingShelter(false)}
+                            onSaved={(s) => { setShelter(s); setEditingShelter(false); }}
+                        />
+                    )}
+
+                    {!approved && (
+                        <section className="bg-white rounded-3xl p-5 md:p-6 flex items-start gap-3.5">
+                            <span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: C.sol }}>
+                                <FileText size={22} strokeWidth={2} color={C.noche} />
+                            </span>
+                            <div className="flex flex-col gap-2 text-[15px] leading-normal">
+                                <b className="font-display font-black text-xl">Falta verificar el refugio</b>
+                                <span>
+                                    Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
+                                    Mandá a <a href={mailtoContact('Verificación de refugio Mimo')} className="font-bold underline">{CONTACT_EMAIL}</a> los
+                                    comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes sociales) desde el email de tu cuenta.
+                                </span>
+                                <span>Mientras tanto podés completar los datos del refugio. Cuando un admin lo apruebe, ya podés publicar.</span>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Adopciones: solo si el refugio está aprobado (el server
+                        también lo exige; escondemos botones que darían 403). */}
+                    {approved && (
+                        <>
+                            <div className="grid grid-cols-2 gap-3.5">
+                                <div className="bg-white rounded-3xl p-[18px] flex flex-col gap-1.5" style={{ borderTop: `4px solid ${C.violeta}` }}>
+                                    <span className="text-xs font-bold tracking-[.08em] uppercase">En adopción</span>
+                                    <b className="font-display font-black text-[32px] leading-none">{active.length}</b>
+                                </div>
+                                <div className="bg-white rounded-3xl p-[18px] flex flex-col gap-1.5" style={{ borderTop: `4px solid ${C.teal}` }}>
+                                    <span className="text-xs font-bold tracking-[.08em] uppercase">Adoptadas</span>
+                                    <b className="font-display font-black text-[32px] leading-none">{adoptedCount}</b>
+                                    <span className="text-[13px]">desde que te sumaste</span>
+                                </div>
+                            </div>
+
+                            <section className="flex flex-col gap-3.5">
+                                <div className="flex items-center justify-between gap-4">
+                                    <h2 className="m-0 font-display font-black text-2xl md:text-[28px]">Publicaciones activas</h2>
+                                    {!formOpen && (
+                                        <button onClick={() => setCreatingPet(true)} className="h-11 px-[18px] rounded-2xl text-mimo-muted font-bold text-[15px] flex items-center gap-1.5 hover:opacity-90" style={{ background: C.violeta }}>
+                                            <Plus size={18} strokeWidth={2} />
+                                            Nueva mascota
+                                        </button>
+                                    )}
+                                </div>
+                                {creatingPet ? (
+                                    <AdoptionPetForm pet={null} token={token} onCancel={() => setCreatingPet(false)} onSaved={() => { setCreatingPet(false); load(); }} />
+                                ) : editingPet ? (
+                                    <AdoptionPetForm pet={editingPet} token={token} onCancel={() => setEditingPet(null)} onSaved={() => { setEditingPet(null); load(); }} />
+                                ) : active.length === 0 ? (
+                                    <p className="m-0 p-6 rounded-3xl bg-white text-center text-[15px]">Todavía no publicaste ninguna mascota en adopción.</p>
+                                ) : (
+                                    active.map((p) => <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />)
+                                )}
+                            </section>
+
+                            {historical.length > 0 && !formOpen && (
+                                <section className="flex flex-col gap-3.5">
+                                    <h2 className="m-0 font-display font-black text-2xl md:text-[28px]">Historial</h2>
+                                    {historical.map((p) => <PetRow key={p.id} pet={p} onEdit={setEditingPet} onMarkAdopted={markAdopted} onDelete={removePet} />)}
+                                </section>
+                            )}
+                        </>
+                    )}
+
+                    <LinkedAccounts />
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

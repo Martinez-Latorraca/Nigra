@@ -1,50 +1,74 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Building2, Map as MapIcon, MapPin, Phone, MessageCircle, Globe, AtSign, Plus, Check, Clock, Star } from 'lucide-react';
+import { C } from '../utils/theme';
+import { mailtoContact } from '../utils/links';
+import { SectionBand } from '../components/ui';
 
 const API = import.meta.env.VITE_API_URL || '';
 
-const SERVICE_SUGGESTIONS = [
-    'Consulta general', 'Vacunación', 'Cirugía', 'Emergencias 24h',
-    'Peluquería', 'Baño', 'Guardería', 'Radiografías',
-    'Análisis clínicos', 'Odontología', 'Adopciones',
+// Mismo catálogo que el perfil y el directorio (Profile.jsx / Vets.jsx). Lo
+// que no está en la lista va en "Otros servicios".
+const SERVICE_CATALOG = [
+    'Consultas',
+    'Vacunación',
+    'Cirugía',
+    'Urgencias 24h',
+    'Peluquería',
+    'Baño',
+    'Radiología',
+    'Ecografía',
+    'Laboratorio',
+    'Guardería',
+    'Adiestramiento',
+    'Atención a domicilio',
 ];
 
-function Field({ label, hint, required, children }) {
+const inputCls = 'flex-1 min-w-0 bg-transparent outline-none text-[15px] placeholder:text-mimo-noche/60';
+
+function Field({ label, required, icon, hint, className = '', children }) {
+    const Icon = icon;
     return (
-        <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                {label}
-                {required ? <span className="text-[#FF5C6C]"> *</span> : null}
-            </label>
-            {children}
-            {hint ? <div className="mt-1.5 text-[11px] text-gray-400">{hint}</div> : null}
-        </div>
+        <label className={`flex flex-col gap-1.5 min-w-0 ${className}`}>
+            <span className="text-xs font-bold tracking-[.08em] uppercase">
+                {label}{required && <span className="text-mimo-coral"> *</span>}
+            </span>
+            <span className="flex items-center gap-2.5 h-[52px] px-4 rounded-2xl bg-white border border-mimo-muted focus-within:border-mimo-noche">
+                {Icon && <Icon size={18} strokeWidth={2} className="shrink-0" />}
+                {children}
+            </span>
+            {hint && <span className="text-[13px]">{hint}</span>}
+        </label>
     );
 }
 
-const inputCls =
-    'w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 placeholder:text-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0';
+function Section({ title, children }) {
+    return (
+        <section className="bg-white rounded-3xl p-5 md:p-7 flex flex-col gap-5">
+            <h2 className="m-0 font-display font-black text-2xl">{title}</h2>
+            {children}
+        </section>
+    );
+}
 
 export default function VetRegister() {
     const token = useSelector((s) => s.user?.token);
-    const user = useSelector((s) => s.user?.data);
     const navigate = useNavigate();
     const [checking, setChecking] = useState(true);
     const [form, setForm] = useState({
         name: '', city: '', address: '',
         phone: '', whatsapp: '', website: '', instagram: '',
         bio: '',
-        services: [],
     });
-    const [serviceInput, setServiceInput] = useState('');
+    const [services, setServices] = useState(() => new Set());
+    const [otherServices, setOtherServices] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
-    // Al montar, chequeamos si el user YA tiene una vet — si sí, mandamos al
-    // dashboard directo (no permitir doble registro).
+    // Si el user ya tiene una vet, va directo al perfil (no hay doble registro).
     useEffect(() => {
-        if (!token) { navigate('/login'); return; }
+        if (!token) { navigate('/login?redirect=/vets/register'); return; }
         fetch(`${API}/api/vets/me`, { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => {
                 if (r.ok) navigate('/profile');
@@ -54,31 +78,26 @@ export default function VetRegister() {
     }, [token, navigate]);
 
     const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-    const addService = (name) => {
-        const clean = String(name).trim();
-        if (!clean) return;
-        setForm((f) => (f.services.includes(clean) ? f : { ...f, services: [...f.services, clean] }));
-        setServiceInput('');
-    };
-    const removeService = (name) =>
-        setForm((f) => ({ ...f, services: f.services.filter((s) => s !== name) }));
+    const toggleService = (s) => setServices((prev) => {
+        const next = new Set(prev);
+        if (next.has(s)) next.delete(s);
+        else next.add(s);
+        return next;
+    });
 
     const submit = async (e) => {
         e.preventDefault();
         setSaving(true);
         setError('');
         try {
-            const body = { ...form };
+            const otros = otherServices.split(',').map((s) => s.trim()).filter(Boolean);
+            const body = { ...form, services: [...SERVICE_CATALOG.filter((s) => services.has(s)), ...otros] };
             for (const k of Object.keys(body)) {
                 if (body[k] === '' || body[k] === null) delete body[k];
             }
             const res = await fetch(`${API}/api/vets`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify(body),
             });
             const data = await res.json();
@@ -93,189 +112,115 @@ export default function VetRegister() {
 
     if (checking) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-[#F5F5F7]">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 animate-pulse">
-                    Verificando
-                </div>
+            <div className="flex-1 bg-mimo-warm animate-pulse" aria-label="Cargando">
+                <div className="h-[240px] bg-mimo-noche rounded-b-[48px]" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] pb-20 font-sans text-gray-900">
-            <div className="mx-auto w-full max-w-2xl px-6 pt-16">
-                <Link to="/vets" className="text-xs font-semibold text-gray-400 hover:text-black">
-                    ← Volver al directorio
-                </Link>
-                <span className="mt-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">
-                    Registro Vet
-                </span>
-                <h1 className="mt-2 text-4xl font-semibold tracking-tighter text-black md:text-5xl">
-                    Registrá tu veterinaria.
-                </h1>
-                <p className="mt-4 max-w-lg text-sm leading-relaxed text-gray-500">
-                    Completá los datos que se mostrarán en el directorio público de Mimo. Después de
-                    crearla, un admin la aprueba para que aparezca en el listado.
-                    {user?.email ? (
-                        <> Tu cuenta <span className="font-semibold text-gray-700">{user.email}</span> queda como contacto por default; podés cambiarlo desde el dashboard.</>
-                    ) : null}
-                </p>
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            <SectionBand
+                color={C.noche}
+                eyebrow="Registro vet"
+                title="Registrá tu veterinaria"
+                subtitle="Completá los datos que se mostrarán en el directorio público."
+            />
 
-                <form
-                    onSubmit={submit}
-                    className="mt-10 space-y-6 rounded-[32px] border border-gray-100 bg-white p-8"
-                >
-                    <Field label="Nombre de la veterinaria" required>
-                        <input
-                            required
-                            className={inputCls}
-                            value={form.name}
-                            onChange={update('name')}
-                            placeholder="Veterinaria Amigo"
-                            maxLength={120}
-                        />
-                    </Field>
-
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <Field label="Ciudad">
-                            <input
-                                className={inputCls}
-                                value={form.city}
-                                onChange={update('city')}
-                                placeholder="Montevideo"
-                                maxLength={80}
-                            />
+            <form onSubmit={submit} className="max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-9 pb-20 flex flex-col lg:flex-row gap-6 items-start">
+                <div className="w-full flex-1 min-w-0 flex flex-col gap-5">
+                    <Section title="La clínica">
+                        <Field label="Nombre de la veterinaria" required icon={Building2}>
+                            <input required className={inputCls} value={form.name} onChange={update('name')} placeholder="Veterinaria Amigo" maxLength={120} />
                         </Field>
-                        <Field label="Dirección">
-                            <input
-                                className={inputCls}
-                                value={form.address}
-                                onChange={update('address')}
-                                placeholder="Bv. Artigas 1234"
-                                maxLength={200}
-                            />
-                        </Field>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <Field label="Teléfono">
-                            <input
-                                className={inputCls}
-                                value={form.phone}
-                                onChange={update('phone')}
-                                placeholder="24000000"
-                                maxLength={30}
-                            />
-                        </Field>
-                        <Field label="WhatsApp" hint="Con código de país, sin +.">
-                            <input
-                                className={inputCls}
-                                value={form.whatsapp}
-                                onChange={update('whatsapp')}
-                                placeholder="59899000000"
-                                maxLength={30}
-                            />
-                        </Field>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <Field label="Sitio web">
-                            <input
-                                type="url"
-                                className={inputCls}
-                                value={form.website}
-                                onChange={update('website')}
-                                placeholder="https://vetamigo.com"
-                                maxLength={200}
-                            />
-                        </Field>
-                        <Field label="Instagram" hint="Sin @">
-                            <input
-                                className={inputCls}
-                                value={form.instagram}
-                                onChange={update('instagram')}
-                                placeholder="vetamigo"
-                                maxLength={80}
-                            />
-                        </Field>
-                    </div>
-
-                    <Field label="Bio" hint="Contá quiénes son y qué hacen. Máx 2000 caracteres.">
-                        <textarea
-                            className={`${inputCls} min-h-[120px] resize-y`}
-                            value={form.bio}
-                            onChange={update('bio')}
-                            placeholder="Veterinaria familiar en Pocitos, especialistas en emergencias y adopciones responsables."
-                            maxLength={2000}
-                        />
-                    </Field>
-
-                    <Field label="Servicios" hint="Presioná Enter o el + para agregar. Máx 30.">
-                        <div className="flex flex-wrap gap-2">
-                            {form.services.map((s) => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => removeService(s)}
-                                    className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 transition-all hover:bg-gray-200"
-                                >
-                                    {s}
-                                    <span className="text-gray-400">×</span>
-                                </button>
-                            ))}
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr] gap-4">
+                            <Field label="Ciudad" icon={MapIcon}>
+                                <input className={inputCls} value={form.city} onChange={update('city')} placeholder="Montevideo" maxLength={80} />
+                            </Field>
+                            <Field label="Dirección" icon={MapPin}>
+                                <input className={inputCls} value={form.address} onChange={update('address')} placeholder="Bv. Artigas 1234" maxLength={200} />
+                            </Field>
                         </div>
-                        <div className="mt-3 flex gap-2">
-                            <input
-                                className={inputCls}
-                                value={serviceInput}
-                                onChange={(e) => setServiceInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') { e.preventDefault(); addService(serviceInput); }
-                                }}
-                                placeholder="Agregar servicio"
-                                maxLength={80}
+                    </Section>
+
+                    <Section title="Contacto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Teléfono" icon={Phone}>
+                                <input className={inputCls} value={form.phone} onChange={update('phone')} placeholder="24000000" maxLength={30} />
+                            </Field>
+                            <Field label="WhatsApp" icon={MessageCircle} hint="Con código de país, sin +.">
+                                <input className={inputCls} value={form.whatsapp} onChange={update('whatsapp')} placeholder="59899000000" maxLength={30} />
+                            </Field>
+                            <Field label="Sitio web" icon={Globe}>
+                                <input type="url" className={inputCls} value={form.website} onChange={update('website')} placeholder="https://vetamigo.com" maxLength={200} />
+                            </Field>
+                            <Field label="Instagram" icon={AtSign}>
+                                <input className={inputCls} value={form.instagram} onChange={update('instagram')} placeholder="vetamigo" maxLength={80} />
+                            </Field>
+                        </div>
+                    </Section>
+
+                    <Section title="Sobre ustedes">
+                        <label className="flex flex-col gap-1.5">
+                            <span className="text-xs font-bold tracking-[.08em] uppercase">Bio</span>
+                            <textarea
+                                className="w-full min-h-[110px] px-4 py-3.5 rounded-2xl bg-white border border-mimo-muted focus:border-mimo-noche outline-none text-[15px] placeholder:text-mimo-noche/60 resize-y"
+                                value={form.bio}
+                                onChange={update('bio')}
+                                placeholder="Veterinaria familiar en Pocitos, especialistas en emergencias."
+                                maxLength={2000}
                             />
-                            <button
-                                type="button"
-                                onClick={() => addService(serviceInput)}
-                                className="rounded-2xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200"
-                            >
-                                Agregar
-                            </button>
+                        </label>
+                        <div className="flex flex-col gap-2.5">
+                            <span className="text-xs font-bold tracking-[.08em] uppercase">Servicios</span>
+                            <div className="flex flex-wrap gap-2">
+                                {SERVICE_CATALOG.map((s) => {
+                                    const active = services.has(s);
+                                    return (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => toggleService(s)}
+                                            aria-pressed={active}
+                                            className={`h-10 px-4 rounded-full text-sm flex items-center gap-1.5 transition-colors ${active ? 'bg-mimo-noche text-mimo-warm font-bold' : 'bg-white border border-mimo-muted hover:border-mimo-noche'}`}
+                                        >
+                                            {active && <Check size={15} strokeWidth={2.5} />}
+                                            {s}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {SERVICE_SUGGESTIONS.filter((s) => !form.services.includes(s)).slice(0, 6).map((s) => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => addService(s)}
-                                    className="rounded-full border border-dashed border-gray-200 px-3 py-1 text-[11px] font-semibold text-gray-400 hover:border-gray-400 hover:text-gray-600"
-                                >
-                                    + {s}
-                                </button>
-                            ))}
-                        </div>
-                    </Field>
+                        <Field label="Otros servicios" icon={Plus} hint="Separalos con comas.">
+                            <input className={inputCls} value={otherServices} onChange={(e) => setOtherServices(e.target.value)} placeholder="Homeopatía, Nutrición, Odontología…" maxLength={300} />
+                        </Field>
+                    </Section>
+                </div>
 
-                    {error ? (
-                        <div className="rounded-2xl bg-red-50 p-3 text-center text-xs font-semibold text-red-500">
-                            {error}
-                        </div>
-                    ) : null}
-
-                    <button
-                        type="submit"
-                        disabled={saving || !form.name.trim()}
-                        className="w-full rounded-full bg-black py-4 text-sm font-semibold text-white transition-all hover:bg-gray-800 disabled:opacity-40"
-                    >
-                        {saving ? 'Registrando…' : 'Registrar veterinaria'}
-                    </button>
-                    <div className="text-center text-[11px] text-gray-400">
-                        Después de crear queda pendiente de aprobación por un admin antes de aparecer
-                        en el directorio público.
+                <aside className="w-full lg:w-[340px] lg:sticky lg:top-[100px] shrink-0 flex flex-col gap-4">
+                    <div className="bg-white rounded-3xl p-5 flex flex-col gap-3.5">
+                        <button
+                            type="submit"
+                            disabled={saving || !form.name.trim()}
+                            className="h-14 rounded-2xl bg-mimo-noche text-mimo-warm font-bold text-[15px] hover:bg-mimo-nocheAlt disabled:opacity-50"
+                        >
+                            {saving ? 'Registrando…' : 'Registrar veterinaria'}
+                        </button>
+                        {error && <p className="m-0 text-sm font-bold text-mimo-coral" role="alert">{error}</p>}
+                        <p className="m-0 flex items-start gap-2 text-sm leading-snug">
+                            <Clock size={16} strokeWidth={2} className="shrink-0 mt-0.5" />
+                            Después de crear queda pendiente de aprobación por un admin antes de aparecer en el directorio.
+                        </p>
                     </div>
-                </form>
-            </div>
+                    <a href={mailtoContact('Quiero ser Socio Mimo')} className="rounded-3xl p-5 flex flex-col gap-1.5 text-mimo-muted hover:opacity-95" style={{ background: C.coral }}>
+                        <b className="font-display font-black text-xl flex items-center gap-2">
+                            <Star size={18} strokeWidth={2} fill="currentColor" />
+                            ¿Querés destacarte?
+                        </b>
+                        <span className="text-sm leading-snug">Con Socio Mimo aparecés primero en el directorio y en Explorar. Escribinos.</span>
+                    </a>
+                </aside>
+            </form>
         </div>
     );
 }

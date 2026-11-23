@@ -34,6 +34,16 @@ function loadScript(src, id) {
     });
 }
 
+// Logo oficial de Facebook ("f" blanca sobre círculo azul).
+function FacebookLogo() {
+    return (
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#1877F2" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
+        </svg>
+    );
+}
+
+// Login con Google y Facebook. Apple no está (falta la cuenta paga de Apple).
 export default function SocialAuth() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -78,7 +88,8 @@ export default function SocialAuth() {
         }
     };
 
-    // Google Identity Services
+    // Google Identity Services: el botón lo dibuja Google (no se puede
+    // reemplazar por uno propio), así que lo pedimos en blanco y rectangular.
     useEffect(() => {
         if (!GOOGLE_CLIENT_ID) return;
         let cancelled = false;
@@ -92,9 +103,10 @@ export default function SocialAuth() {
                 window.google.accounts.id.renderButton(googleBtnRef.current, {
                     theme: 'outline',
                     size: 'large',
-                    shape: 'pill',
+                    shape: 'rectangular',
                     text: 'continue_with',
-                    width: 320,
+                    logo_alignment: 'left',
+                    width: Math.min(400, googleBtnRef.current.offsetWidth || 400),
                 });
             })
             .catch(() => setError('No se pudo cargar Google.'));
@@ -131,46 +143,31 @@ export default function SocialAuth() {
     if (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID) return null;
 
     return (
-        <div className="mt-8">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 h-px bg-gray-100" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">o continuá con</span>
-                <div className="flex-1 h-px bg-gray-100" />
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-mimo-muted" />
+                <span className="text-[13px] font-bold">o continuá con</span>
+                <div className="flex-1 h-px bg-mimo-muted" />
             </div>
 
-            <div className="flex flex-col items-center gap-3">
-                {GOOGLE_CLIENT_ID && <div ref={googleBtnRef} className="flex justify-center" />}
-                {FACEBOOK_APP_ID && (
-                    <button
-                        type="button"
-                        onClick={handleFacebook}
-                        className="w-full max-w-[320px] flex items-center justify-center gap-3 py-3 rounded-full bg-[#1877F2] text-white font-semibold text-sm hover:bg-[#166FE5] transition-all"
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z" />
-                        </svg>
-                        Continuar con Facebook
-                    </button>
-                )}
-            </div>
-
-            {error && (
-                <div className="mt-4 p-3 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold text-center">
-                    {error}
-                </div>
+            {GOOGLE_CLIENT_ID && <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />}
+            {FACEBOOK_APP_ID && (
+                <button
+                    type="button"
+                    onClick={handleFacebook}
+                    className="relative w-full h-[52px] rounded-2xl bg-white border border-mimo-muted hover:border-mimo-noche font-bold text-[15px] flex items-center justify-center transition-colors"
+                >
+                    <span className="absolute left-3.5"><FacebookLogo /></span>
+                    Continuar con Facebook
+                </button>
             )}
 
+            {error && <p className="m-0 p-3 rounded-2xl bg-white text-sm font-bold text-mimo-coral text-center">{error}</p>}
+
             {accountDeleted && (
-                <div className="mt-4 p-4 bg-mimo-coral/10 rounded-2xl text-xs text-mimo-coral flex flex-col gap-3">
-                    <div className="font-semibold text-center">
-                        Esta cuenta fue eliminada. Podés recuperarla creándola nuevamente con este mismo email.
-                    </div>
-                    <Link
-                        to="/register"
-                        className="rounded-full bg-mimo-coral text-white font-semibold py-2.5 px-4 text-center hover:bg-mimo-coralDark transition-all"
-                    >
-                        Ir a crear cuenta
-                    </Link>
+                <div className="p-4 rounded-2xl bg-white text-sm leading-[1.45] flex flex-col gap-2">
+                    <span>Esta cuenta fue eliminada. Podés recuperarla creándola de nuevo con este mismo email.</span>
+                    <Link to="/register" className="self-start font-bold underline hover:text-mimo-coral">Crear la cuenta de nuevo</Link>
                 </div>
             )}
         </div>

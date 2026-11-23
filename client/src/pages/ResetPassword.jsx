@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Lock, CircleCheck, CircleAlert } from 'lucide-react';
+import { AuthLayout, AuthTitle, Field, PrimaryButton, PrimaryLink, Notice, StateIcon } from '../components/AuthLayout';
+import { C } from '../utils/theme';
 
 function ResetPassword() {
     const [searchParams] = useSearchParams();
@@ -12,11 +15,13 @@ function ResetPassword() {
     const [error, setError] = useState('');
     const [done, setDone] = useState(false);
 
+    const mismatch = confirm && password !== confirm;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         if (password.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres.');
+            setError('La contraseña tiene que tener al menos 6 caracteres.');
             return;
         }
         if (password !== confirm) {
@@ -35,7 +40,7 @@ function ResetPassword() {
             setDone(true);
             setTimeout(() => navigate('/login'), 2500);
         } catch (err) {
-            setError(err.message);
+            setError(err.message === 'Failed to fetch' ? 'No pudimos conectarnos. Probá de nuevo en un rato.' : err.message);
         } finally {
             setLoading(false);
         }
@@ -43,84 +48,55 @@ function ResetPassword() {
 
     if (!token) {
         return (
-            <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-                <div className="w-full max-w-[400px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
-                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">Link inválido.</h2>
-                    <p className="text-gray-400 font-medium mb-8">
-                        El link de recuperación no es válido o está incompleto. Pedí uno nuevo.
-                    </p>
-                    <Link
-                        to="/forgot-password"
-                        className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all duration-300 text-lg"
-                    >
-                        Pedir nuevo link
-                    </Link>
-                </div>
-            </div>
+            <AuthLayout>
+                <StateIcon icon={CircleAlert} color={C.coral} />
+                <AuthTitle title="Link inválido" subtitle="El link de recuperación no es válido o está incompleto. Pedí uno nuevo." />
+                <PrimaryLink to="/forgot-password">Pedir un link nuevo</PrimaryLink>
+            </AuthLayout>
+        );
+    }
+
+    if (done) {
+        return (
+            <AuthLayout>
+                <StateIcon icon={CircleCheck} color={C.teal} />
+                <AuthTitle title="¡Listo!" subtitle="Actualizamos tu contraseña. Te llevamos al login en un instante." />
+                <PrimaryLink to="/login">Ir al login</PrimaryLink>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-            <div className="w-full max-w-[400px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100">
-                {done ? (
-                    <div className="text-center">
-                        <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">¡Listo! 🎉</h2>
-                        <p className="text-gray-400 font-medium leading-relaxed mb-8">
-                            Actualizamos tu contraseña. Te vamos a llevar al login en un instante...
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="text-center mb-10">
-                            <h2 className="text-4xl font-semibold tracking-tighter text-black mb-2">Nueva contraseña.</h2>
-                            <p className="text-gray-400 font-medium">Elegí una nueva contraseña para tu cuenta.</p>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Contraseña</label>
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    minLength="6"
-                                    className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
-                                    placeholder="Mínimo 6 caracteres"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Confirmar contraseña</label>
-                                <input
-                                    type="password"
-                                    value={confirm}
-                                    onChange={(e) => setConfirm(e.target.value)}
-                                    required
-                                    className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
-                                    placeholder="Repetí tu contraseña"
-                                />
-                            </div>
-
-                            {error && (
-                                <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold text-center">
-                                    {error}
-                                </div>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full py-4 mt-2 bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-full transition-all duration-300 shadow-sm text-lg"
-                            >
-                                {loading ? 'Actualizando...' : 'Actualizar contraseña'}
-                            </button>
-                        </form>
-                    </>
-                )}
-            </div>
-        </div>
+        <AuthLayout>
+            <StateIcon icon={Lock} color={C.coral} />
+            <AuthTitle title="Nueva contraseña" subtitle="Elegí una contraseña nueva para tu cuenta." />
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <Field
+                    label="Contraseña nueva"
+                    icon={Lock}
+                    type="password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="Mínimo 6 caracteres"
+                />
+                <Field
+                    label="Repetir contraseña"
+                    icon={Lock}
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    placeholder="Repetí la contraseña"
+                    error={mismatch ? 'No coinciden.' : ''}
+                />
+                {error && <Notice tone="error">{error}</Notice>}
+                <PrimaryButton type="submit" disabled={loading}>{loading ? 'Guardando…' : 'Guardar contraseña'}</PrimaryButton>
+            </form>
+        </AuthLayout>
     );
 }
 

@@ -38,7 +38,9 @@ function App() {
   // La landing es standalone: sin navbar, sin chat widget, sin toasts.
   // La landing y el panel de admin tienen su propio layout: sin Navbar,
   // Footer ni widgets generales.
-  const isLanding = location.pathname === '/' || location.pathname.startsWith('/admin');
+  // Las pantallas de cuenta (login, registro…) son pantalla partida, también sin Navbar ni Footer.
+  const AUTH_PATHS = ['/login', '/register', '/tipo-de-cuenta', '/forgot-password', '/reset-password', '/verify-email'];
+  const isLanding = location.pathname === '/' || location.pathname.startsWith('/admin') || AUTH_PATHS.includes(location.pathname);
 
 
 

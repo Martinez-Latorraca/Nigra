@@ -1,28 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { User, Mail, Lock, MailCheck, FileText } from 'lucide-react';
 import SocialAuth from '../components/SocialAuth';
+import {
+    AuthLayout, AuthTitle, Field, PrimaryButton, PrimaryLink, Notice, StateIcon, AccountTypePicker, AuthFooterLink,
+} from '../components/AuthLayout';
+import { C } from '../utils/theme';
 import { CONTACT_EMAIL, mailtoContact } from '../utils/links';
-
-const ACCOUNT_TYPES = [
-    {
-        id: 'user',
-        emoji: '🐾',
-        title: 'Busco / reporto mascotas',
-        desc: 'Uso Mimo para encontrar o reportar mascotas y ayudar a la comunidad.',
-    },
-    {
-        id: 'vet',
-        emoji: '🏥',
-        title: 'Represento una veterinaria',
-        desc: 'Quiero publicar mascotas encontradas, recibir alertas y sumarme a la red.',
-    },
-    {
-        id: 'shelter',
-        emoji: '🏡',
-        title: 'Represento un refugio',
-        desc: 'Publico mascotas en adopción y las promociono en la plataforma.',
-    },
-];
 
 function Register() {
     const [accountType, setAccountType] = useState('user');
@@ -33,14 +17,11 @@ function Register() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [registered, setRegistered] = useState(false);
-    // Estado del post-register: `restored` = la cuenta ya existía soft-deleted
-    // y la reactivamos; `requiresVerification` = todavía hay que verificar el
-    // email (típico de un signup nuevo, o un restore de una cuenta que nunca
-    // había verificado).
+    // `restored` = la cuenta ya existía soft-deleted y la reactivamos.
     const [restored, setRestored] = useState(false);
-    const [requiresVerification, setRequiresVerification] = useState(false);
 
-    const navigate = useNavigate();
+    const mismatch = passwordConfirm && password !== passwordConfirm;
+    const isEntity = accountType === 'vet' || accountType === 'shelter';
 
     const handleRegister = async (e) => {
         e.preventDefault();
@@ -57,222 +38,121 @@ function Register() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, password, account_type: accountType }),
             });
-
             const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'No se pudo crear la cuenta.');
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Error al crear la cuenta');
-            }
-
-            // Un register puede resultar en:
-            //  · signup nuevo: requires_verification=true → "revisá tu email".
-            //  · restore de cuenta soft-deleted que ya había verificado antes:
-            //    requires_verification=false → "recuperaste tu cuenta, andá al login".
+            // Un register puede ser un signup nuevo o el restore de una cuenta
+            // borrada; en los dos casos se confirma el email.
             setRestored(!!data.restored);
-            setRequiresVerification(!!data.requires_verification);
             setRegistered(true);
         } catch (err) {
-            setError(err.message);
+            setError(err.message === 'Failed to fetch' ? 'No pudimos conectarnos. Probá de nuevo en un rato.' : err.message);
         } finally {
             setLoading(false);
         }
     };
 
     if (registered) {
-        // Copy adaptado según sea un signup nuevo o una reactivación de cuenta
-        // soft-deleted. En ambos casos pedimos verificación de mail.
-        const title = restored ? 'Recuperando tu cuenta.' : 'Revisá tu email.';
-        const body = restored
-            ? <>Te mandamos un link a <strong className="text-gray-700">{email}</strong> para confirmar
-                que sos vos. Al tocarlo, tus reportes y datos vuelven intactos.</>
-            : <>Te mandamos un link a <strong className="text-gray-700">{email}</strong> para confirmar
-                tu cuenta. Después de tocarlo vas a poder iniciar sesión.</>;
         return (
-            <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-                <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100 text-center">
-                    <div className="text-5xl mb-4">📬</div>
-                    <h2 className="text-3xl font-semibold tracking-tighter text-black mb-3">{title}</h2>
-                    <p className="text-gray-500 leading-relaxed mb-8">{body}</p>
+            <AuthLayout>
+                <StateIcon icon={MailCheck} color={C.teal} />
+                <AuthTitle
+                    title={restored ? 'Recuperando tu cuenta' : 'Revisá tu email'}
+                    subtitle={restored
+                        ? <>Te mandamos un link a <b>{email}</b> para confirmar que sos vos. Al tocarlo, tus reportes y datos vuelven intactos.</>
+                        : <>Te mandamos un link a <b>{email}</b> para confirmar tu cuenta. Después de tocarlo vas a poder iniciar sesión.</>}
+                />
 
-                    {accountType === 'shelter' && !restored ? (
-                        <div className="mb-8 rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-left">
-                            <div className="text-xs font-bold uppercase tracking-widest text-yellow-800 mb-2">
-                                📋 Un paso más
-                            </div>
-                            <p className="text-[13px] leading-relaxed text-yellow-900">
+                {accountType === 'shelter' && !restored && (
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-white text-sm leading-[1.5]">
+                        <FileText size={20} strokeWidth={2} className="shrink-0 text-mimo-teal mt-px" />
+                        <div className="flex flex-col gap-2">
+                            <b className="text-[15px]">Un paso más</b>
+                            <span>
                                 Para publicar mascotas en adopción tenés que verificar que representás a un refugio o protectora.
-                                Enviá a <a href={mailtoContact('Verificación de refugio Mimo')} className="font-semibold underline">{CONTACT_EMAIL}</a> los
-                                comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio,
-                                redes sociales, etc.) desde el email de tu cuenta.
-                            </p>
-                            <p className="text-[12px] leading-relaxed text-yellow-800 mt-2">
-                                Mientras tanto podés editar el perfil de tu refugio.
-                                Un admin te aprueba y ya podés empezar a publicar.
-                            </p>
+                                Mandá a <a href={mailtoContact('Verificación de refugio Mimo')} className="font-bold underline">{CONTACT_EMAIL}</a> los
+                                comprobantes que tengas (papeles de la ONG, cuenta bancaria a nombre del refugio, redes sociales)
+                                desde el email de tu cuenta.
+                            </span>
+                            <span>Mientras tanto podés editar el perfil del refugio. Cuando un admin lo apruebe, ya podés publicar.</span>
                         </div>
-                    ) : null}
+                    </div>
+                )}
 
-                    <Link
-                        to="/login"
-                        className="inline-block w-full py-4 bg-black hover:bg-gray-800 text-white font-semibold rounded-full transition-all shadow-sm"
-                    >
-                        Ir al login
-                    </Link>
-                    <p className="text-[11px] text-gray-400 mt-6">
-                        ¿No te llegó?{' '}
-                        <Link to="/verify-email" className="font-semibold text-gray-600 hover:text-black">
-                            Reenviar mail
-                        </Link>
-                    </p>
-                </div>
-            </div>
+                <PrimaryLink to="/login">Ir al login</PrimaryLink>
+                <AuthFooterLink text="¿No te llegó?" to="/verify-email" linkText="Reenviar mail" />
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center p-6 font-sans text-gray-900">
-            <div className="w-full max-w-[440px] mb-8">
-                <Link to="/" className="text-sm font-medium text-gray-400 hover:text-black transition-colors flex items-center gap-1">
-                    Volver al inicio
-                </Link>
+        <AuthLayout>
+            <AuthTitle title="Crear cuenta" subtitle="Unite a la comunidad de búsqueda y rescate de Mimo" />
+
+            <div className="flex flex-col gap-2.5">
+                <span className="text-xs font-bold tracking-[.08em] uppercase">Tipo de cuenta</span>
+                <AccountTypePicker value={accountType} onChange={setAccountType} disabled={loading} />
             </div>
 
-            <div className="w-full max-w-[440px] bg-white rounded-[40px] shadow-[0_2px_15px_rgba(0,0,0,0.04)] p-10 border border-gray-100">
-                <div className="text-center mb-8">
-                    <h2 className="text-4xl font-semibold tracking-tighter text-black mb-2">Crear cuenta.</h2>
-                    <p className="text-gray-400 font-medium leading-tight">Únete a la comunidad de búsqueda y rescate de Mimo</p>
+            <form onSubmit={handleRegister} className="flex flex-col gap-5">
+                <Field
+                    label={isEntity ? 'Nombre del responsable' : 'Nombre completo'}
+                    icon={User}
+                    type="text"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    placeholder="Nombre y apellido"
+                />
+                <Field
+                    label="Email"
+                    icon={Mail}
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="nombre@ejemplo.com"
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                    <Field
+                        label="Contraseña"
+                        icon={Lock}
+                        type="password"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        placeholder="Mínimo 6"
+                    />
+                    <Field
+                        label="Repetir"
+                        icon={Lock}
+                        type="password"
+                        autoComplete="new-password"
+                        value={passwordConfirm}
+                        onChange={(e) => setPasswordConfirm(e.target.value)}
+                        required
+                        minLength={6}
+                        placeholder="Repetí la contraseña"
+                        error={mismatch ? 'No coinciden.' : ''}
+                    />
                 </div>
 
-                {/* Selector de tipo de cuenta */}
-                <div className="mb-6">
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-3 px-1 text-gray-400">
-                        Tipo de cuenta
-                    </label>
-                    <div className="flex flex-col gap-2">
-                        {ACCOUNT_TYPES.map((t) => {
-                            const active = accountType === t.id;
-                            return (
-                                <button
-                                    key={t.id}
-                                    type="button"
-                                    onClick={() => setAccountType(t.id)}
-                                    className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
-                                        active
-                                            ? 'border-black bg-white ring-2 ring-black/5'
-                                            : 'border-gray-100 bg-gray-50 hover:bg-white hover:border-gray-200'
-                                    }`}
-                                >
-                                    <span className="text-2xl">{t.emoji}</span>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-semibold text-gray-900">{t.title}</div>
-                                        <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">{t.desc}</div>
-                                    </div>
-                                    <div
-                                        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 ${
-                                            active ? 'border-black bg-black' : 'border-gray-300'
-                                        }`}
-                                    >
-                                        {active ? (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                {error && <Notice tone="error">{error}</Notice>}
 
-                <form onSubmit={handleRegister} className="flex flex-col gap-5">
-                    <div>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">
-                            {accountType === 'vet' || accountType === 'shelter' ? 'Nombre del responsable' : 'Nombre completo'}
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                            className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
-                            placeholder="Nombre y apellido"
-                        />
-                    </div>
+                <PrimaryButton type="submit" disabled={loading}>
+                    {loading ? 'Creando la cuenta…' : isEntity ? 'Crear cuenta y continuar' : 'Crear cuenta'}
+                </PrimaryButton>
+            </form>
 
-                    <div>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
-                            placeholder="nombre@ejemplo.com"
-                        />
-                    </div>
+            {/* Vets y refugios se registran con email: el login social no pregunta el tipo. */}
+            {accountType === 'user' && <SocialAuth />}
 
-                    <div>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Contraseña</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength="6"
-                            className="w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border border-transparent focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-100 outline-none transition-all duration-300 font-medium"
-                            placeholder="Mínimo 6 caracteres"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold uppercase tracking-widest mb-2 px-1 text-gray-400">Repetir contraseña</label>
-                        <input
-                            type="password"
-                            value={passwordConfirm}
-                            onChange={(e) => setPasswordConfirm(e.target.value)}
-                            required
-                            minLength="6"
-                            className={`w-full px-5 py-4 bg-gray-50 text-gray-900 rounded-2xl border transition-all duration-300 font-medium focus:bg-white focus:ring-4 focus:ring-gray-100 outline-none ${
-                                passwordConfirm && password !== passwordConfirm
-                                    ? 'border-red-300 focus:border-red-400'
-                                    : 'border-transparent focus:border-gray-200'
-                            }`}
-                            placeholder="Escribí la contraseña de nuevo"
-                        />
-                        {passwordConfirm && password !== passwordConfirm ? (
-                            <p className="text-[11px] text-red-500 mt-2 px-1 font-semibold">Las contraseñas no coinciden.</p>
-                        ) : null}
-                    </div>
-
-                    {error && (
-                        <div className="p-4 bg-red-50 text-red-500 rounded-2xl text-xs font-semibold text-center mt-2">
-                            {error}
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full py-4 mt-4 bg-black hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-full transition-all duration-300 shadow-sm text-lg"
-                    >
-                        {loading ? 'Procesando...' : (accountType === 'vet' || accountType === 'shelter') ? 'Crear cuenta y continuar' : 'Crear cuenta'}
-                    </button>
-                </form>
-
-                {accountType === 'user' ? <SocialAuth /> : null}
-
-                <div className="mt-10 text-center text-sm font-medium text-gray-400">
-                    ¿Ya tienes una cuenta?{' '}
-                    <Link to="/login" className="text-black font-semibold hover:underline">
-                        Inicia sesión
-                    </Link>
-                </div>
-            </div>
-
-            <div className="mt-8 text-[10px] text-gray-300 font-bold tracking-[0.2em] uppercase">
-                Plataforma Mimo • 2026
-            </div>
-        </div>
+            <AuthFooterLink text="¿Ya tenés cuenta?" to="/login" linkText="Iniciar sesión" />
+        </AuthLayout>
     );
 }
 

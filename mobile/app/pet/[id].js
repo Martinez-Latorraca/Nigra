@@ -22,6 +22,7 @@ import {
 import { confirm, toast } from '../../src/lib/feedback';
 import { translateType, translateColor } from '../../src/lib/translations';
 import { API_URL } from '../../src/lib/config';
+import { petShareMessage } from '../../src/lib/shareText';
 import PetMap from '../../src/components/PetMap';
 import IconButton from '../../src/components/IconButton';
 import StatusChip from '../../src/components/StatusChip';
@@ -91,12 +92,7 @@ export default function PetDetail() {
   const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
 
   const handleShare = () => {
-    Share.share({
-      message:
-        isLost
-          ? `🔍 ¡Ayudanos a encontrar a ${pet.name || 'una mascota'}! ${API_URL}/pet/${pet.id}`
-          : `🐾 ¿Reconocés a esta mascota? ${API_URL}/pet/${pet.id}`,
-    });
+    Share.share({ message: petShareMessage(pet, API_URL) });
   };
   const handleMap = () => {
     if (pet.lat && pet.lng) {

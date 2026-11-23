@@ -8,6 +8,7 @@ import api from '../../src/lib/api';
 import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
 import { SkeletonDetail } from '../../src/components/Skeleton';
 import { API_URL } from '../../src/lib/config';
+import { adoptionShareMessage } from '../../src/lib/shareText';
 import {
   ChevronLeft, ChevronRight, MapPin, MessageCircle, Mail, Share2, Syringe, Scissors,
   PawPrint, Check, Heart,
@@ -81,11 +82,7 @@ export default function AdoptionDetail() {
     ? `mailto:${pet.shelter_email}?subject=Consulta%20por%20adopci%C3%B3n%20-%20${encodeURIComponent(pet.name || 'mascota')}`
     : null;
   const handleShare = () => {
-    Share.share({
-      message: adopted
-        ? `🏡 ${pet.name || 'Esta mascota'} encontró familia gracias a Mimo 🐾 ${API_URL}/adoptions/${pet.id}`
-        : `🏡 ${pet.name || 'Esta mascota'} busca familia. Compartí para que encuentre su casa 🐾 ${API_URL}/adoptions/${pet.id}`,
-    });
+    Share.share({ message: adoptionShareMessage(pet, API_URL) });
   };
   const shelterColor = palette.teal;
   const name = pet.name || 'Sin nombre';

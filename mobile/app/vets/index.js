@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { getPositionSafe } from '../../src/lib/location';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, sectionColors, onColor } from '../../src/lib/theme';
 import { SkeletonList } from '../../src/components/Skeleton';
@@ -174,9 +175,11 @@ export default function VetsList() {
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          params.lat = loc.coords.latitude;
-          params.lng = loc.coords.longitude;
+          const pos = await getPositionSafe();
+          if (pos) {
+            params.lat = pos.latitude;
+            params.lng = pos.longitude;
+          }
         }
       } catch { /* silencioso */ }
       try {
@@ -220,8 +223,12 @@ export default function VetsList() {
         toast('Necesitamos tu ubicación para mostrar vets cerca tuyo.', 'error');
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const g = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+      const pos = await getPositionSafe();
+      if (!pos) {
+        toast('No pudimos obtener tu ubicación.', 'error');
+        return;
+      }
+      const g = { lat: pos.latitude, lng: pos.longitude };
       setCoords(g);
       fetchVets(1, committedCity, servicesSelected, g);
     } catch (e) {

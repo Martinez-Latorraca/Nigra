@@ -34,13 +34,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Bugs encontrados al rediseñar (no son visuales, no se tocaron)
 
-- **Los anuncios de vets sponsor pueden no aparecer nunca** · `app/pets.js` y
-  `app/vets/index.js` · si el usuario dio permiso de ubicación pero el teléfono no
-  tiene posición (GPS sin señal, bajo techo, emulador), `getCurrentPositionAsync`
-  queda esperando para siempre y el pedido a `/api/vets/ads` nunca sale: no hay
-  carrusel "Nuestros socios" ni anuncios en Explorar. Arreglo sugerido: usar
-  `getLastKnownPositionAsync` o ponerle un timeout, y si no hay posición pedir los
-  anuncios sin coordenadas (orden por plan).
 
 ## Diseño que contradice decisiones ya tomadas (no se implementó)
 
@@ -72,10 +65,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 - **"Sobre [Nombre] · Perdido" y punto de color sobre la foto** · el diseño muestra en cada
   conversación el nombre y el estado de la mascota. `GET /api/messages/inbox` no devuelve
   `pets.name` ni `pets.status`/`resolved_at`: hay que sumarlos al SELECT.
-- **Bug: punto de "no leído" en Chats sin nada sin leer** · `unreadCount` de `src/lib/socket.js`
-  suma todas las notificaciones sin leer, incluidos tipos que la pantalla Mensajes no muestra
-  (solo muestra `match` y `resolve_reminder`). El punto de la TabBar / menú aparece y en la
-  lista no hay nada marcado.
 
 ## Web
 

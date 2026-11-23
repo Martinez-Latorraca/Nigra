@@ -95,7 +95,12 @@ export function SocketProvider({ children }) {
   const unreadChats = inbox.filter(
     (c) => !c.is_read && Number(c.receiver_id) === Number(userId)
   ).length;
-  const unreadNotifs = notifications.filter((n) => !n.read_at).length;
+  // Solo los tipos que muestra la pantalla Mensajes (coincidencias y el
+  // "¿te reencontraste?"). Los demás (p. ej. alertas cerca) no tienen dónde
+  // verse, así que no prenden el punto de Chats.
+  const unreadNotifs = notifications.filter(
+    (n) => !n.read_at && (n.type === 'match' || n.type === 'resolve_reminder')
+  ).length;
   const unreadCount = unreadChats + unreadNotifs;
 
   return (

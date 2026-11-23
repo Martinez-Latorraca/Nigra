@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useSelector } from 'react-redux';
 import * as Location from 'expo-location';
+import { getPositionSafe } from '../src/lib/location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts } from '../src/lib/theme';
 import { Search, X, List, LocateFixed, Clock, MapPin, ArrowRight, Stethoscope } from '../src/lib/icons';
@@ -51,17 +52,6 @@ function timeAgo(iso) {
 
 const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-// Posición sin quedarse colgado: la última conocida y, si no hay, la actual
-// con un tope de tiempo (getCurrentPositionAsync puede no volver nunca).
-async function getPosition() {
-  const last = await Location.getLastKnownPositionAsync().catch(() => null);
-  if (last?.coords) return last.coords;
-  const current = await Promise.race([
-    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null),
-    new Promise((r) => setTimeout(() => r(null), 8000)),
-  ]);
-  return current?.coords || null;
-}
 
 export default function MapScreen() {
   const c = useTheme();
@@ -89,7 +79,7 @@ export default function MapScreen() {
     (async () => {
       const { status } = await Location.getForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      const pos = await getPosition();
+      const pos = await getPositionSafe();
       if (pos) {
         setMe({ lat: pos.latitude, lng: pos.longitude });
         mapRef.current?.flyTo(pos.latitude, pos.longitude, 14);
@@ -193,7 +183,7 @@ export default function MapScreen() {
       toast('Necesitamos tu ubicación para centrar el mapa.', 'error');
       return;
     }
-    const pos = await getPosition();
+    const pos = await getPositionSafe();
     if (!pos) {
       toast('No pudimos obtener tu ubicación.', 'error');
       return;

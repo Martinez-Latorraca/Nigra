@@ -21,3 +21,17 @@ export async function updateLocationIfPermitted() {
         return { skipped: true, reason: e?.message || 'error' };
     }
 }
+
+// Posición actual sin quedarse colgado. getCurrentPositionAsync puede no volver
+// nunca si el teléfono no consigue señal (bajo techo, emulador), y eso dejaba
+// sin anuncios de vets a quien había dado permiso. Primero la última posición
+// conocida; si no hay, la actual con un tope de tiempo. Devuelve coords o null.
+export async function getPositionSafe(timeoutMs = 8000) {
+    const last = await Location.getLastKnownPositionAsync().catch(() => null);
+    if (last?.coords) return last.coords;
+    const current = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+    return current?.coords || null;
+}

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { getPositionSafe } from '../src/lib/location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
 import { SkeletonList } from '../src/components/Skeleton';
@@ -122,9 +123,11 @@ export default function Pets() {
       try {
         const { status } = await Location.getForegroundPermissionsAsync();
         if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          params.lat = loc.coords.latitude;
-          params.lng = loc.coords.longitude;
+          const pos = await getPositionSafe();
+          if (pos) {
+            params.lat = pos.latitude;
+            params.lng = pos.longitude;
+          }
         }
       } catch { /* silencioso: caemos a orden por tier */ }
       try {

@@ -12,7 +12,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
-import { translateColor, translateType } from './utils/translations.js';
 import { reverseGeocode, searchAddress } from './utils/geocode.js';
 
 // Importar rutas
@@ -36,6 +35,7 @@ import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js
 import { startReminderScheduler } from './lib/resolveReminder.js';
 import { analyticsEnabled, shutdownAnalytics } from './lib/analytics.js';
 import { CONTACT_EMAIL } from './lib/contact.js';
+import { petShareData, adoptionShareData, renderShareImage } from './lib/shareCards.js';
 import pinoHttp from 'pino-http';
 import logger from './lib/logger.js';
 
@@ -195,56 +195,97 @@ app.get('/sitemap.xml', async (req, res) => {
 const indexHtmlPath = path.join(buildPath, 'index.html');
 const indexHtml = fs.existsSync(indexHtmlPath) ? fs.readFileSync(indexHtmlPath, 'utf-8') : null;
 
+// ── Compartir fichas (Compartir.dc.html) ──────────────────────────────────
+// /pet/:id y /adoptions/:id devuelven el index.html de la web con las meta
+// tags de la ficha, para que WhatsApp/Facebook/X/Telegram armen la vista
+// previa. La imagen (1200×630) y la historia (1080×1920) se generan en
+// /og/... con lib/shareCards.js.
+
+const loadSharePet = async (id) => {
+    if (!/^\d+$/.test(String(id))) return null;
+    const { rows } = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
+    return rows[0] ? petShareData(rows[0]) : null;
+};
+const loadShareAdoption = async (id) => {
+    if (!/^\d+$/.test(String(id))) return null;
+    const { rows } = await pool.query(
+        `SELECT ap.*, s.name AS shelter_name, s.city AS shelter_city
+         FROM adoption_pets ap
+         JOIN shelters s ON s.id = ap.shelter_id
+         WHERE ap.id = $1 AND ap.deleted_at IS NULL AND s.approved = TRUE AND s.deleted_at IS NULL`,
+        [id]
+    );
+    return rows[0] ? adoptionShareData(rows[0]) : null;
+};
+
+const escHtml = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Reemplaza las meta tags genéricas del index.html por las de la ficha.
+function shareHtml(d, imagePath, jsonLd) {
+    const url = escHtml(`${BASE_URL}${d.path}`);
+    const title = escHtml(d.title);
+    const desc = escHtml(d.description);
+    const image = escHtml(`${BASE_URL}${imagePath}`);
+    let html = indexHtml
+        .replace(/Mimo - Comunidad de Reencuentro Animal/g, title)
+        .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Mimo conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
+        .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
+        .replace(/https:\/\/mimo\.uy\/mimo-og\.png/g, image)
+        .replace(/<meta property="og:image:width" content="\d+" \/>/, '<meta property="og:image:width" content="1200" />')
+        .replace(/<meta property="og:image:height" content="\d+" \/>/, '<meta property="og:image:height" content="630" />')
+        .replace(/https:\/\/mimo\.uy(?![\/\w.-]*\.(?:png|jpg))/g, url);
+    if (jsonLd) html = html.replace('</head>', `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>\n</head>`);
+    return html;
+}
+
 app.get('/pet/:id', async (req, res) => {
-    const { id } = req.params;
-
+    if (!indexHtml) return res.status(404).json({ error: 'Not found' });
     try {
-        const result = await pool.query('SELECT * FROM pets WHERE id = $1', [id]);
-        const pet = result.rows[0];
-
-        if (!pet || !indexHtml) return indexHtml ? res.send(indexHtml) : res.status(404).json({ error: 'Not found' });
-
-        const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-        const petName = pet.name || 'una mascota';
-        const petType = translateType(pet.type) || 'mascota';
-        const petColor = translateColor(pet.color);
-        const ogUrl = esc(`${BASE_URL}/pet/${id}`);
-        const title = pet.status === 'lost'
-            ? esc(`🔍 ¡Ayudanos a encontrar a ${petName}!`)
-            : esc(`🐾 ¡Una mascota fue encontrado/a!`);
-        const desc = pet.status === 'lost'
-            ? esc(`Se perdió un/a ${petType}${petColor ? ' de color ' + petColor : ''}. Compartí para ayudar a que vuelva a casa.`)
-            : esc(`Un/a ${petType}${petColor ? ' de color ' + petColor : ''} fue encontrado/a. Compartí para ayudar a que vuelva a casa. ¿Lo reconocés?`);
-        // Forzamos imagen de 600x600 via Cloudinary para que WhatsApp móvil la muestre bien
-        const ogImage = pet.photo_url.replace('/upload/', '/upload/c_fill,w_600,h_600,f_jpg,q_80/');
-        const image = esc(ogImage);
-
-        const jsonLd = JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "LostFoundItem",
-            "name": pet.name || 'Mascota',
-            "description": pet.description || desc,
-            "image": ogImage,
-            "url": `${BASE_URL}/pet/${id}`,
-            "datePosted": pet.created_at,
-            "category": petType,
-            "color": petColor || undefined
-        });
-
-        const html = indexHtml
-            .replace(/Mimo - Comunidad de Reencuentro Animal/g, title)
-            .replace(/Encontrá o reportá mascotas perdidas en tu zona\. Mimo conecta personas para ayudar a que las mascotas vuelvan a casa\./g, desc)
-            .replace(/Encontrá o reportá mascotas perdidas\. Compartí para ayudar a que vuelvan a casa\./g, desc)
-            .replace(/https:\/\/mimo\.uy\/mimo-og\.png/g, image)
-            .replace(/https:\/\/mimo\.uy(?!\/mimo-og)/g, ogUrl)
-            .replace('</head>', `<script type="application/ld+json">${jsonLd}</script>\n</head>`);
-
-        res.send(html);
-
+        const d = await loadSharePet(req.params.id);
+        if (!d) return res.send(indexHtml);
+        const image = `${BASE_URL}/og/pet/${d.id}/card.jpg`;
+        res.send(shareHtml(d, `/og/pet/${d.id}/card.jpg`, {
+            '@context': 'https://schema.org',
+            '@type': 'LostFoundItem',
+            name: d.name,
+            description: d.description,
+            image,
+            url: `${BASE_URL}${d.path}`,
+        }));
     } catch (error) {
         logger.error({ err: error }, 'SEO injection error');
-        indexHtml ? res.send(indexHtml) : res.status(500).json({ error: 'Error interno' });
+        res.send(indexHtml);
+    }
+});
+
+app.get('/adoptions/:id', async (req, res) => {
+    if (!indexHtml) return res.status(404).json({ error: 'Not found' });
+    try {
+        const d = await loadShareAdoption(req.params.id);
+        if (!d) return res.send(indexHtml);
+        res.send(shareHtml(d, `/og/adoption/${d.id}/card.jpg`));
+    } catch (error) {
+        logger.error({ err: error }, 'SEO injection error (adoption)');
+        res.send(indexHtml);
+    }
+});
+
+// Imágenes: /og/pet/:id/card.jpg, /og/pet/:id/story.jpg y lo mismo con adoption.
+app.get('/og/:kind/:id/:variant', async (req, res) => {
+    const { kind, id, variant } = req.params;
+    const v = { 'card.jpg': 'card', 'story.jpg': 'story' }[variant];
+    const loader = { pet: loadSharePet, adoption: loadShareAdoption }[kind];
+    if (!v || !loader) return res.status(404).end();
+    try {
+        const d = await loader(id);
+        if (!d) return res.status(404).end();
+        const buf = await renderShareImage(d, v, BASE_URL);
+        res.set('Content-Type', 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(buf);
+    } catch (error) {
+        logger.error({ err: error }, 'share image error');
+        res.status(500).end();
     }
 });
 

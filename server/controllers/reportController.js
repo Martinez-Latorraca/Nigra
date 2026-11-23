@@ -29,13 +29,15 @@ export const createReport = async (req, res) => {
         let snapshot = null;
         if (Number.isInteger(messageId) && messageId > 0) {
             const { rows } = await pool.query(
-                'SELECT content, sender_id FROM messages WHERE id = $1',
+                'SELECT content, image_url, sender_id FROM messages WHERE id = $1',
                 [messageId]
             );
             // Solo aceptamos el message_id si el mensaje existe y lo mandó el
             // denunciado (evita reportar mensajes ajenos por id arbitrario).
             if (rows.length > 0 && Number(rows[0].sender_id) === reportedId) {
-                snapshot = rows[0].content;
+                // Si era una foto, guardamos la URL para que el admin la vea.
+                snapshot = [rows[0].content, rows[0].image_url && `[Foto] ${rows[0].image_url}`]
+                    .filter(Boolean).join('\n');
             } else {
                 messageId = null; // id inválido o no corresponde al denunciado
             }

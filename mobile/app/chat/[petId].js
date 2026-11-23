@@ -9,15 +9,18 @@ import {
   StyleSheet,
   Keyboard,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts } from '../../src/lib/theme';
 import { useSocket } from '../../src/lib/socket';
-import { ChevronLeft, Ellipsis, Check, Shield, SendHorizontal, Info, Ban, CircleCheck } from '../../src/lib/icons';
-import { confirm, toast } from '../../src/lib/feedback';
+import { ChevronLeft, Ellipsis, Check, Shield, SendHorizontal, Info, Ban, CircleCheck, ImagePlus, X, Camera, Images } from '../../src/lib/icons';
+import { confirm, choose, toast } from '../../src/lib/feedback';
 import { translateType, translateColor } from '../../src/lib/translations';
 import DonationBanner from '../../src/components/DonationBanner';
 import ReportModal from '../../src/components/ReportModal';
@@ -52,6 +55,10 @@ export default function Chat() {
   const [resolving, setResolving] = useState(false);
   // Denuncia: null = cerrado; { messageId } = abierto (messageId null = denunciar al user).
   const [reportTarget, setReportTarget] = useState(null);
+  // Foto que se está subiendo (uri local, se muestra con spinner) y foto
+  // abierta en pantalla completa.
+  const [uploadingUri, setUploadingUri] = useState(null);
+  const [viewerUri, setViewerUri] = useState(null);
   const scrollRef = useRef(null);
   const insets = useSafeAreaInsets();
   const [kbHeight, setKbHeight] = useState(0);
@@ -144,7 +151,7 @@ export default function Chat() {
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     return () => clearTimeout(t);
-  }, [messages, kbHeight]);
+  }, [messages, kbHeight, uploadingUri]);
 
   const send = () => {
     const content = text.trim();
@@ -154,6 +161,60 @@ export default function Chat() {
       content, petPhoto: photo, senderName: me?.name,
     });
     setText('');
+  };
+
+  // Fotos: se achican en el teléfono (sube más rápido con datos móviles), se
+  // suben por HTTP y el mensaje viaja por socket solo con la URL.
+  const sendPhoto = async (asset) => {
+    if (!asset || !socket) return;
+    setUploadingUri(asset.uri);
+    try {
+      const ctx = ImageManipulator.manipulate(asset.uri);
+      if (Math.max(asset.width || 0, asset.height || 0) > 1600) {
+        ctx.resize(asset.width >= asset.height ? { width: 1600 } : { height: 1600 });
+      }
+      const resized = await ctx.renderAsync();
+      const file = await resized.saveAsync({ compress: 0.75, format: SaveFormat.JPEG });
+      const fd = new FormData();
+      fd.append('image', { uri: file.uri, name: 'foto.jpg', type: 'image/jpeg' });
+      const { data } = await api.post('/api/messages/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      socket.emit('send_pet_message', {
+        pet_id: petId, receiver_id: otherUserId,
+        content: '', image_url: data.image_url, petPhoto: photo,
+      });
+    } catch (e) {
+      toast(e.response?.data?.error || 'No se pudo enviar la foto. Probá de nuevo.', 'error');
+    } finally {
+      setUploadingUri(null);
+    }
+  };
+
+  const pickPhoto = async (fromCamera) => {
+    const perm = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      toast(fromCamera ? 'Necesitamos permiso para usar la cámara.' : 'Necesitamos permiso para ver tus fotos.', 'error');
+      return;
+    }
+    const opts = { mediaTypes: ['images'], quality: 0.8 };
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync(opts)
+      : await ImagePicker.launchImageLibraryAsync(opts);
+    if (!result.canceled) sendPhoto(result.assets[0]);
+  };
+
+  const choosePhoto = async () => {
+    const source = await choose({
+      title: 'Enviar una foto',
+      options: [
+        { value: 'camera', icon: Camera, title: 'Sacar una foto' },
+        { value: 'library', icon: Images, title: 'Elegir de la galería' },
+      ],
+    });
+    if (source) pickPhoto(source === 'camera');
   };
 
   const isOwner = pet && Number(pet.user_id) === Number(me?.id);
@@ -305,14 +366,30 @@ export default function Chat() {
               <View key={m.id}>
                 {showDay ? <Text style={[styles.day, { color: c.text }]}>{day}</Text> : null}
                 <View style={[styles.msg, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
-                  <Pressable
-                    // Long-press en un mensaje del otro → denunciar ese mensaje.
-                    onLongPress={!mine ? () => setReportTarget({ messageId: m.id }) : undefined}
-                    delayLongPress={350}
-                    style={[styles.bubble, mine ? [styles.bubbleMine, { backgroundColor: c.inverseBg }] : [styles.bubbleOther, { backgroundColor: c.card }]]}
-                  >
-                    <Text style={[styles.bubbleText, { color: mine ? c.inverseText : c.text }]}>{m.content}</Text>
-                  </Pressable>
+                  {m.image_url ? (
+                    <Pressable
+                      onPress={() => setViewerUri(m.image_url)}
+                      onLongPress={!mine ? () => setReportTarget({ messageId: m.id }) : undefined}
+                      delayLongPress={350}
+                      accessibilityRole="imagebutton"
+                      accessibilityLabel="Foto. Tocá para verla completa"
+                    >
+                      <Image
+                        source={{ uri: m.image_url }}
+                        style={[styles.photo, mine ? styles.bubbleMine : styles.bubbleOther, { backgroundColor: c.photo }]}
+                      />
+                    </Pressable>
+                  ) : null}
+                  {m.content ? (
+                    <Pressable
+                      // Long-press en un mensaje del otro → denunciar ese mensaje.
+                      onLongPress={!mine ? () => setReportTarget({ messageId: m.id }) : undefined}
+                      delayLongPress={350}
+                      style={[styles.bubble, mine ? [styles.bubbleMine, { backgroundColor: c.inverseBg }] : [styles.bubbleOther, { backgroundColor: c.card }]]}
+                    >
+                      <Text style={[styles.bubbleText, { color: mine ? c.inverseText : c.text }]}>{m.content}</Text>
+                    </Pressable>
+                  ) : null}
                   <View style={styles.meta}>
                     <Text style={[styles.time, { color: c.text }]}>{timeOf(m.created_at)}</Text>
                     {mine && m.is_read ? <Check size={12} color={c.text} strokeWidth={2.5} /> : null}
@@ -322,6 +399,18 @@ export default function Chat() {
             );
           })
         )}
+
+        {uploadingUri ? (
+          <View style={[styles.msg, { alignItems: 'flex-end' }]}>
+            <View>
+              <Image source={{ uri: uploadingUri }} style={[styles.photo, styles.bubbleMine, styles.photoPending]} />
+              <View style={styles.photoSpinner}>
+                <ActivityIndicator color={palette.arena} />
+              </View>
+            </View>
+            <Text style={[styles.time, { color: c.text }]}>Enviando foto…</Text>
+          </View>
+        ) : null}
 
         {iAmPartOfReunion ? (
           <Text style={styles.closedPill}>
@@ -353,6 +442,15 @@ export default function Chat() {
       </ScrollView>
 
       <View style={[styles.inputBar, { backgroundColor: c.card, paddingBottom: insets.bottom + 10 }]}>
+        <Pressable
+          style={[styles.photoBtn, { backgroundColor: c.bg }, (inputDisabled || uploadingUri) && styles.disabled]}
+          onPress={choosePhoto}
+          disabled={inputDisabled || !!uploadingUri}
+          accessibilityRole="button"
+          accessibilityLabel="Agregar foto"
+        >
+          <ImagePlus size={22} color={c.title} strokeWidth={2} />
+        </Pressable>
         <View style={[styles.inputWrap, { backgroundColor: c.bg }, inputDisabled && styles.disabled]}>
           <TextInput
             style={[styles.input, { color: c.inputText }]}
@@ -387,6 +485,21 @@ export default function Chat() {
         petId={Number(petId)}
         onDone={onReportDone}
       />
+
+      {/* Foto en pantalla completa */}
+      <Modal visible={!!viewerUri} transparent animationType="fade" onRequestClose={() => setViewerUri(null)} statusBarTranslucent>
+        <View style={styles.viewer}>
+          {viewerUri ? <Image source={{ uri: viewerUri }} style={styles.viewerImg} resizeMode="contain" /> : null}
+          <Pressable
+            onPress={() => setViewerUri(null)}
+            style={[styles.viewerClose, { top: insets.top + 12 }]}
+            hitSlop={8}
+            accessibilityLabel="Cerrar foto"
+          >
+            <X size={24} color={palette.arena} strokeWidth={2} />
+          </Pressable>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -446,6 +559,16 @@ const styles = StyleSheet.create({
   },
   bubbleOther: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 20, borderBottomLeftRadius: 6 },
   bubbleText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21 },
+  photo: { width: 200, height: 156 },
+  photoPending: { opacity: 0.6 },
+  photoSpinner: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  photoBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  viewer: { flex: 1, backgroundColor: 'rgba(10, 10, 20, 0.95)', alignItems: 'center', justifyContent: 'center' },
+  viewerImg: { width: '100%', height: '100%' },
+  viewerClose: {
+    position: 'absolute', right: 16, width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(240, 235, 232, 0.15)', alignItems: 'center', justifyContent: 'center',
+  },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   time: { fontFamily: fonts.medium, fontSize: 11 },
 

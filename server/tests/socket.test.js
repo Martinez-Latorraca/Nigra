@@ -3,6 +3,7 @@ import {
     handleSendPetMessage,
     handleJoinPetChat,
     validateMessagePayload,
+    isChatImageUrl,
     MAX_CONTENT_LENGTH,
 } from '../lib/socketHandlers.js';
 
@@ -382,5 +383,32 @@ describe('handleSendPetMessage', () => {
             expect(result.reason).toBe('db_error');
             expect(socket.emit).toHaveBeenCalledWith('error_notification', expect.any(String));
         });
+    });
+});
+
+describe('fotos en el chat', () => {
+    const OK = 'https://res.cloudinary.com/testcloud/image/upload/v1/mimo/chat/abc.jpg';
+    beforeEach(() => { process.env.CLOUDINARY_CLOUD_NAME = 'testcloud'; });
+
+    it('isChatImageUrl acepta solo nuestra carpeta del chat', () => {
+        expect(isChatImageUrl(OK)).toBe(true);
+        expect(isChatImageUrl('https://res.cloudinary.com/otra/image/upload/v1/mimo/chat/a.jpg')).toBe(false);
+        expect(isChatImageUrl('https://res.cloudinary.com/testcloud/image/upload/v1/mimo/users/a.jpg')).toBe(false);
+        expect(isChatImageUrl('https://evil.com/mimo/chat/a.jpg')).toBe(false);
+        expect(isChatImageUrl(123)).toBe(false);
+    });
+
+    it('acepta foto sin texto', () => {
+        expect(validateMessagePayload({ pet_id: 1, receiver_id: 2, image_url: OK }, 7))
+            .toEqual({ ok: true, pet_id: 1, receiver_id: 2, content: '', image_url: OK });
+    });
+
+    it('rechaza URLs de foto ajenas', () => {
+        expect(validateMessagePayload({ pet_id: 1, receiver_id: 2, content: 'hola', image_url: 'https://evil.com/x.jpg' }, 7).reason)
+            .toBe('invalid_image');
+    });
+
+    it('sigue rechazando mensaje sin texto ni foto', () => {
+        expect(validateMessagePayload({ pet_id: 1, receiver_id: 2, content: '  ' }, 7).reason).toBe('empty_content');
     });
 });

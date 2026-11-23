@@ -37,6 +37,15 @@ export const reportLimiter = rateLimit({
 });
 
 // Waitlist landing: 5 registros por IP por hora. Anti-spam del formulario público.
+// Fotos del chat (subida a Cloudinary): 20 por 15 min.
+export const chatImageLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Mandaste muchas fotos seguidas. Probá de nuevo en un rato.' },
+});
+
 export const waitlistLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 5,

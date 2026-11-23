@@ -182,7 +182,7 @@ export default function Messages() {
                   numberOfLines={1}
                 >
                   {mineLast ? 'Vos: ' : ''}
-                  {item.content}
+                  {item.content || (item.image_url ? 'Foto' : '')}
                 </Text>
                 {unread ? <View style={styles.dot} /> : null}
               </View>

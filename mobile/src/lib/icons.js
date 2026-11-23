@@ -31,6 +31,7 @@ export { default as Info } from 'lucide-react-native/icons/info';
 export { default as House } from 'lucide-react-native/icons/house';
 export { default as HouseHeart } from 'lucide-react-native/icons/house-heart';
 export { default as ImageIcon } from 'lucide-react-native/icons/image';
+export { default as ImagePlus } from 'lucide-react-native/icons/image-plus';
 export { default as Images } from 'lucide-react-native/icons/images';
 export { default as KeyRound } from 'lucide-react-native/icons/key-round';
 export { default as Link } from 'lucide-react-native/icons/link';

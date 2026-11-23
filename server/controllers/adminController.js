@@ -436,7 +436,7 @@ export const adminGetConversationMessages = async (req, res) => {
         const { pet_id, user_a, user_b } = req.params;
 
         const result = await pool.query(
-            `SELECT m.id, m.content, m.created_at, m.is_read,
+            `SELECT m.id, m.content, m.image_url, m.created_at, m.is_read,
                     m.sender_id, us.name AS sender_name,
                     m.receiver_id, ur.name AS receiver_name
              FROM messages m

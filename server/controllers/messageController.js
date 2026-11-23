@@ -1,5 +1,6 @@
 // Función para enviar un mensaje a otro usuario
 import pool from '../db.js';
+import { uploadBufferToCloudinary } from '../utils/cloudinary.js';
 
 
 
@@ -45,6 +46,7 @@ export const getMyMessages = async (req, res) => {
             )
                 m.pet_id,
                 m.content,
+                m.image_url,
                 m.sender_id,
                 m.receiver_id,
                 m.is_read,
@@ -142,6 +144,7 @@ export const getChatHistory = async (req, res) => {
             SELECT
                 id,
                 content,
+                image_url,
                 sender_id AS "sender_id",
                 receiver_id AS "receiver_id",
                 pet_id AS "pet_id",
@@ -192,5 +195,21 @@ export const readPetMessages = async (req, res) => {
     } catch (error) {
         console.error('Error al marcar leído:', error);
         res.status(500).json({ error: 'Error del servidor' });
+    }
+};
+// Fotos del chat: se suben acá y el mensaje (por socket) lleva solo la URL.
+// La transformación de entrada achica la imagen y la re-codifica, lo que
+// además le borra los metadatos (EXIF con GPS del teléfono, por ejemplo).
+export const uploadChatImage = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Falta la imagen.' });
+        const result = await uploadBufferToCloudinary(req.file.buffer, 'mimo/chat', {
+            transformation: [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto' }],
+            format: 'jpg',
+        });
+        res.json({ image_url: result.secure_url });
+    } catch (error) {
+        console.error('uploadChatImage error:', error);
+        res.status(500).json({ error: 'No se pudo subir la foto.' });
     }
 };

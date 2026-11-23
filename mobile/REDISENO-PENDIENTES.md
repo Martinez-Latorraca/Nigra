@@ -44,6 +44,9 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   ("Dar permiso" y "Elegir de la galería") la primera vez que se abre.
 - **Anuncios de vets en Explorar** (`36b4fe9`) · en Veterinarias ya salen "Nuestros socios"; en
   Explorar no se llegó a ver un anuncio en la lista.
+- **Fotos en el chat** · mandar una foto sacada con la cámara y otra de la galería; que le llegue
+  a la otra persona (burbuja + push "Te mandó una foto"), que se abra en pantalla completa y que
+  en Mensajes la vista previa diga "Foto". Requiere haber corrido `server/sql/message_images.sql`.
 
 ## Diseño que contradice decisiones ya tomadas (no se implementó)
 

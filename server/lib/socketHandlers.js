@@ -5,8 +5,20 @@
 
 const MAX_CONTENT_LENGTH = 1000;
 
-// Devuelve { ok: true, pet_id, receiver_id, content } o { ok: false, reason }.
-// Chequea tipos, longitud del content, y bloquea self-DM.
+// Las fotos del chat se suben antes por HTTP (POST /api/messages/image) y el
+// mensaje solo lleva la URL. Aceptamos únicamente URLs de nuestra cuenta de
+// Cloudinary en la carpeta del chat, para que no se puedan colar links
+// arbitrarios (tracking, phishing) disfrazados de foto.
+function isChatImageUrl(url) {
+    if (typeof url !== 'string' || url.length > 500) return false;
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!cloud) return false;
+    return url.startsWith(`https://res.cloudinary.com/${cloud}/image/upload/`) && url.includes('/mimo/chat/');
+}
+
+// Devuelve { ok: true, pet_id, receiver_id, content, image_url? } o { ok: false, reason }.
+// Chequea tipos, longitud del content, y bloquea self-DM. Un mensaje con
+// foto puede venir sin texto.
 function validateMessagePayload(data, senderId) {
     const petIdRaw = data?.pet_id;
     const receiverIdRaw = data?.receiver_id;
@@ -18,12 +30,17 @@ function validateMessagePayload(data, senderId) {
     if (!Number.isInteger(receiver_id) || receiver_id <= 0) return { ok: false, reason: 'invalid_receiver_id' };
     if (receiver_id === Number(senderId)) return { ok: false, reason: 'self_message' };
 
-    if (typeof contentRaw !== 'string') return { ok: false, reason: 'invalid_content' };
-    const content = contentRaw.trim();
-    if (!content) return { ok: false, reason: 'empty_content' };
+    const imageRaw = data?.image_url;
+    if (imageRaw != null && !isChatImageUrl(imageRaw)) return { ok: false, reason: 'invalid_image' };
+    const image_url = imageRaw || null;
+
+    // Sin foto, el texto es obligatorio; con foto puede faltar.
+    if (typeof contentRaw !== 'string' && !(contentRaw == null && image_url)) return { ok: false, reason: 'invalid_content' };
+    const content = (contentRaw || '').trim();
+    if (!content && !image_url) return { ok: false, reason: 'empty_content' };
     if (content.length > MAX_CONTENT_LENGTH) return { ok: false, reason: 'content_too_long' };
 
-    return { ok: true, pet_id, receiver_id, content };
+    return { ok: true, pet_id, receiver_id, content, ...(image_url ? { image_url } : {}) };
 }
 
 // Regla del feature: en un chat sobre una mascota, sender o receiver debe ser
@@ -90,7 +107,9 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
         socket.emit('error_notification', 'Datos del mensaje inválidos');
         return { ok: false, reason: validated.reason };
     }
-    const { pet_id, receiver_id, content } = validated;
+    const { pet_id, receiver_id, content, image_url } = validated;
+    // Texto para notificaciones cuando el mensaje es solo una foto.
+    const preview = content || 'Te mandó una foto';
     const petPhoto = typeof data?.petPhoto === 'string' ? data.petPhoto : null;
 
     const relation = await verifyChatRelationship(pool, { pet_id, sender_id, receiver_id });
@@ -116,13 +135,20 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
     });
 
     try {
-        // A. Guardar en DB.
-        const result = await pool.query(
-            `INSERT INTO messages (pet_id, sender_id, receiver_id, content, created_at)
-             VALUES ($1, $2, $3, $4, NOW())
-             RETURNING *`,
-            [pet_id, sender_id, receiver_id, content]
-        );
+        // A. Guardar en DB. Solo tocamos image_url cuando hay foto.
+        const result = image_url
+            ? await pool.query(
+                `INSERT INTO messages (pet_id, sender_id, receiver_id, content, image_url, created_at)
+                 VALUES ($1, $2, $3, $4, $5, NOW())
+                 RETURNING *`,
+                [pet_id, sender_id, receiver_id, content, image_url]
+            )
+            : await pool.query(
+                `INSERT INTO messages (pet_id, sender_id, receiver_id, content, created_at)
+                 VALUES ($1, $2, $3, $4, NOW())
+                 RETURNING *`,
+                [pet_id, sender_id, receiver_id, content]
+            );
         const newMessage = result.rows[0];
 
         // B. Enviar al destinatario en tiempo real.
@@ -138,7 +164,7 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
             petPhoto,
             sender_id,
             senderName,
-            content,
+            content: preview,
         });
 
         // E. Push notification al receptor. Fire-and-forget para no bloquear.
@@ -148,7 +174,7 @@ export async function handleSendPetMessage({ pool, io, sendExpoPush, socket, dat
                 if (!pushToken) return;
                 sendExpoPush(pushToken, {
                     title: senderName,
-                    body: content.length > 120 ? content.slice(0, 117) + '…' : content,
+                    body: preview.length > 120 ? preview.slice(0, 117) + '…' : preview,
                     data: {
                         type: 'message',
                         pet_id,
@@ -177,4 +203,4 @@ export function handleJoinPetChat({ socket, data }) {
 }
 
 // Exportados para tests unitarios directos.
-export { validateMessagePayload, verifyChatRelationship, isBlockedPair, MAX_CONTENT_LENGTH };
+export { validateMessagePayload, verifyChatRelationship, isBlockedPair, isChatImageUrl, MAX_CONTENT_LENGTH };

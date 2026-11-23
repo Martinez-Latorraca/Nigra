@@ -110,6 +110,18 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // 2. Servir archivos estáticos (¡Vital para que React cargue sus JS/CSS!)
 // Asumo que tu carpeta de build se llama 'build' o 'dist'
+// Las páginas de la web viven en mimo.uy. Si alguien abre una desde el
+// dominio de Render (p. ej. un link compartido viejo), lo mandamos a mimo.uy:
+// desde otro origen la web no puede llamar a la API (CORS) y falla.
+// API, imágenes OG y socket siguen respondiendo en cualquier host.
+app.use((req, res, next) => {
+    const host = req.hostname || '';
+    if ((req.method === 'GET' || req.method === 'HEAD') && host.endsWith('.onrender.com')
+        && !/^\/(api|og|socket\.io)(\/|$)/.test(req.path)) {
+        return res.redirect(301, `https://mimo.uy${req.originalUrl}`);
+    }
+    next();
+});
 const buildPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(buildPath));
 

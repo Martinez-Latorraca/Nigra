@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { getPositionSafe } from '../src/lib/location';
 import api from '../src/lib/api';
 import { useTheme, palette, fonts, sectionColors } from '../src/lib/theme';
 import {
@@ -234,8 +235,14 @@ export default function Find() {
         toast('Necesitamos tu ubicación para centrar el mapa.', 'error');
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({});
-      setPosition({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      // Sin tope de tiempo, getCurrentPositionAsync puede no volver nunca
+      // (sin señal de GPS) y el spinner quedaba girando.
+      const pos = await getPositionSafe();
+      if (!pos) {
+        toast('No pudimos obtener tu ubicación. Probá buscando la dirección.', 'error');
+        return;
+      }
+      setPosition({ lat: pos.latitude, lng: pos.longitude });
       setPlaceName('');
     } catch {
       toast('No pudimos obtener tu ubicación.', 'error');

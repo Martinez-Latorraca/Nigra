@@ -210,7 +210,7 @@ function Phone({ src, alt, w, h, rotate = 0 }) {
       style={{ width: w, height: h, background: C.noche, boxSizing: 'content-box', transform: `rotate(${rotate}deg)` }}
     >
       <div className="w-full h-full rounded-[34px] overflow-hidden" style={{ background: C.crema }}>
-        <img src={src} alt={alt} className="w-full block" loading="lazy" />
+        <img src={src} alt={alt} className="w-full h-full block object-cover object-top" loading="lazy" />
       </div>
     </div>
   );

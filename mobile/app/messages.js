@@ -133,15 +133,14 @@ export default function Messages() {
   // "Sobre Luna · Perdido" + punto de color (Mensajes.dc.html). El inbox trae
   // pet_name / pet_status / pet_resolved_at; si el server todavía no los
   // manda, la fila queda como antes.
+  // "Sobre Luna · Perdido" si la mascota tiene nombre; si no, solo el estado
+  // (un "Sobre una encontrada · Encontrado" era redundante).
   const petState = (item) => {
     if (!item.pet_status) return null;
-    if (item.pet_resolved_at) {
-      return { about: `Sobre ${item.pet_name || 'la mascota'} · Reencontrada`, dot: (t) => t.nocheSmall };
-    }
-    if (item.pet_status === 'lost') {
-      return { about: `Sobre ${item.pet_name || 'la mascota'} · Perdido`, dot: () => palette.coral };
-    }
-    return { about: `Sobre ${item.pet_name || 'una encontrada'} · Encontrado`, dot: () => palette.teal };
+    const about = (label) => (item.pet_name ? `Sobre ${item.pet_name} · ${label}` : label);
+    if (item.pet_resolved_at) return { about: about('Reencontrada'), dot: (t) => t.nocheSmall };
+    if (item.pet_status === 'lost') return { about: about('Perdido'), dot: () => palette.coral };
+    return { about: about('Encontrado'), dot: () => palette.teal };
   };
 
   const renderItem = ({ item }) => {

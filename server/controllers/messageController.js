@@ -56,8 +56,8 @@ export const getMyMessages = async (req, res) => {
                 p.resolved_at AS pet_resolved_at,
                 p.user_id as reporter_id,
                 p.registered_by_vet_id,
-                u_sender.name AS sender_name,
-                u_receiver.name AS receiver_name,
+                split_part(btrim(u_sender.name), ' ', 1) AS sender_name,
+                split_part(btrim(u_receiver.name), ' ', 1) AS receiver_name,
                 v.name AS vet_name,
                 v.slug AS vet_slug,
                 v.logo_url AS vet_logo_url,
@@ -67,7 +67,7 @@ export const getMyMessages = async (req, res) => {
                     WHEN v.id IS NOT NULL
                          AND (CASE WHEN m.sender_id = $1 THEN m.receiver_id ELSE m.sender_id END) = p.user_id
                     THEN v.name
-                    ELSE (CASE WHEN m.sender_id = $1 THEN u_receiver.name ELSE u_sender.name END)
+                    ELSE (CASE WHEN m.sender_id = $1 THEN split_part(btrim(u_receiver.name), ' ', 1) ELSE split_part(btrim(u_sender.name), ' ', 1) END)
                 END AS other_user_name
             FROM messages m
             JOIN pets p ON m.pet_id = p.id

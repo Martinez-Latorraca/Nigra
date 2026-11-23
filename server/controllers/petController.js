@@ -469,7 +469,7 @@ export const getPetById = async (req, res) => {
                 p.id, p.description, p.status, p.contact_info, p.photo_url,
                 p.type, p.color, p.user_id, p.lat, p.lng, p.name, p.extra_photos,
                 p.address, p.resolved_at, p.resolved_with_user_id, p.created_at,
-                u.name AS reporter_name,
+                split_part(btrim(u.name), ' ', 1) AS reporter_name,
                 p.registered_by_vet_id,
                 v.name AS vet_name, v.slug AS vet_slug, v.logo_url AS vet_logo_url,
                 v.verified_at AS vet_verified_at
@@ -642,7 +642,7 @@ export const searchPet = async (req, res) => {
             query = `
                 WITH candidates AS (
                     SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.lat, p.lng, p.name,
-                    u.name AS reporter_name, u.id AS reporter_id,
+                    split_part(btrim(u.name), ' ', 1) AS reporter_name, u.id AS reporter_id,
                     (6371 * acos(cos(radians($1)) * cos(radians(p.lat)) * cos(radians(p.lng) - radians($2)) + sin(radians($1)) * sin(radians(p.lat)))) AS distance_km,
                     LEAST(
                         LEAST(p.embedding <=> $7, p.embedding <=> $8, p.embedding <=> $9),
@@ -670,7 +670,7 @@ export const searchPet = async (req, res) => {
             query = `
                 WITH candidates AS (
                     SELECT p.id, p.description, p.photo_url, p.status, p.contact_info, p.type, p.color, p.name,
-                    u.name AS reporter_name, u.id AS reporter_id,
+                    split_part(btrim(u.name), ' ', 1) AS reporter_name, u.id AS reporter_id,
                     LEAST(
                         LEAST(p.embedding <=> $4, p.embedding <=> $5, p.embedding <=> $6),
                         COALESCE((

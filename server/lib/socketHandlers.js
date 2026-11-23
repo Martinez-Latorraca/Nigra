@@ -63,7 +63,7 @@ async function isBlockedPair(pool, a, b) {
 // Buscamos senderName en la DB en vez de confiar en lo que mande el cliente
 // (payload spoofable → push notification con títulos maliciosos).
 async function loadSenderProfile(pool, senderId) {
-    const { rows } = await pool.query('SELECT name FROM users WHERE id = $1', [senderId]);
+    const { rows } = await pool.query("SELECT split_part(btrim(name), ' ', 1) AS name FROM users WHERE id = $1", [senderId]);
     return rows[0] || null;
 }
 

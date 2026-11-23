@@ -33,6 +33,17 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 ## Bugs encontrados al rediseñar (no son visuales, no se tocaron)
 
 
+## Probar en un teléfono real (el emulador no alcanza)
+
+- **"Usar mi ubicación actual" en Perdí / Encontré** (`9c33dda`) · ya no queda girando: usa la
+  última posición conocida o la actual con tope de 8 s. En el emulador no se pudo confirmar que
+  complete la ubicación (su GPS simulado no entregaba posición). Probar con GPS real, adentro y afuera.
+- **Foto recortada de la cámara** (`8d796d8`) · en el emulador la captura con webcam sale negra,
+  así que no se vio el recorte. Confirmar que la foto queda recortada al cuadrado de la silueta
+  (perro y gato).
+- **Anuncios de vets en Explorar** (`36b4fe9`) · en Veterinarias ya salen "Nuestros socios"; en
+  Explorar no se llegó a ver un anuncio en la lista.
+
 ## Diseño que contradice decisiones ya tomadas (no se implementó)
 
 - **"Marcar como reunida" en la ficha propia** (`Mascota-propia.dc.html`) · en el

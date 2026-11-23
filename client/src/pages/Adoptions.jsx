@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Search, HouseHeart, PawPrint } from 'lucide-react';
 import { C, SECTION } from '../utils/theme';
 import {
@@ -50,7 +50,9 @@ export default function Adoptions() {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
-    const [filters, setFilters] = useState(EMPTY_FILTERS);
+    // ?refugio=<id> viene del "Ver todas" de la ficha del refugio.
+    const [searchParams] = useSearchParams();
+    const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, shelter_id: searchParams.get('refugio') || '' }));
     const [city, setCity] = useState('');
     // Refugios para el desplegable. Hasta 50 (cap del server).
     const [shelters, setShelters] = useState([]);

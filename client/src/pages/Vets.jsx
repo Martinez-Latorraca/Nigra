@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Search, MapPin, ChevronRight, Star, Stethoscope, LocateFixed } from 'lucide-react';
 import { tierOf } from '../utils/sponsorTiers';
-import SponsorBadge from '../components/SponsorBadge';
 import { trackAdClick } from '../utils/vetTracking';
 import { useTrackImpression } from '../utils/useTrackImpressions';
+import { C } from '../utils/theme';
+import { SectionBand, PageBody, FilterChip, TierChip, Count, EmptyState, OutlineButton, CardGrid } from '../components/ui';
 
 const API = import.meta.env.VITE_API_URL || '';
+const LIMIT = 12;
 
 // Debe coincidir con el catálogo del edit form (Profile.jsx SERVICE_CATALOG).
 // Es duplicación deliberada: mantenerlo acá evita un import cross-page.
@@ -24,119 +27,60 @@ const SERVICE_CATALOG = [
     'Atención a domicilio',
 ];
 
-// Item del banner "Nuestros socios" — se separa como componente para que
-// cada card pueda tener su propio observer de impresión.
-function SponsorBannerItem({ vet }) {
-    const tier = tierOf(vet);
-    const style = tier
-        ? { borderColor: tier.color, boxShadow: `0 15px 40px ${tier.color}2E` }
-        : {};
-    const impressionRef = useTrackImpression(vet.id);
-    return (
-        <Link
-            to={`/vets/${vet.slug}`}
-            onClick={() => trackAdClick(vet.id)}
-            ref={impressionRef}
-            style={style}
-            className="snap-start flex-shrink-0 w-64 rounded-[24px] border-2 bg-mimo-warm p-4 transition-all"
-        >
-            <div className="flex items-center gap-3">
-                {vet.logo_url ? (
-                    <img src={vet.logo_url} alt="" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0" />
-                ) : (
-                    <div className="w-14 h-14 rounded-2xl bg-mimo-coral flex items-center justify-center text-white font-display font-black text-xl flex-shrink-0">
-                        {vet.name.charAt(0)}
-                    </div>
-                )}
-                <div className="min-w-0 flex-1">
-                    <div className="font-display font-black text-sm text-mimo-noche truncate">{vet.name}</div>
-                    {vet.city ? <div className="text-[10px] text-mimo-quiet font-medium truncate">📍 {vet.city}</div> : null}
-                </div>
-            </div>
-            {tier && (
-                <div className="mt-3">
-                    <SponsorBadge vet={vet} width={95} />
-                </div>
-            )}
-            {vet.bio ? <p className="mt-2 text-xs text-mimo-ink line-clamp-2 leading-relaxed">{vet.bio}</p> : null}
-        </Link>
+// Sin logo, la inicial va sobre un color de la paleta (fijo por vet).
+const FALLBACK_COLORS = [C.teal, C.noche, C.violeta, C.coral, C.sol];
+
+function VetAvatar({ vet }) {
+    const color = tierOf(vet)?.color || FALLBACK_COLORS[Number(vet.id) % FALLBACK_COLORS.length] || C.coral;
+    return vet.logo_url ? (
+        <img src={vet.logo_url} alt="" className="w-14 h-14 rounded-[18px] object-cover bg-mimo-muted shrink-0" />
+    ) : (
+        <span className="w-14 h-14 rounded-[18px] flex items-center justify-center font-display font-black text-2xl text-mimo-muted shrink-0" style={{ background: color }}>
+            {vet.name.charAt(0).toUpperCase()}
+        </span>
     );
 }
 
-function VetCard({ vet }) {
-    // Ring/borde/badge en el color del tier del sponsor. Ally = sin destacar.
+function ServiceTags({ services }) {
+    if (!services?.length) return null;
+    return (
+        <span className="flex flex-wrap gap-1.5">
+            {services.slice(0, 2).map((s) => (
+                <span key={s} className="px-2.5 py-1 rounded-full bg-mimo-warm text-[13px]">{s}</span>
+            ))}
+            {services.length > 2 && <span className="px-2.5 py-1 rounded-full bg-mimo-warm text-[13px]">+{services.length - 2}</span>}
+        </span>
+    );
+}
+
+// Card de vet. `ad` = item del banner de socios (cuenta impresión y clic).
+function VetCard({ vet, ad = false }) {
     const tier = tierOf(vet);
-    const sponsorStyle = tier ? {
-        borderColor: tier.color,
-        boxShadow: `0 8px 28px ${tier.color}2E`, // ~18% opacity
-    } : undefined;
+    const impressionRef = useTrackImpression(ad ? vet.id : null);
     return (
         <Link
             to={`/vets/${vet.slug}`}
-            style={sponsorStyle}
-            className={`group flex flex-col overflow-hidden rounded-[32px] border-2 transition-all hover:shadow-[0_15px_40px_rgba(0,0,0,0.08)] ${
-                tier ? 'bg-mimo-warm' : 'border-mimo-muted bg-mimo-warm'
-            }`}
+            onClick={ad ? () => trackAdClick(vet.id) : undefined}
+            ref={ad ? impressionRef : undefined}
+            className={`group bg-white rounded-3xl p-5 flex flex-col gap-3.5 hover:shadow-card transition-shadow ${tier ? 'border-2' : ''}`}
+            style={tier ? { borderColor: tier.color } : undefined}
         >
-            <div className="relative h-32 overflow-hidden bg-gradient-to-br from-mimo-warm to-mimo-muted">
-                {vet.cover_url ? (
-                    <img
-                        src={vet.cover_url}
-                        alt=""
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                ) : null}
-                {tier && (
-                    <div className="absolute right-3 top-3">
-                        <SponsorBadge vet={vet} width={95} />
-                    </div>
-                )}
-            </div>
-            <div className="flex flex-1 flex-col p-5">
-                <div className="flex items-start gap-3">
-                    {vet.logo_url ? (
-                        <img
-                            src={vet.logo_url}
-                            alt=""
-                            className="h-12 w-12 rounded-2xl object-cover ring-2 ring-white shadow-sm -mt-8 bg-mimo-warm"
-                        />
-                    ) : (
-                        <div className="h-12 w-12 rounded-2xl bg-mimo-coral flex items-center justify-center ring-2 ring-white shadow-sm -mt-8 text-white font-bold text-lg">
-                            {vet.name.charAt(0)}
-                        </div>
+            <div className="flex items-center gap-3.5">
+                <VetAvatar vet={vet} />
+                <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <b className="font-display font-black text-xl truncate group-hover:text-mimo-coral">{vet.name}</b>
+                    {vet.city && (
+                        <span className="flex items-center gap-1 text-sm">
+                            <MapPin size={14} strokeWidth={2} className="shrink-0" />
+                            <span className="truncate">{vet.city}</span>
+                        </span>
                     )}
-                    <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-base font-semibold tracking-tight text-mimo-noche">
-                            {vet.name}
-                        </h3>
-                        {vet.city ? (
-                            <p className="mt-0.5 text-xs font-medium text-mimo-quiet">📍 {vet.city}</p>
-                        ) : null}
-                    </div>
-                </div>
-                {vet.bio ? (
-                    <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-mimo-ink">
-                        {vet.bio}
-                    </p>
-                ) : null}
-                {vet.services && vet.services.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                        {vet.services.slice(0, 3).map((s) => (
-                            <span
-                                key={s}
-                                className="rounded-full bg-mimo-muted px-2.5 py-1 text-[10px] font-semibold text-mimo-ink"
-                            >
-                                {s}
-                            </span>
-                        ))}
-                        {vet.services.length > 3 ? (
-                            <span className="rounded-full bg-mimo-muted px-2.5 py-1 text-[10px] font-semibold text-mimo-quiet">
-                                +{vet.services.length - 3}
-                            </span>
-                        ) : null}
-                    </div>
-                ) : null}
+                </span>
+                <ChevronRight size={20} strokeWidth={2} className="shrink-0" />
             </div>
+            <TierChip vet={vet} />
+            {vet.bio && <p className="m-0 text-[15px] leading-normal line-clamp-2">{vet.bio}</p>}
+            <ServiceTags services={vet.services} />
         </Link>
     );
 }
@@ -148,21 +92,20 @@ export default function Vets() {
     const [page, setPage] = useState(1);
     const [city, setCity] = useState('');
     const [servicesSelected, setServicesSelected] = useState(() => new Set());
-    // Geolocalización opt-in: null hasta que el user pide "cerca mío".
-    // { lat, lng } cuando otorgó permiso; se dispara refetch con haversine.
+    // Geolocalización opt-in: null hasta que el user pide "Cerca mío".
     const [coords, setCoords] = useState(null);
     const [geoLoading, setGeoLoading] = useState(false);
     const [geoError, setGeoError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
 
-    const limit = 12;
-
     const fetchVets = async (nextPage = 1, cityFilter = '', services = new Set(), geo = null) => {
-        setLoading(true);
+        if (nextPage === 1) setLoading(true);
+        else setLoadingMore(true);
         setError('');
         try {
-            const params = new URLSearchParams({ page: nextPage, limit });
+            const params = new URLSearchParams({ page: nextPage, limit: LIMIT });
             if (cityFilter) params.set('city', cityFilter);
             if (services.size > 0) params.set('services', [...services].join(','));
             if (geo) {
@@ -171,26 +114,25 @@ export default function Vets() {
                 params.set('radius_km', '25'); // default razonable para "cerca mío"
             }
             const res = await fetch(`${API}/api/vets?${params}`);
-            if (!res.ok) throw new Error('No se pudo cargar el directorio.');
+            if (!res.ok) throw new Error();
             const data = await res.json();
-            setVets(data.vets || []);
+            setVets((prev) => (nextPage === 1 ? data.vets || [] : [...prev, ...(data.vets || [])]));
             setTotal(data.total || 0);
             setPage(nextPage);
-        } catch (e) {
-            setError(e.message);
+        } catch {
+            setError('No pudimos cargar el directorio. Probá de nuevo en un rato.');
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     };
 
     useEffect(() => {
         fetchVets(1, '', new Set(), null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Sponsors destacados para el banner "Nuestros socios" arriba del listado.
-    // Usa el mismo endpoint que el feed de mascotas — el server decide el
-    // orden (por distancia si hay coords, por tier si no).
+    // Sponsors para "Nuestros socios". Mismo endpoint que el feed de mascotas:
+    // el server ordena por distancia si hay coords, por plan si no.
     useEffect(() => {
         const fetchAds = (params) => {
             const qs = new URLSearchParams({ limit: 6, ...params });
@@ -224,25 +166,22 @@ export default function Vets() {
     };
 
     const toggleService = (s) => {
-        setServicesSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(s)) next.delete(s);
-            else next.add(s);
-            fetchVets(1, city.trim(), next, coords);
-            return next;
-        });
+        const next = new Set(servicesSelected);
+        if (next.has(s)) next.delete(s);
+        else next.add(s);
+        setServicesSelected(next);
+        fetchVets(1, city.trim(), next, coords);
     };
 
     const toggleNearMe = () => {
         setGeoError('');
         if (coords) {
-            // Ya activo → desactivar
             setCoords(null);
             fetchVets(1, city.trim(), servicesSelected, null);
             return;
         }
         if (!navigator.geolocation) {
-            setGeoError('Tu navegador no permite geolocalización.');
+            setGeoError('Tu navegador no permite usar la ubicación.');
             return;
         }
         setGeoLoading(true);
@@ -257,7 +196,7 @@ export default function Vets() {
                 setGeoLoading(false);
                 setGeoError(
                     err.code === err.PERMISSION_DENIED
-                        ? 'Necesitamos permiso de ubicación para mostrar vets cerca tuyo.'
+                        ? 'Necesitamos permiso de ubicación para mostrar veterinarias cerca tuyo.'
                         : 'No pudimos obtener tu ubicación. Probá de nuevo.'
                 );
             },
@@ -265,161 +204,114 @@ export default function Vets() {
         );
     };
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil(total / LIMIT));
+    const hasFilters = !!city.trim() || servicesSelected.size > 0 || !!coords;
 
     return (
-        <div className="min-h-screen bg-mimo-muted pb-20 font-sans text-mimo-noche">
-            <div className="mx-auto w-full max-w-6xl px-6 pt-16">
-                <span className="mb-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet">
-                    Directorio Mimo
-                </span>
-                <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-                    <h1 className="font-display font-black text-5xl tracking-tight text-mimo-noche md:text-7xl leading-none">
-                        Veterinarias<br className="hidden md:block" /> aliadas.
-                    </h1>
-                    <div className="flex flex-col items-start gap-4 md:items-end">
-                        <p className="max-w-md text-sm leading-relaxed text-mimo-ink">
-                            Encontrá una veterinaria cerca tuyo. Las marcadas como{' '}
-                            <span className="inline-flex items-center gap-1 rounded-full bg-mimo-sol/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-mimo-solDark">
-                                ⭐ Socio Mimo
-                            </span>{' '}
-                            colaboran activamente con la comunidad.
-                        </p>
-                        <Link
-                            to="/vets/register"
-                            className="inline-flex items-center gap-2 rounded-full bg-mimo-coral px-5 py-2.5 text-xs font-display font-extrabold uppercase tracking-widest text-white transition-all hover:bg-mimo-coralDark shadow-mimo active:scale-95"
-                        >
-                            🏥 Registrá tu vet
-                        </Link>
-                    </div>
-                </div>
-
-                <form
-                    onSubmit={handleCitySubmit}
-                    className="mt-10 flex flex-col gap-3 rounded-full border border-mimo-muted bg-mimo-warm p-2 shadow-[0_2px_15px_rgba(0,0,0,0.02)] sm:flex-row"
-                >
-                    <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="Buscar por ciudad (Montevideo, Salto, Rivera…)"
-                        className="flex-1 rounded-full bg-transparent px-6 py-3 text-sm font-medium text-mimo-noche placeholder:text-mimo-quiet focus:outline-none"
-                    />
-                    <button
-                        type="submit"
-                        className="rounded-full bg-mimo-noche px-6 py-3 text-sm font-display font-extrabold uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-95"
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            <SectionBand
+                color={C.noche}
+                eyebrow="Directorio Mimo"
+                title="Veterinarias aliadas"
+                subtitle="Encontrá una veterinaria cerca tuyo. Las marcadas como Socio Mimo colaboran activamente con la comunidad."
+                action={
+                    <Link
+                        to="/vets/register"
+                        className="group flex items-center gap-3.5 w-full md:w-[424px] shrink-0 p-[22px] rounded-3xl bg-mimo-coral hover:bg-mimo-coralDark transition-colors"
                     >
-                        Buscar
-                    </button>
-                </form>
-
-                {/* Filtros: cerca mío + chips por servicio */}
-                <div className="mt-6 flex flex-wrap items-center gap-2">
-                    <button
-                        onClick={toggleNearMe}
-                        disabled={geoLoading}
-                        className={`rounded-full px-4 py-2 text-xs font-display font-extrabold uppercase tracking-widest transition-all ${coords
-                            ? 'bg-mimo-teal text-white hover:bg-mimo-tealDark'
-                            : 'border border-mimo-muted bg-mimo-warm text-mimo-noche hover:border-mimo-coral/40'} disabled:opacity-50`}
-                    >
-                        {geoLoading ? 'Ubicando…' : coords ? '📍 Cerca mío (activo · quitar)' : '📍 Cerca mío'}
-                    </button>
-                    {SERVICE_CATALOG.map((s) => {
-                        const active = servicesSelected.has(s);
-                        return (
-                            <button
-                                key={s}
-                                onClick={() => toggleService(s)}
-                                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${active
-                                    ? 'bg-mimo-coral text-white'
-                                    : 'border border-mimo-muted bg-mimo-warm text-mimo-ink hover:border-mimo-coral/40'}`}
-                            >
-                                {active ? '✓ ' : ''}{s}
-                            </button>
-                        );
-                    })}
-                </div>
-                {geoError ? (
-                    <div className="mt-3 rounded-2xl bg-mimo-coral/10 p-3 text-xs font-semibold text-mimo-coral">
-                        {geoError}
-                    </div>
-                ) : null}
-            </div>
-
-            {/* Banner de Socios Mimo (publicidad) arriba del listado */}
-            {ads.length > 0 ? (
-                <div className="mx-auto w-full max-w-6xl px-6 pt-10">
-                    <div className="mb-3 flex items-center justify-between">
-                        <span className="text-[10px] font-display font-extrabold uppercase tracking-[0.2em] text-mimo-solDark">
-                            ⭐ Nuestros socios
+                        <span className="w-[52px] h-[52px] rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                            <Stethoscope size={24} strokeWidth={2} />
                         </span>
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-mimo-quiet">
-                            Publicidad
+                        <span className="flex-1 min-w-0 flex flex-col">
+                            <b className="font-display font-black text-xl">Registrá tu veterinaria</b>
+                            <span className="text-sm leading-snug">Sumate a la red y publicá mascotas encontradas.</span>
                         </span>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
-                        {ads.map((v) => <SponsorBannerItem key={v.id} vet={v} />)}
-                    </div>
-                </div>
-            ) : null}
+                        <ChevronRight size={20} strokeWidth={2} className="shrink-0" />
+                    </Link>
+                }
+            />
 
-            <div className="mx-auto w-full max-w-6xl px-6 pt-14">
-                {loading ? (
-                    <div className="py-24 text-center">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-mimo-quiet animate-pulse">
-                            Cargando directorio
+            <PageBody>
+                {ads.length > 0 && (
+                    <section className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <h2 className="m-0 flex items-center gap-2 font-display font-black text-[26px]">
+                                <Star size={22} strokeWidth={2} color={C.sol} />
+                                Nuestros socios
+                            </h2>
+                            <span className="text-[13px] font-bold tracking-[.08em] uppercase">Publicidad</span>
                         </div>
-                    </div>
-                ) : error ? (
-                    <div className="rounded-3xl bg-red-50 p-6 text-center text-sm font-semibold text-red-500">
-                        {error}
-                    </div>
-                ) : vets.length === 0 ? (
-                    <div className="py-24 text-center">
-                        <p className="text-2xl font-semibold text-mimo-quiet">
-                            Todavía no hay veterinarias por acá.
-                        </p>
-                        <p className="mt-2 text-sm text-mimo-quiet">
-                            Volvé a mirar en unos días — la comunidad está creciendo.
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="mb-6 flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-mimo-quiet">
-                                {total} {total === 1 ? 'resultado' : 'resultados'}
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            {vets.map((v) => (
-                                <VetCard key={v.id} vet={v} />
+                        <CardGrid cols={3}>
+                            {ads.map((v) => <VetCard key={v.id} vet={v} ad />)}
+                        </CardGrid>
+                    </section>
+                )}
+
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                        <form onSubmit={handleCitySubmit} className="flex items-center gap-2.5 w-full lg:w-[400px] shrink-0 h-[52px] pl-4 pr-1.5 rounded-2xl bg-white border border-mimo-muted focus-within:border-mimo-noche">
+                            <Search size={18} strokeWidth={2} className="shrink-0" />
+                            <input
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                                placeholder="Ciudad (Montevideo, Salto…)"
+                                aria-label="Ciudad"
+                                className="flex-1 min-w-0 bg-transparent outline-none text-[15px] placeholder:text-mimo-noche/60"
+                            />
+                            <button type="submit" className="h-10 px-[18px] rounded-xl bg-mimo-noche text-mimo-warm text-sm font-bold">Buscar</button>
+                        </form>
+                        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 lg:pb-0">
+                            <FilterChip active={!!coords} onClick={toggleNearMe}>
+                                <LocateFixed size={16} strokeWidth={2} className="mr-1.5" />
+                                {geoLoading ? 'Ubicando…' : 'Cerca mío'}
+                            </FilterChip>
+                            {SERVICE_CATALOG.map((s) => (
+                                <FilterChip key={s} active={servicesSelected.has(s)} onClick={() => toggleService(s)}>{s}</FilterChip>
                             ))}
                         </div>
+                    </div>
+                    {geoError && <p className="m-0 px-4 py-3 rounded-2xl bg-white text-sm font-bold text-mimo-coral">{geoError}</p>}
+                </div>
 
-                        {totalPages > 1 && (
-                            <div className="mt-12 flex justify-center gap-2">
-                                <button
-                                    onClick={() => fetchVets(page - 1, city, servicesSelected, coords)}
-                                    disabled={page === 1}
-                                    className="rounded-full border border-mimo-muted bg-mimo-warm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-mimo-ink transition-all hover:bg-mimo-muted disabled:opacity-30"
-                                >
-                                    ←
-                                </button>
-                                <span className="flex items-center px-4 text-xs font-bold uppercase tracking-widest text-mimo-quiet">
-                                    {page} / {totalPages}
-                                </span>
-                                <button
-                                    onClick={() => fetchVets(page + 1, city, servicesSelected, coords)}
-                                    disabled={page === totalPages}
-                                    className="rounded-full border border-mimo-muted bg-mimo-warm px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-mimo-ink transition-all hover:bg-mimo-muted disabled:opacity-30"
-                                >
-                                    →
-                                </button>
+                {!loading && !error && <Count>{total} {total === 1 ? 'resultado' : 'resultados'}</Count>}
+
+                {loading ? (
+                    <CardGrid cols={3}>
+                        {Array.from({ length: 6 }, (_, i) => (
+                            <div key={i} className="bg-white rounded-3xl p-5 flex items-center gap-3.5 animate-pulse">
+                                <div className="w-14 h-14 rounded-[18px] bg-mimo-muted" />
+                                <div className="flex-1 flex flex-col gap-2">
+                                    <div className="h-5 w-32 rounded bg-mimo-muted" />
+                                    <div className="h-3 w-20 rounded bg-mimo-muted" />
+                                </div>
                             </div>
+                        ))}
+                    </CardGrid>
+                ) : (
+                    <CardGrid cols={3}>
+                        {error ? (
+                            <EmptyState icon={Stethoscope} color={C.coral} title="No pudimos cargar el directorio" text={error} />
+                        ) : vets.length === 0 ? (
+                            <EmptyState
+                                icon={Stethoscope}
+                                color={C.coral}
+                                title={hasFilters ? 'No encontramos veterinarias' : 'Todavía no hay veterinarias'}
+                                text={hasFilters ? 'Probá con otra ciudad o sacá algún filtro.' : 'Volvé a mirar en unos días: la comunidad está creciendo.'}
+                            />
+                        ) : (
+                            vets.map((v) => <VetCard key={v.id} vet={v} />)
                         )}
-                    </>
+                    </CardGrid>
                 )}
-            </div>
+
+                {!loading && page < totalPages && (
+                    <div className="flex justify-center mt-2">
+                        <OutlineButton onClick={() => fetchVets(page + 1, city.trim(), servicesSelected, coords)} disabled={loadingMore}>
+                            {loadingMore ? 'Cargando…' : 'Cargar más'}
+                        </OutlineButton>
+                    </div>
+                )}
+            </PageBody>
         </div>
     );
 }

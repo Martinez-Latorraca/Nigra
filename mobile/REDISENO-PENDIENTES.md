@@ -26,8 +26,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 ## Ya listadas en el handoff ("Funcionalidad nueva")
 
 - **Chat:** botón para enviar fotos (hoy solo texto).
-- **Cámara:** selector Perro/Gato y siluetas nuevas (Lucide `dog`/`cat`, trazo fijo).
-  Ojo: `SILHOUETTE_DP = 400` también define el recorte.
 - **Mensajes:** buscador de conversaciones.
 - **Refugio pendiente:** botón "Enviar comprobantes" (mailto).
 - **Adopción adoptada:** tarjeta "Final feliz" con botón a otras mascotas en adopción.
@@ -53,10 +51,6 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 
 ## Detalles visuales que quedaron afuera
 
-- **Cámara: oscurecer todo lo que está fuera de la silueta** (`Camara.dc.html` usa una
-  máscara Noche al 62 %). Hay que dibujar la máscara a pantalla completa alineada con la
-  silueta de 400 dp, que también define el recorte. Conviene hacerlo junto con las
-  siluetas nuevas de Perro/Gato.
 - **Cámara: zoom en "1,0×"** · se dejó en porcentaje porque el zoom de expo-camera va de
   0 a 1 y no es un multiplicador real.
 

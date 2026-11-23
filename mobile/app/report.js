@@ -357,6 +357,8 @@ export default function Find() {
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}
         onCapture={setMainImage}
+        species={type}
+        onSpeciesChange={setType}
         onPickGallery={() => {
           setCameraVisible(false);
           openPicker('library');

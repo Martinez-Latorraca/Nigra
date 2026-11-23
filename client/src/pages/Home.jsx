@@ -1,174 +1,82 @@
-import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { Search, Camera, Map as MapIcon, HeartHandshake, HouseHeart, Stethoscope } from 'lucide-react';
+import { C, SECTION } from '../utils/theme';
 
-const API = import.meta.env.VITE_API_URL || '';
+// Inicio (Web-home). "Cerca tuyo", Mimo Protect y Héroes Mimo del diseño
+// quedan afuera, igual que en la app: son funciones nuevas (ver
+// mobile/REDISENO-PENDIENTES.md).
+const SECTIONS = [
+    { to: '/pets', title: 'Explorar', sub: 'Reportes de mascotas en tu zona.', color: SECTION.explorar, icon: MapIcon },
+    { to: '/adoptions', title: 'En adopción', sub: 'Mascotas que buscan una familia.', color: SECTION.adopciones, icon: HeartHandshake },
+    { to: '/shelters', title: 'Refugios', sub: 'Conocé y apoyá a los refugios aliados.', color: SECTION.refugios, icon: HouseHeart },
+    { to: '/vets', title: 'Veterinarias', sub: 'Clínicas cerca que reciben alertas.', color: C.noche, icon: Stethoscope },
+];
+
+function SectionIcon({ icon }) {
+    const Icon = icon;
+    return <Icon size={30} strokeWidth={2} />;
+}
 
 function Home() {
     const navigate = useNavigate();
     const token = useSelector(state => state.user?.token);
+    const user = useSelector(state => state.user?.data);
+    const firstName = (user?.name || '').trim().split(/\s+/)[0];
 
-    const handleReportClick = () => {
-        token ? navigate('/reportar') : navigate('/login');
-    };
-
-    // Vets destacadas para la card de descubribilidad. Fetch fire-and-forget:
-    // si falla, la card muestra iniciales genéricas — no bloquea el home.
-    const [vetsPreview, setVetsPreview] = useState([]);
-    const [vetsTotal, setVetsTotal] = useState(0);
-    useEffect(() => {
-        fetch(`${API}/api/vets?limit=4`)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-                if (!data) return;
-                setVetsPreview(data.vets || []);
-                setVetsTotal(data.total || 0);
-            })
-            .catch(() => {});
-    }, []);
-
-    // Data de ejemplo para reencuentros (Esto después vendría de tu DB)
-    const successStories = [
-        { id: 1, name: "Morocha", days: 3, img: "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?q=80&w=500" },
-        { id: 2, name: "Rocco", days: 1, img: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=500" },
-        { id: 3, name: "Luna", days: 5, img: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?q=80&w=500" },
-    ];
+    // Los dos botones entran al mismo flujo de reporte.
+    const startReport = () => navigate(token ? '/reportar' : '/login');
 
     return (
-        <div className="min-h-screen bg-[#F5F5F7] font-sans text-gray-900 pb-20">
-
-            {/* --- HERO SECTION --- */}
-            <div className="flex flex-col items-center justify-center pt-32 pb-20 px-6 text-center">
-                <div className="animate-fade-in">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] mb-4 block" style={{ color: '#FF5C6C' }}>Comunidad de Vigilancia Animal</span>
-                    <h1
-                        className="text-7xl md:text-9xl mb-8 leading-none"
-                        style={{ fontFamily: "'Nunito', system-ui, sans-serif", fontWeight: 900, color: '#1A1A2E', letterSpacing: '-0.03em' }}
-                    >
-                        mimo
+        <div className="flex-1 bg-mimo-warm font-sans text-mimo-noche">
+            <main className="w-full max-w-[1200px] mx-auto px-4 md:px-6 xl:px-0 pt-10 md:pt-12 pb-20 flex flex-col gap-8 md:gap-9">
+                <div className="flex flex-col gap-2">
+                    <h1 className="m-0 font-display font-black text-4xl md:text-5xl leading-[1.05] break-words">
+                        {firstName ? `Hola, ${firstName}` : 'Hola'}
                     </h1>
-                    <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto leading-tight mb-12">
-                        La primera comunidad civil que utiliza visión computacional para conectar mascotas perdidas con sus familias.
-                    </p>
-                </div>
-            </div>
-
-            {/* --- GRID DE ACCIONES (Bento Style) --- */}
-            <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-6 mb-24">
-
-                {/* 1. Perdí / Encontré (Grande, flujo unificado) */}
-                <div onClick={handleReportClick} className="md:col-span-12 group bg-black p-12 rounded-[48px] flex flex-col justify-between min-h-[360px] transition-all duration-500 hover:scale-[1.005] shadow-2xl cursor-pointer">
-                    <div className="text-white">
-                        <h2 className="text-4xl font-semibold tracking-tight mb-4">Perdí / Encontré.</h2>
-                        <p className="text-gray-400 text-lg max-w-xl leading-relaxed">
-                            Subí una foto y nuestra IA busca coincidencias al instante. Si no aparece, publicás el reporte en un solo paso.
-                        </p>
-                    </div>
-                    <span className="w-fit text-xs font-bold py-4 px-8 bg-white text-black rounded-full uppercase tracking-widest group-hover:bg-gray-200 transition-colors">
-                        Empezar
-                    </span>
+                    <p className="m-0 text-lg">Una comunidad que ayuda a las mascotas a volver a casa.</p>
                 </div>
 
-                {/* 2. Veterinarias aliadas (Ancho Completo) */}
-                <Link to="/vets" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
-                    <div className="flex-1">
-                        <h2 className="text-3xl font-semibold tracking-tight mb-2">Veterinarias aliadas.</h2>
-                        <p className="text-gray-400 text-lg leading-tight">Clínicas de tu zona que reciben alertas y ayudan a que las mascotas vuelvan a casa.</p>
-                    </div>
-
-                    {/* Stack de logos de vets reales (con fallback a inicial coral) */}
-                    <div className="flex -space-x-5">
-                        {(vetsPreview.length > 0 ? vetsPreview : Array(4).fill(null)).map((v, i) => (
-                            <div key={v?.id || i} className="w-16 h-16 rounded-full border-4 border-white bg-mimo-coral overflow-hidden shadow-lg transition-transform group-hover:translate-y-[-5px] flex items-center justify-center text-white font-black text-xl" style={{ transitionDelay: `${i * 50}ms` }}>
-                                {v?.logo_url ? (
-                                    <img src={v.logo_url} alt={v.name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <span>{v?.name?.charAt(0) || '🏥'}</span>
-                                )}
-                            </div>
-                        ))}
-                        {vetsTotal > 4 && (
-                            <div className="w-16 h-16 rounded-full border-4 border-white bg-black flex items-center justify-center text-white text-[10px] font-bold shadow-lg">
-                                +{vetsTotal - 4}
-                            </div>
-                        )}
-                    </div>
-                </Link>
-
-                {/* 3. Explorar + Adopciones (dos cards al lado) */}
-                <Link to="/pets" className="md:col-span-6 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col justify-between gap-6 hover:shadow-xl transition-all">
-                    <div>
-                        <h2 className="text-3xl font-semibold tracking-tight mb-2">Explorar Comunidad.</h2>
-                        <p className="text-gray-400 text-lg leading-tight">Reportes activos de mascotas perdidas y encontradas.</p>
-                    </div>
-                    <span className="w-fit text-xs font-bold py-3 px-6 bg-mimo-coral text-white rounded-full uppercase tracking-widest group-hover:bg-mimo-coralDark transition-colors">
-                        Ver reportes
-                    </span>
-                </Link>
-
-                <Link to="/adoptions" className="md:col-span-6 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col justify-between gap-6 hover:shadow-xl transition-all">
-                    <div>
-                        <h2 className="text-3xl font-semibold tracking-tight mb-2">En adopción.</h2>
-                        <p className="text-gray-400 text-lg leading-tight">Mascotas que buscan familia en refugios aliados.</p>
-                    </div>
-                    <span className="w-fit text-xs font-bold py-3 px-6 bg-black text-white rounded-full uppercase tracking-widest group-hover:bg-gray-800 transition-colors">
-                        Ver adopciones
-                    </span>
-                </Link>
-
-                {/* 4. Refugios */}
-                <Link to="/shelters" className="md:col-span-12 group bg-white p-10 rounded-[48px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all">
-                    <div className="flex-1">
-                        <h2 className="text-3xl font-semibold tracking-tight mb-2">Refugios aliados.</h2>
-                        <p className="text-gray-400 text-lg leading-tight">Protectoras que promueven adopciones responsables.</p>
-                    </div>
-                    <span className="w-fit text-xs font-bold py-4 px-8 bg-mimo-muted text-black rounded-full uppercase tracking-widest group-hover:bg-gray-200 transition-colors">
-                        Ver directorio
-                    </span>
-                </Link>
-            </div>
-
-            {/* --- SECCIÓN REENCUENTROS --- */}
-            <div className="max-w-7xl mx-auto px-6 mb-32">
-                <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
-                    <div>
-                        <span className="text-[10px] font-bold text-green-500 uppercase tracking-[0.3em] mb-2 block">Historias con final feliz</span>
-                        <h2 className="text-5xl font-semibold tracking-tighter text-black">Reencuentros exitosos.</h2>
-                    </div>
-                    <p className="text-gray-400 max-w-xs text-sm font-medium">Nuestra tecnología ha ayudado a cientos de familias a volver a estar juntas.</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {successStories.map(story => (
-                        <div key={story.id} className="group relative rounded-[40px] overflow-hidden aspect-[3/4] bg-gray-200">
-                            <img src={story.img} alt={story.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8 text-white">
-                                <h4 className="text-2xl font-bold mb-1">{story.name}</h4>
-                                <p className="text-sm text-gray-300 font-medium tracking-wide">Reencontrado en {story.days} {story.days === 1 ? 'día' : 'días'}</p>
-                            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_476px] gap-6">
+                    <section className="rounded-[32px] md:rounded-[40px] p-7 md:p-10 flex flex-col gap-7 bg-mimo-coral text-mimo-muted">
+                        <div className="flex flex-col gap-4">
+                            <h2 className="m-0 font-display font-black text-3xl md:text-[40px] leading-[1.1]">
+                                ¿Perdiste o encontraste una mascota?
+                            </h2>
+                            <p className="m-0 text-base md:text-lg leading-normal max-w-[540px]">
+                                Subí una foto y la buscamos entre los reportes cercanos. Si no aparece, publicás el aviso en un paso.
+                            </p>
                         </div>
-                    ))}
-                </div>
-            </div>
+                        <div className="flex flex-wrap gap-3">
+                            <button onClick={startReport} className="h-14 px-[22px] rounded-2xl bg-mimo-noche text-mimo-warm font-bold text-[15px] flex items-center gap-2 hover:bg-mimo-nocheAlt transition-colors">
+                                <Search size={18} strokeWidth={2} />
+                                Perdí la mía
+                            </button>
+                            <button onClick={startReport} className="h-14 px-[22px] rounded-2xl bg-mimo-warm text-mimo-noche font-bold text-[15px] flex items-center gap-2 hover:bg-white transition-colors">
+                                <Camera size={18} strokeWidth={2} />
+                                Encontré una
+                            </button>
+                        </div>
+                    </section>
 
-            {/* --- FOOTER / DESCRIPCIÓN --- */}
-            <div className="max-w-4xl mx-auto px-6 text-center border-t border-gray-200 pt-20">
-                <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-gray-300 mb-8">Mimo Protocol</h3>
-                <div className="grid md:grid-cols-3 gap-12 text-left">
-                    <div>
-                        <h4 className="font-bold text-black mb-2 uppercase text-[10px] tracking-widest">01. Registro</h4>
-                        <p className="text-xs text-gray-400 leading-relaxed font-medium">Cargamos la imagen en nuestra red neuronal para extraer puntos de interés biométricos únicos.</p>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-black mb-2 uppercase text-[10px] tracking-widest">02. Análisis</h4>
-                        <p className="text-xs text-gray-400 leading-relaxed font-medium">Comparamos el vector de la imagen con miles de reportes usando pgvector y cálculos de distancia geográfica.</p>
-                    </div>
-                    <div>
-                        <h4 className="font-bold text-black mb-2 uppercase text-[10px] tracking-widest">03. Conexión</h4>
-                        <p className="text-xs text-gray-400 leading-relaxed font-medium">Si hay match, habilitamos un canal de chat anónimo para coordinar el reencuentro de forma segura.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {SECTIONS.map(({ to, title, sub, color, icon }) => (
+                            <Link
+                                key={to}
+                                to={to}
+                                className="rounded-3xl md:rounded-[28px] p-[26px] min-h-[160px] md:min-h-[190px] flex flex-col justify-between gap-5 hover:opacity-90 transition-opacity"
+                                style={{ background: color, color: C.arena }}
+                            >
+                                <SectionIcon icon={icon} />
+                                <span className="flex flex-col gap-1.5">
+                                    <b className="font-display font-black text-2xl">{title}</b>
+                                    <span className="text-sm leading-snug">{sub}</span>
+                                </span>
+                            </Link>
+                        ))}
                     </div>
                 </div>
-            </div>
+            </main>
         </div>
     );
 }

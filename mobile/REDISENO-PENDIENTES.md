@@ -72,8 +72,8 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
 ## Web
 
 Rediseño de la web hecho el 2026-11-23 (barra, footer, fichas, listados, Inicio, Perdí /
-Encontré, cuentas, perfiles, chat, registro de vet). Falta el panel de admin y `/privacy`
-(punto 13 del handoff).
+Encontré, cuentas, perfiles, chat, registro de vet). El panel de admin (`9068d35`) y `/privacy`
+(`6ad530e`) ya estaban hechos: el punto 13 del handoff está completo.
 
 - ~~Registro de vet en la web con otra lista de servicios~~ · resuelto: `VetRegister.jsx` usa
   el mismo catálogo que el perfil y el directorio.

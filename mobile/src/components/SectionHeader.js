@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { ChevronLeft } from '../lib/icons';
 import { palette, fonts, onColor, useTheme } from '../lib/theme';
 import IconButton from './IconButton';
@@ -8,7 +8,7 @@ import IconButton from './IconButton';
 // Encabezado de sección: fondo del color de la sección, radio inferior 32,
 // volver a la izquierda. A la derecha va `right` o un espacio de 44 que mantiene
 // centrado el texto del medio (ya no hay menú lateral: lo reemplaza la TabBar).
-// color: usar sectionColors de theme.js. onBack: por defecto router.back().
+// color: usar sectionColors de theme.js. onBack: por defecto goBack().
 // showBack en false deja un espacio en lugar del botón de volver.
 export default function SectionHeader({
   color = palette.coral,
@@ -23,7 +23,6 @@ export default function SectionHeader({
   style,
 }) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const c = useTheme();
   const fg = onColor(color);
   // Sobre Noche el diseño usa botones más tenues y kicker/bajada en gris claro.
@@ -41,7 +40,7 @@ export default function SectionHeader({
             color={fg}
             backgroundColor={btnBg}
             accessibilityLabel="Volver"
-            onPress={onBack || (() => router.back())}
+            onPress={onBack || (() => goBack())}
           />
         ) : (
           <View style={styles.spacer} />

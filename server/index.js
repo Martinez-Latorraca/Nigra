@@ -35,6 +35,7 @@ import { handleSendPetMessage, handleJoinPetChat } from './lib/socketHandlers.js
 import { startReminderScheduler } from './lib/resolveReminder.js';
 import { analyticsEnabled, shutdownAnalytics } from './lib/analytics.js';
 import { CONTACT_EMAIL } from './lib/contact.js';
+import { assetLinks } from './lib/assetLinks.js';
 import { petShareData, adoptionShareData, renderShareImage } from './lib/shareCards.js';
 import pinoHttp from 'pino-http';
 import logger from './lib/logger.js';
@@ -121,6 +122,14 @@ app.use((req, res, next) => {
         return res.redirect(301, `https://mimo.uy${req.originalUrl}`);
     }
     next();
+});
+// App Links de Android (ver lib/assetLinks.js). Va antes del static porque
+// express.static ignora las carpetas que empiezan con punto.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    const body = assetLinks(process.env.ANDROID_CERT_SHA256);
+    if (!body) return res.status(404).json([]);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json(body);
 });
 const buildPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(buildPath));

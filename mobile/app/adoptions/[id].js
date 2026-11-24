@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../../src/lib/navigation';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts, onColor } from '../../src/lib/theme';
 import { SkeletonDetail } from '../../src/components/Skeleton';
@@ -107,7 +108,7 @@ export default function AdoptionDetail() {
           ) : null}
           <View style={[styles.heroBar, { top: insets.top + 16 }]}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => goBack()}
               accessibilityRole="button"
               style={({ pressed }) => [styles.backPill, { opacity: pressed ? 0.8 : 1 }]}
             >

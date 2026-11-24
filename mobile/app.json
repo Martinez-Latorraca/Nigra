@@ -42,7 +42,20 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "mimo.uy", "pathPrefix": "/pet/" },
+            { "scheme": "https", "host": "mimo.uy", "pathPrefix": "/adoptions" },
+            { "scheme": "https", "host": "mimo.uy", "pathPrefix": "/shelters" },
+            { "scheme": "https", "host": "mimo.uy", "pathPrefix": "/vets" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

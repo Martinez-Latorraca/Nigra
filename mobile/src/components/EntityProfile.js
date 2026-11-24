@@ -1,6 +1,6 @@
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { goBack } from '../lib/navigation';
 import { useTheme, palette, fonts, onColor } from '../lib/theme';
 import {
   ChevronLeft, ChevronRight, MapPin, Clock, Phone, MessageCircle, Mail, Globe, AtSign,
@@ -20,7 +20,7 @@ export function CoverHeader({ coverUrl, color, backLabel }) {
       {coverUrl ? <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} /> : null}
       <View style={[styles.coverBar, { top: insets.top + 16 }]}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBack()}
           accessibilityRole="button"
           style={({ pressed }) => [styles.backPill, { backgroundColor: color, opacity: pressed ? 0.8 : 1 }]}
         >

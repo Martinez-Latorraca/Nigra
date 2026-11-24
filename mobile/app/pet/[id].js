@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { goBack } from '../../src/lib/navigation';
 import { useSelector } from 'react-redux';
 import api from '../../src/lib/api';
 import { useTheme, palette, fonts } from '../../src/lib/theme';
@@ -78,7 +79,7 @@ export default function PetDetail() {
       <View style={[styles.container, styles.center, { backgroundColor: c.bg, padding: 20 }]}>
         <Text style={[styles.notFound, { color: c.title }]}>404</Text>
         <Text style={[styles.notFoundMsg, { color: c.text }]}>{error}</Text>
-        <Button title="Volver" onPress={() => router.back()} style={styles.notFoundBtn} />
+        <Button title="Volver" onPress={() => goBack()} style={styles.notFoundBtn} />
       </View>
     );
   }
@@ -149,7 +150,7 @@ export default function PetDetail() {
     if (!ok) return;
     try {
       await api.delete(`/api/pets/${pet.id}`);
-      router.back();
+      goBack();
     } catch {
       toast('No se pudo eliminar la publicación. Probá de nuevo.', 'error');
     }
@@ -167,7 +168,7 @@ export default function PetDetail() {
               color={palette.crema}
               backgroundColor={btnBg}
               accessibilityLabel="Volver"
-              onPress={() => router.back()}
+              onPress={() => goBack()}
             />
             <View style={styles.idPill}>
               <Text style={styles.idText}>Mimo ID #{pet.id}</Text>

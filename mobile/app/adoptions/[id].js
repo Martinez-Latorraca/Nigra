@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ScrollView, View, Text, Image, Pressable, StyleSheet, Linking, Share,
+  ScrollView, View, Text, Image, Pressable, StyleSheet, Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -15,6 +15,7 @@ import {
   PawPrint, Check, Heart,
 } from '../../src/lib/icons';
 import StatusChip from '../../src/components/StatusChip';
+import { useShareSheet } from '../../src/components/ShareSheet';
 import Button from '../../src/components/Button';
 
 const SPECIES_LABEL = { dog: 'Perro', cat: 'Gato', other: 'Otro' };
@@ -39,6 +40,7 @@ export default function AdoptionDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activePhoto, setActivePhoto] = useState(0);
+  const share = useShareSheet({ message: pet ? adoptionShareMessage(pet, SITE_URL) : '', kind: 'adoption', id });
 
   useEffect(() => {
     if (!id) return;
@@ -82,9 +84,6 @@ export default function AdoptionDetail() {
   const emailHref = pet.shelter_email
     ? `mailto:${pet.shelter_email}?subject=Consulta%20por%20adopci%C3%B3n%20-%20${encodeURIComponent(pet.name || 'mascota')}`
     : null;
-  const handleShare = () => {
-    Share.share({ message: adoptionShareMessage(pet, SITE_URL) });
-  };
   const shelterColor = palette.teal;
   const name = pet.name || 'Sin nombre';
 
@@ -217,12 +216,13 @@ export default function AdoptionDetail() {
                 {/* Difundir una adopción es la forma más directa de que aparezca
                     alguien, así que el botón va siempre — incluso si ya fue
                     adoptada, para poder compartir el final feliz. */}
-                <Button variant="outline" icon={Share2} title="Compartir" onPress={handleShare} style={styles.halfBtn} />
+                <Button variant="outline" icon={Share2} title="Compartir" onPress={share.open} style={styles.halfBtn} />
               </View>
             </View>
           </View>
         </View>
       </ScrollView>
+      {share.sheet}
     </View>
   );
 }

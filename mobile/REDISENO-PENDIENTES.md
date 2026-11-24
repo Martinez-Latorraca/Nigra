@@ -48,6 +48,21 @@ Formato: qué es · dónde aparece en el diseño · qué haría falta.
   a la otra persona (burbuja + push "Te mandó una foto"), que se abra en pantalla completa y que
   en Mensajes la vista previa diga "Foto". Requiere haber corrido `server/sql/message_images.sql`.
 
+## Próximo build de EAS (no llega por Metro: tiene código nativo)
+
+- **App Links** (`66ca940`) · los links de mimo.uy (`/pet/`, `/adoptions`, `/shelters`, `/vets`)
+  abren la app en vez del navegador. Para que Android los verifique: en Render setear
+  `ANDROID_CERT_SHA256` con la huella SHA-256 de `eas credentials -p android` (y, cuando esté en
+  Play Store, sumar separada por coma la de Play Console → Configuración → Integridad de la app →
+  Firma de apps). Deployar el server, chequear `https://mimo.uy/.well-known/assetlinks.json`,
+  hacer el build e instalarlo. Probar: `adb shell pm get-app-links com.mimo.app` tiene que decir
+  `mimo.uy: verified`, y tocar un link de WhatsApp tiene que abrir la ficha en la app.
+- **Compartir como historia** · el botón Compartir de la ficha y de la adopción abre una hoja con
+  "Enviar link" y "Compartir como historia" (imagen 1080×1920 del servidor, `/og/.../story.jpg`,
+  con `expo-sharing`). En un build sin `expo-sharing` la hoja no aparece y Compartir manda el
+  link como antes. El diseño pedía armar la imagen en la app con `react-native-view-shot`; se usa
+  la del servidor porque ya existe y es la misma para web y app.
+
 ## Diseño que contradice decisiones ya tomadas (no se implementó)
 
 - **"Marcar como reunida" en la ficha propia** (`Mascota-propia.dc.html`) · en el

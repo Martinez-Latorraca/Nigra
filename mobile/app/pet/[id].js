@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Linking,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -25,6 +24,7 @@ import { translateType, translateColor } from '../../src/lib/translations';
 import { API_URL, SITE_URL } from '../../src/lib/config';
 import { petShareMessage } from '../../src/lib/shareText';
 import PetMap from '../../src/components/PetMap';
+import { useShareSheet } from '../../src/components/ShareSheet';
 import IconButton from '../../src/components/IconButton';
 import StatusChip from '../../src/components/StatusChip';
 import Button from '../../src/components/Button';
@@ -53,6 +53,7 @@ export default function PetDetail() {
   const [error, setError] = useState('');
   // Foto que se ve grande (0 = principal, después las extra).
   const [photoIdx, setPhotoIdx] = useState(0);
+  const share = useShareSheet({ message: pet ? petShareMessage(pet, SITE_URL) : '', kind: 'pet', id });
 
   useEffect(() => {
     let active = true;
@@ -92,9 +93,6 @@ export default function PetDetail() {
   const btnBg = ORIGIN_COLORS[origen] || palette.sol;
   const meta = [translateType(pet.type), translateColor(pet.color)].filter(Boolean).join(' · ');
 
-  const handleShare = () => {
-    Share.share({ message: petShareMessage(pet, SITE_URL) });
-  };
   const handleMap = () => {
     if (pet.lat && pet.lng) {
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${pet.lat},${pet.lng}`);
@@ -301,7 +299,7 @@ export default function PetDetail() {
                 chat interno. Un teléfono expuesto no se puede retirar después, no
                 deja rastro moderable y es la vía habitual de las estafas de
                 "recompensa". El chat queda registrado y se puede bloquear/denunciar. */}
-            <Button variant="outline" icon={Share2} title="Compartir" onPress={handleShare} style={styles.shareBtn} />
+            <Button variant="outline" icon={Share2} title="Compartir" onPress={share.open} style={styles.shareBtn} />
 
             {isOwn && isResolved ? (
               <Pressable onPress={() => handleResolve(false)} style={styles.textBtn}>
@@ -327,6 +325,7 @@ export default function PetDetail() {
           </View>
         </View>
       </ScrollView>
+      {share.sheet}
     </View>
   );
 }
